@@ -3,8 +3,8 @@ spec2def(ws2_32_wrapper.dll ws2_32_wrapper.spec)
 
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
 
+
 list(APPEND SOURCE
-    hooks.c
     main.c
 	protocol.c
 	socket.c

@@ -28,65 +28,107 @@ DECLSPEC_HOTPATCH
 SetConsoleFont(IN HANDLE hConsoleOutput,
                IN DWORD nFont);
 
+// /*--------------------------------------------------------------
+ // *  SetConsoleHistoryInfo
+ // *
+ // * @implemented
+ // */
+// BOOL
+// WINAPI
+// SetConsoleHistoryInfo(
+	// IN PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
+// )
+// {
+    // CSR_API_MESSAGE_KERNEL Request;
+    // ULONG CsrRequest = MAKE_CSR_API(GET_HISTORY_INFO, CSR_CONSOLE);
+    // NTSTATUS Status;
+    // if (lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    // Request.Data.SetHistoryInfo.HistoryBufferSize      = lpConsoleHistoryInfo->HistoryBufferSize;
+    // Request.Data.SetHistoryInfo.NumberOfHistoryBuffers = lpConsoleHistoryInfo->NumberOfHistoryBuffers;
+    // Request.Data.SetHistoryInfo.dwFlags                = lpConsoleHistoryInfo->dwFlags;
+    // Status = CsrClientCallServer((PCSR_API_MESSAGE)&Request, NULL, CsrRequest, sizeof(CSR_API_MESSAGE));
+    // if (!NT_SUCCESS(Status) || !NT_SUCCESS(Status = Request.Status))
+    // {
+        // SetLastError(Status);
+        // return FALSE;
+    // }
+    // return TRUE;
+// }
+
+// /*--------------------------------------------------------------
+ // *  GetConsoleHistoryInfo
+ // *
+ // * @implemented - new
+ // */
+// BOOL
+// WINAPI
+// GetConsoleHistoryInfo(
+	// PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
+// )
+// {
+    // CSR_API_MESSAGE_KERNEL Request;
+    // ULONG CsrRequest = MAKE_CSR_API(GET_HISTORY_INFO, CSR_CONSOLE);
+    // NTSTATUS Status;
+    // if (lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    // Status = CsrClientCallServer((PCSR_API_MESSAGE)&Request, NULL, CsrRequest, sizeof(CSR_API_MESSAGE));
+    // if (!NT_SUCCESS(Status) || !NT_SUCCESS(Status = Request.Status))
+    // {
+        // SetLastError(Status);
+        // return FALSE;
+    // }
+    // lpConsoleHistoryInfo->HistoryBufferSize      = Request.Data.GetHistoryInfo.HistoryBufferSize;
+    // lpConsoleHistoryInfo->NumberOfHistoryBuffers = Request.Data.GetHistoryInfo.NumberOfHistoryBuffers;
+    // lpConsoleHistoryInfo->dwFlags                = Request.Data.GetHistoryInfo.dwFlags;
+    // return TRUE;
+// }
+
 /*--------------------------------------------------------------
- *  SetConsoleHistoryInfo
+ *  SetConsoleHistoryInfo - To Implement on winsrv
  *
- * @implemented
+ * @unimplemented - Requires csrsrv support to implement, which does not exist in NT5-compatible csrsrv
  */
 BOOL
 WINAPI
 SetConsoleHistoryInfo(
-	IN PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
+    IN PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
 )
 {
-    CSR_API_MESSAGE_KERNEL Request;
-    ULONG CsrRequest = MAKE_CSR_API(GET_HISTORY_INFO, CSR_CONSOLE);
-    NTSTATUS Status;
-    if (lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
+    if (!lpConsoleHistoryInfo || lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
     {
         SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-    Request.Data.SetHistoryInfo.HistoryBufferSize      = lpConsoleHistoryInfo->HistoryBufferSize;
-    Request.Data.SetHistoryInfo.NumberOfHistoryBuffers = lpConsoleHistoryInfo->NumberOfHistoryBuffers;
-    Request.Data.SetHistoryInfo.dwFlags                = lpConsoleHistoryInfo->dwFlags;
-    Status = CsrClientCallServer((PCSR_API_MESSAGE)&Request, NULL, CsrRequest, sizeof(CSR_API_MESSAGE));
-    if (!NT_SUCCESS(Status) || !NT_SUCCESS(Status = Request.Status))
-    {
-        SetLastError(Status);
         return FALSE;
     }
     return TRUE;
 }
 
 /*--------------------------------------------------------------
- *  GetConsoleHistoryInfo
+ *  GetConsoleHistoryInfo - To Implement on winsrv
  *
- * @implemented - new
+ * @unimplemented - Requires csrsrv support to implement, which does not exist in NT5-compatible csrsrv
  */
 BOOL
 WINAPI
 GetConsoleHistoryInfo(
-	PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
+    PCONSOLE_HISTORY_INFO lpConsoleHistoryInfo
 )
 {
-    CSR_API_MESSAGE_KERNEL Request;
-    ULONG CsrRequest = MAKE_CSR_API(GET_HISTORY_INFO, CSR_CONSOLE);
-    NTSTATUS Status;
-    if (lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
+    if (!lpConsoleHistoryInfo || lpConsoleHistoryInfo->cbSize != sizeof(CONSOLE_HISTORY_INFO))
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
     }
-    Status = CsrClientCallServer((PCSR_API_MESSAGE)&Request, NULL, CsrRequest, sizeof(CSR_API_MESSAGE));
-    if (!NT_SUCCESS(Status) || !NT_SUCCESS(Status = Request.Status))
-    {
-        SetLastError(Status);
-        return FALSE;
-    }
-    lpConsoleHistoryInfo->HistoryBufferSize      = Request.Data.GetHistoryInfo.HistoryBufferSize;
-    lpConsoleHistoryInfo->NumberOfHistoryBuffers = Request.Data.GetHistoryInfo.NumberOfHistoryBuffers;
-    lpConsoleHistoryInfo->dwFlags                = Request.Data.GetHistoryInfo.dwFlags;
+
+    lpConsoleHistoryInfo->HistoryBufferSize      = 0;
+    lpConsoleHistoryInfo->NumberOfHistoryBuffers = 0;
+    lpConsoleHistoryInfo->dwFlags                = 0;
     return TRUE;
 }
 

@@ -24,8 +24,17 @@ static const INPUT_MESSAGE_SOURCE msg_source_unavailable = { IMDT_UNAVAILABLE, I
 /***********************************************************************
  *		GetCurrentInputMessageSource (USER32.@)
  */
-BOOL WINAPI GetCurrentInputMessageSource( INPUT_MESSAGE_SOURCE *source )
+BOOL WINAPI GetCurrentInputMessageSource(PINPUT_MESSAGE_SOURCE MessageSource)
 {
-    *source = msg_source_unavailable; //Hack for now
+    if (!MessageSource) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    
+    // Most OSS applications I have seen just check this for touch input so it should be fine
+    MessageSource->DeviceType = IMDT_UNAVAILABLE;
+    // To be better compatible with applications. The only real uses of OriginId I have seen are for not processing injected input
+    // (or game anticheat) so IMO_HARDWARE is the most compatible with those applications
+    MessageSource->OriginId = IMO_HARDWARE;
     return TRUE;
 }

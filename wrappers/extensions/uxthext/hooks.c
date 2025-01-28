@@ -53,4 +53,5 @@ OpenThemeDataInternal(
     }
 	
 	return OpenThemeDataNative(hwnd, pszClassList);
+	//return OpenThemeData(hwnd, pszClassList);
 }

@@ -1856,18 +1856,26 @@ BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pN
   WOW64 and native platforms.
 */
 {
-    BOOL Wow64Process;
-    BOOL Wow64CurrentProcess;
-    
-    if(!pProcessMachine)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-    
+	BOOL Wow64Process;
+	BOOL Wow64CurrentProcess;
+	
+	if(!pProcessMachine)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	
     if(!IsWow64Process(hProcess, &Wow64Process) || !IsWow64Process(GetCurrentProcess(), &Wow64CurrentProcess))
+	{
         return FALSE;
-
+	}
+	
+	if(!Wow64Process)
+	{
+		*pProcessMachine = IMAGE_FILE_MACHINE_UNKNOWN;
+	}
+	else
+	{
     #ifdef _AMD64_
         *pProcessMachine = Wow64Process ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386; // Yeaa....
     #else
@@ -1877,7 +1885,9 @@ BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pN
         } else {
             *pProcessMachine = IMAGE_FILE_MACHINE_I386; // TODO: look at 16-bit process behavior (NTVDM)
         }
-    #endif
+    #endif		
+	}
+	
     if(pNativeMachine)
     {
         #ifdef _AMD64_
@@ -1886,8 +1896,8 @@ BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pN
             *pNativeMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386;
         #endif
     }
-    
-    return TRUE;
+	
+	return TRUE;
 }
 
 int GetProcessUserModeExceptionPolicy(int a1)

@@ -701,3 +701,58 @@ int WSAAPI WSASendMsg(
 {
 	return WSA_INVALID_HANDLE;
 }
+
+SOCKET WSAAPI WSASocketAInternal(int af, int type, int protocol,
+                         LPWSAPROTOCOL_INFOA lpProtocolInfo,
+                         GROUP g, DWORD dwFlags)
+{
+        SOCKET curSock;
+    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+                
+        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
+                curSock = WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+                if (curSock != INVALID_SOCKET) {
+                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
+                }
+        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+                return curSock;
+    }
+    return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+}
+
+SOCKET WSAAPI WSASocketWInternal(int af, int type, int protocol,
+                         LPWSAPROTOCOL_INFOW lpProtocolInfo,
+                         GROUP g, DWORD dwFlags)
+{
+        SOCKET curSock;
+    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+                
+        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
+                curSock = WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
+                if (curSock != INVALID_SOCKET) {
+                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
+                }
+        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+                return curSock;
+    }
+    return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
+}
+
+INT
+WSAAPI
+setsockoptInternal(
+	IN SOCKET s,
+    IN INT level,
+    IN INT optname,
+    IN CONST CHAR FAR* optval,
+    IN INT optlen)
+{
+    // FIXME: emulate TCP_KEEPALIVE using the SIO_KEEPALIVE_VALS IOCTL.
+    if( (level == IPPROTO_IPV6 && optname == IPV6_V6ONLY) // League Display/CEF
+     || (level == IPPROTO_TCP && optname == TCP_KEEPALIVE) // Node Native Fetch
+    ){
+        return S_OK;
+    }
+	
+	return setsockopt(s, level, optname, optval, optlen);
+}

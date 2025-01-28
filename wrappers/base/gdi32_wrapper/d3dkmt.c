@@ -18,8 +18,9 @@
  */
 
 #include <main.h>
-#include <ddrawint.h>
 #include <ntstrsafe.h>
+//#include <d3dnthal.h>
+//#include <ddrawi.h>
 
 #define MAX_GDI_HANDLES  16384
 #define FIRST_GDI_HANDLE 32
@@ -51,9 +52,21 @@ DdEntry28(
     _In_ HANDLE hDirectDraw,
     _Inout_ PDD_GETAVAILDRIVERMEMORYDATA puGetAvailDriverMemoryData);
 	
+DWORD
+APIENTRY
+DdEntry6(PDD_GETDRIVERSTATEDATA pdata);	
+	
 HANDLE
 APIENTRY
 DdEntry15(HDC hdc);	
+
+BOOL
+APIENTRY
+DdEntry1(
+    _In_ HANDLE hDirectDrawLocal,
+    _In_ HANDLE hSurfColor,
+    _In_ HANDLE hSurfZ,
+    _Inout_ D3DNTHAL_CONTEXTCREATEDATA *pdcci);
 
 DEFINE_DEVPROPKEY(DEVPROPKEY_GPU_LUID, 0x60b193cb, 0x5276, 0x4d0f, 0x96, 0xfc, 0xf1, 0x73, 0xab, 0xad, 0x3e, 0xc6, 2); 
 
@@ -738,4 +751,139 @@ D3DKMTSetProcessSchedulingPriorityClass(
 )
 {
 	return STATUS_NOT_IMPLEMENTED;
+}
+
+// Implementação de D3DKMTCheckExclusiveOwnership
+HRESULT 
+WINAPI
+D3DKMTCheckExclusiveOwnership() {
+    // Carrega a biblioteca GDI32.dll
+	DD_GETDRIVERSTATEDATA stateData = { 0 };
+	DWORD result;
+
+    // Configura a estrutura DDHAL_GETDRIVERSTATEDATA
+    
+    stateData.dwFlags = 0; // Pode variar dependendo do driver
+    stateData.dwhContext = 0;
+
+    // Chama a função NtGdiDdGetDriverState - DdEntry6
+    result = DdEntry6(&stateData);
+
+    // Libera a biblioteca
+    //FreeLibrary(hGdi32);
+
+    // Verifica o resultado
+    if (result != DD_OK) {
+        return E_FAIL;
+    }
+
+    // Retorna o resultado da consulta
+    return stateData.ddRVal;
+}
+
+// Função simulada de D3DKMTCheckOcclusion
+HRESULT 
+WINAPI 
+D3DKMTCheckOcclusion(
+	D3DKMT_CHECKOCCLUSION* pCheckOcclusion
+	) 
+{
+	RECT windowRect;
+	RECT monitorRect;
+	RECT intersectionRect;
+	
+    if (!pCheckOcclusion || !pCheckOcclusion->hWnd) {
+        return E_INVALIDARG;
+    }
+
+    // Verifica se a janela está visível
+    if (!IsWindowVisible(pCheckOcclusion->hWnd)) {
+        return S_FALSE; // Janela não está visível
+    }
+
+    // Obtém o retângulo da janela em coordenadas de tela
+    if (!GetWindowRect(pCheckOcclusion->hWnd, &windowRect)) {
+        return E_FAIL;
+    }
+
+    // Obtém o retângulo do monitor principal
+    monitorRect.left = 0;
+    monitorRect.left = 0;
+    monitorRect.left = GetSystemMetrics(SM_CXSCREEN);
+    monitorRect.left = GetSystemMetrics(SM_CYSCREEN);
+
+    // Verifica se há interseção entre o retângulo da janela e o do monitor
+    intersectionRect;
+    if (!IntersectRect(&intersectionRect, &windowRect, &monitorRect)) {
+        return S_FALSE; // Janela está fora da tela (oculta)
+    }
+
+    return S_OK; // Janela está visível
+}
+
+HRESULT D3DKMTCreateContext(D3DKMT_CREATECONTEXT* pCreateContext) {
+    D3DNTHAL_CONTEXTCREATEDATA dcci = { 0 };
+	BOOL result;
+	
+	if (!pCreateContext || !pCreateContext->hDevice) {
+        return E_INVALIDARG;
+    }    
+
+    // Prepara a estrutura D3DNTHAL_CONTEXTCREATEDATA
+    dcci.lpDDLcl = (PDD_DIRECTDRAW_LOCAL)pCreateContext->hDevice;
+    dcci.lpDDSLcl = (PDD_SURFACE_LOCAL)pCreateContext->pPrivateDriverData;
+    dcci.dwPID = GetCurrentProcessId(); // Obtém o PID do processo atual
+
+    // Chama a função NtGdiD3DContextCreate
+    result = DdEntry1(
+        (HANDLE)pCreateContext->hDevice,
+        (HANDLE)pCreateContext->NodeOrdinal,  // Aqui o NodeOrdinal pode ser tratado como cor
+        (HANDLE)pCreateContext->EngineAffinity, // Afinidade do Z-buffer
+        &dcci
+    );
+
+    // Verifica o resultado
+    if (!result || dcci.ddrval != DD_OK) {
+        return E_FAIL;
+    }
+
+    // Retorna o handle do contexto criado
+    pCreateContext->hContext = (D3DKMT_HANDLE)dcci.dwhContext;
+
+    return S_OK;
+}
+
+// Implementação da função D3DKMTGetScanLine
+HRESULT D3DKMTGetScanLine(D3DKMT_GETSCANLINE* pGetScanLine) {
+	DDHAL_GETSCANLINEDATA scanlineData = { 0 };
+	
+    if (!pGetScanLine || !pGetScanLine->hAdapter) {
+        return E_INVALIDARG;
+    }
+
+    // Prepara a estrutura para consulta do estado do scanline
+    
+    scanlineData.dwSurfaceHandle = (DWORD)pGetScanLine->hDevice;
+
+    stateData.dwContext = (DWORD)pGetScanLine->hAdapter;
+    stateData.dwFlags = 0x200; // Flag personalizada para consulta de scanline
+    stateData.lpvData = &scanlineData;
+    stateData.ddRVal = DD_OK;
+
+    // Chama a função NtGdiDdGetDriverState
+    DWORD result = pNtGdiDdGetDriverState(&stateData);
+
+    // Libera a biblioteca
+    FreeLibrary(hGdi32);
+
+    // Verifica o resultado da chamada
+    if (result != DD_OK || stateData.ddRVal != DD_OK) {
+        return E_FAIL;
+    }
+
+    // Atualiza os valores retornados
+    pGetScanLine->InVerticalBlank = scanlineData.bInVerticalBlank;
+    pGetScanLine->ScanLine = scanlineData.dwScanLine;
+
+    return S_OK;
 }

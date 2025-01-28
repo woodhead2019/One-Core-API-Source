@@ -76,35 +76,7 @@
 #define IPV6_V6ONLY           27
 #define IPPROTO_IPV6          41
 
-#define IOC_WS2                       0x08000000
-
-/*
- * Ioctl codes for translating socket handles to the base provider handle.
- * This is performed to prevent breaking non-IFS LSPs when new Winsock extension
- * funtions are added.
- */
-#define SIO_BSP_HANDLE          _WSAIOR(IOC_WS2,27)
-#define SIO_BSP_HANDLE_SELECT   _WSAIOR(IOC_WS2,28)
-#define SIO_BSP_HANDLE_POLL     _WSAIOR(IOC_WS2,29)
-
-/*
- * Ioctl code used to translate a socket handle into the base provider's handle.
- * This is not used by any Winsock extension function and should not be intercepted
- * by Winsock LSPs.
- */
-#define SIO_BASE_HANDLE         _WSAIOR(IOC_WS2,34)
-
-/*
- * Ioctl codes for Winsock extension functions.
- */
-#define SIO_EXT_SELECT          _WSAIORW(IOC_WS2,30)
-#define SIO_EXT_POLL            _WSAIORW(IOC_WS2,31)
-#define SIO_EXT_SENDMSG         _WSAIORW(IOC_WS2,32)
-
-#define _WSAIO(x,y)                   (IOC_VOID|(x)|(y))
-#define _WSAIOR(x,y)                  (IOC_OUT|(x)|(y))
-#define _WSAIOW(x,y)                  (IOC_IN|(x)|(y))
-#define _WSAIORW(x,y)                 (IOC_INOUT|(x)|(y))
+#define TCP_KEEPALIVE                   3
 
 static const unsigned __int64 epoch = ((unsigned __int64) 116444736000000000ULL);
 
@@ -341,9 +313,8 @@ WSASocketA(
     LPWSAPROTOCOL_INFOA lpProtocolInfo,
     GROUP g, 
 	DWORD dwFlags
-  );
+);
 
-SOCKET
 WINAPI 
 WSASocketW(
 	int af, 
@@ -352,28 +323,4 @@ WSASocketW(
     LPWSAPROTOCOL_INFOW lpProtocolInfo,
     GROUP g, 
 	DWORD dwFlags
-  );
-
-int
-WINAPI
-WSCInstallProvider(
-  _In_ LPGUID lpProviderId,
-  _In_z_ const WCHAR FAR *lpszProviderDllPath,
-  _In_reads_(dwNumberOfEntries) const LPWSAPROTOCOL_INFOW lpProtocolInfoList,
-  _In_ DWORD dwNumberOfEntries,
-  _Out_ LPINT lpErrno
-  );
-  
- int
-WSAAPI
-WSAIoctl(
-   IN SOCKET s,
-   IN DWORD dwIoControlCode,
-   IN LPVOID lpvInBuffer,
-   IN DWORD cbInBuffer,
-   OUT LPVOID lpvOutBuffer,
-   IN DWORD cbOutBuffer,
-   OUT LPDWORD lpcbBytesReturned,
-   IN LPWSAOVERLAPPED lpOverlapped,
-   IN LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
-   ); 
+);

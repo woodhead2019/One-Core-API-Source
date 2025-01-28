@@ -609,7 +609,9 @@
 @ stdcall gdiPlaySpoolStream(long long long long long long)
 
 #Vista functions
+@ stdcall D3DKMTCheckExclusiveOwnership()
 @ stdcall D3DKMTCheckMonitorPowerState(ptr)
+@ stdcall D3DKMTCheckOcclusion(ptr)
 @ stdcall D3DKMTCheckSharedResourceAccess(ptr)
 @ stdcall D3DKMTCheckVidPnExclusiveOwnership(ptr)
 #@ stdcall D3DKMTCloseAdapter(ptr)

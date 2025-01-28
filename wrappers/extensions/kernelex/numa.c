@@ -56,17 +56,13 @@ GetNumaNodeProcessorMask(
 BOOL 
 WINAPI 
 GetNumaAvailableMemoryNodeEx(
-	USHORT Node, 
-	PULONGLONG AvailableBytes
+    USHORT Node, 
+    PULONGLONG AvailableBytes
 )
 {
-	UCHAR newNode = 0xFF;
-	if(GetNumaAvailableMemoryNode(newNode, AvailableBytes)){
-		Node = strtoul(&newNode, NULL, 0);
-		return TRUE;
-	}else{
-		return FALSE;
-	}	
+    if (Node > 0xFF) DbgPrint("GetNumaAvailableMemoryNodeEx:: node %i does not fit in a UCHAR!", Node);
+
+    return GetNumaAvailableMemoryNode(Node, AvailableBytes);
 }
 
 BOOL 

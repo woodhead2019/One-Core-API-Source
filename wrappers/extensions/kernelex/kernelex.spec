@@ -1235,7 +1235,6 @@
 @ stdcall SetProcessAffinityUpdateMode(ptr long)
 @ stdcall SetProcessPreferredUILanguages(long wstr ptr)
 @ stdcall SetStdHandleEx(long ptr ptr)
-@ stdcall SetThreadErrorMode(long ptr)
 @ stdcall SetThreadpoolThreadMaximum(ptr long) ntext.TpSetPoolMaxThreads
 @ stdcall SetThreadpoolThreadMinimum(ptr long) ntext.TpSetPoolMinThreads
 @ stdcall SetThreadpoolTimer(ptr ptr long long)
@@ -1358,6 +1357,7 @@
 @ stdcall QueryUnbiasedInterruptTime(ptr)
 @ stdcall RaiseFailFastException(ptr ptr long)
 @ stdcall ResolveLocaleName(wstr ptr long)
+@ stdcall SetThreadErrorMode(long ptr)
 @ stdcall SetThreadGroupAffinity(long ptr ptr)
 @ stdcall SetThreadIdealProcessorEx(ptr ptr ptr)
 @ stdcall SetThreadpoolStackInformation(ptr ptr)

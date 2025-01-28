@@ -57,7 +57,7 @@
 @ stdcall CoGetPSClsid(ptr ptr)
 # CoGetProcessIdentifier
 @ stdcall CoGetStandardMarshal(ptr ptr long ptr long ptr)
-@ stdcall CoGetState(ptr)
+@ stdcall CoGetState(ptr) ole32.CoGetState
 @ stdcall -stub CoGetStdMarshalEx(ptr long ptr)
 # CoGetSystemSecurityPermissions
 @ stdcall CoGetTreatAsClass(ptr ptr)

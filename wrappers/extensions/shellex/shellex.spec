@@ -1,10 +1,10 @@
 2   stdcall SHChangeNotifyRegister(long long long long long ptr)
 3   stdcall SHDefExtractIconA(str long long ptr ptr long)
 4   stdcall SHChangeNotifyDeregister(long)
-5   stdcall -noname SHChangeNotifyUpdateEntryList(long long long long)
+#5   stdcall -noname SHChangeNotifyUpdateEntryList(long long long long) #Windows Vista has only this follow to SHUNIMPL.DLL 
 6   stdcall SHDefExtractIconW(wstr long long ptr ptr long)
-7   stdcall -noname SHLookupIconIndexA(str long long)
-8   stdcall -noname SHLookupIconIndexW(wstr long long)
+#7   stdcall -noname SHLookupIconIndexA(str long long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#8   stdcall -noname SHLookupIconIndexW(wstr long long) #Windows Vista has only this follow to SHUNIMPL.DLL
 9   stdcall PifMgr_OpenProperties(wstr wstr long long)
 10  stdcall PifMgr_GetProperties(ptr wstr ptr long long)
 11  stdcall PifMgr_SetProperties(ptr wstr ptr long long)
@@ -73,15 +73,15 @@
 75  stdcall PathYetAnotherMakeUniqueName(ptr wstr wstr wstr)
 76  stdcall -noname DragQueryInfo(ptr ptr)
 77  stdcall SHMapPIDLToSystemImageListIndex(ptr ptr ptr)
-78  stdcall -noname OleStrToStrN(str long wstr long) 
-79  stdcall -noname StrToOleStrN(wstr long str long) 
+#78  stdcall -noname OleStrToStrN(str long wstr long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#79  stdcall -noname StrToOleStrN(wstr long str long) #Windows Vista has only this follow to SHUNIMPL.DLL
 80  stdcall SHOpenPropSheetW(wstr ptr long ptr ptr ptr wstr)
-82  stdcall -noname DDECreatePostNotify(ptr)
+#82  stdcall -noname DDECreatePostNotify(ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 83  stdcall CIDLData_CreateFromIDArray(ptr long ptr ptr)
-84  stdcall -noname SHIsBadInterfacePtr(ptr long)
+#84  stdcall -noname SHIsBadInterfacePtr(ptr long) #Windows Vista has only this follow to SHUNIMPL.DLL
 85  stdcall OpenRegStream(long str str long)
-86  stdcall -noname SHRegisterDragDrop(long ptr)
-87  stdcall -noname SHRevokeDragDrop(long)
+#86  stdcall -noname SHRegisterDragDrop(long ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
+#87  stdcall -noname SHRevokeDragDrop(long) #Windows Vista has only this follow to SHUNIMPL.DLL
 88  stdcall SHDoDragDrop(long ptr ptr long ptr)
 89  stdcall SHCloneSpecialIDList(long long long)
 90  stdcall SHFindFiles(ptr ptr)
@@ -99,20 +99,20 @@
 103 stdcall SignalFileOpen(ptr)
 119 stdcall IsLFNDrive(ptr) 
 121 stdcall SHFlushClipboard() shell32.SHFlushClipboard
-122 stdcall -noname RunDll_CallEntry16(long long long str long)
-123 stdcall -noname SHFreeUnusedLibraries()
-126 stdcall -noname SHOutOfMemoryMessageBox(long long long) # Fixme
+#122 stdcall -noname RunDll_CallEntry16(long long long str long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#123 stdcall -noname SHFreeUnusedLibraries() #Windows Vista has only this follow to SHUNIMPL.DLL
+#126 stdcall -noname SHOutOfMemoryMessageBox(long long long) #Windows Vista has only this follow to SHUNIMPL.DLL # Fixme
 127 stdcall -noname SHWinHelp(long long long long)
 128 stdcall -noname SHDllGetClassObject(ptr ptr ptr)
 129 stdcall DAD_AutoScroll(long ptr ptr)
-130 stdcall -noname DAD_DragEnter(long)
+#130 stdcall -noname DAD_DragEnter(long) #Windows Vista has only this follow to SHUNIMPL.DLL
 131 stdcall DAD_DragEnterEx(long double)
 132 stdcall DAD_DragLeave()
 134 stdcall DAD_DragMove(double)
 136 stdcall DAD_SetDragImage(long long)
 137 stdcall DAD_ShowDragImage(long)
 145 stdcall -noname PathFindOnPath(wstr wstr)
-146 stdcall -noname RLBuildListOfPaths()
+#146 stdcall -noname RLBuildListOfPaths() #Windows Vista has only this follow to SHUNIMPL.DLL
 147 stdcall SHCLSIDFromString(long long) 
 148 stdcall SHMapIDListToImageListIndexAsync(ptr ptr ptr long ptr ptr ptr ptr ptr) shell32.SHMapIDListToImageListIndexAsync
 149 stdcall SHFind_InitMenuPopup(long long long long)
@@ -128,7 +128,7 @@
 160 stdcall -noname SHNetConnectionDialog(ptr wstr long) 
 161 stdcall SHRunControlPanel(long long) shell32.SHRunControlPanel
 162 stdcall SHSimpleIDListFromPath(ptr) 
-163 stdcall -noname StrToOleStr(wstr str) 
+#163 stdcall -noname StrToOleStr(wstr str) #Windows Vista has only this follow to SHUNIMPL.DLL
 164 stdcall Win32DeleteFile(wstr)
 165 stdcall SHCreateDirectory(long ptr)
 166 stdcall CallCPLEntry16(long long long long long long) shell32.CallCPLEntry16
@@ -142,7 +142,7 @@
 174 stdcall SHCreateShellFolderViewEx(ptr ptr)
 175 stdcall -noname SHGetSpecialFolderPath(long long long long) 
 176 stdcall SHSetInstanceExplorer(long)
-177 stdcall -noname DAD_SetDragImageFromListView(ptr long long)
+#177 stdcall -noname DAD_SetDragImageFromListView(ptr long long) #Windows Vista has only this follow to SHUNIMPL.DLL
 178 stdcall SHObjectProperties(long long wstr wstr)
 179 stdcall SHGetNewLinkInfoA(str str ptr long long)
 180 stdcall SHGetNewLinkInfoW(wstr wstr ptr long long)
@@ -162,11 +162,11 @@
 194 stdcall -noname SHCreatePropSheetExtArrayEx(long wstr long ptr)
 195 stdcall SHFree(ptr)
 196 stdcall SHAlloc(long)
-197 stdcall -noname SHGlobalDefect(long)
-198 stdcall -noname SHAbortInvokeCommand()
+#197 stdcall -noname SHGlobalDefect(long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#198 stdcall -noname SHAbortInvokeCommand() #Windows Vista has only this follow to SHUNIMPL.DLL
 200 stdcall -noname SHCreateDesktop(ptr)
 201 stdcall -noname SHDesktopMessageLoop(ptr)
-202 stdcall -noname DDEHandleViewFolderNotify(ptr ptr ptr)
+#202 stdcall -noname DDEHandleViewFolderNotify(ptr ptr ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 203 stdcall -noname AddCommasW(long wstr)
 204 stdcall -noname ShortSizeFormatW(double)
 205 stdcall -noname Printer_LoadIconsW(wstr ptr ptr)
@@ -180,9 +180,9 @@
 230 stdcall -noname FirstUserLogon(wstr wstr)
 231 stdcall SHSetFolderPathA(long ptr long str)
 232 stdcall SHSetFolderPathW(long ptr long wstr)
-233 stdcall -noname SHGetUserPicturePathW(wstr long ptr)
-234 stdcall -noname SHSetUserPicturePathW(wstr long ptr)
-235 stdcall -noname SHOpenEffectiveToken(ptr)
+#233 stdcall -noname SHGetUserPicturePathW(wstr long ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
+#234 stdcall -noname SHSetUserPicturePathW(wstr long ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
+#235 stdcall -noname SHOpenEffectiveToken(ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 236 stdcall -noname SHTestTokenPrivilegeW(ptr ptr)
 237 stdcall -noname SHShouldShowWizards(ptr)
 239 stdcall PathIsSlowW(wstr long)
@@ -212,12 +212,12 @@
 524 stdcall RealDriveType(long long)
 525 stdcall -noname RealDriveTypeFlags(long long)
 526 stdcall SHFlushSFCache()
-640 stdcall -noname NTSHChangeNotifyRegister(long long long long long long)
-641 stdcall -noname NTSHChangeNotifyDeregister(long)
-643 stdcall -noname SHChangeNotifyReceive(long long ptr ptr)
+#640 stdcall -noname NTSHChangeNotifyRegister(long long long long long long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#641 stdcall -noname NTSHChangeNotifyDeregister(long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#643 stdcall -noname SHChangeNotifyReceive(long long ptr ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 644 stdcall SHChangeNotification_Lock(long long ptr ptr)
 645 stdcall SHChangeNotification_Unlock(long)
-646 stdcall -noname SHChangeRegistrationReceive(ptr long)
+#646 stdcall -noname SHChangeRegistrationReceive(ptr long) #Windows Vista has only this follow to SHUNIMPL.DLL
 648 stdcall -noname SHWaitOp_Operate(ptr long)
 650 stdcall -noname PathIsSameRoot(ptr ptr) 
 651 stdcall -noname OldReadCabinetState(long long) 
@@ -233,29 +233,29 @@
 688 stdcall SHPropStgReadMultiple(ptr long long ptr ptr)
 689 stdcall SHPropStgWriteMultiple(ptr ptr long ptr ptr long)
 690 stdcall -noname SHIsLegacyAnsiProperty(ptr long long)
-691 stdcall -noname SHFileSysBindToStorage(wstr long long long long long)
+#691 stdcall -noname SHFileSysBindToStorage(wstr long long long long long) #Windows Vista has only this follow to SHUNIMPL.DLL
 700 stdcall CDefFolderMenu_Create(ptr ptr long ptr ptr ptr ptr ptr ptr)
 701 stdcall CDefFolderMenu_Create2(ptr ptr long ptr ptr ptr long ptr ptr)
 702 stdcall -noname CDefFolderMenu_MergeMenu(ptr long long ptr)
 703 stdcall -noname GUIDFromStringA(str ptr)
 704 stdcall -noname GUIDFromStringW(wstr ptr)
-707 stdcall -noname SHOpenPropSheetA(str ptr long ptr ptr ptr str)
-708 stdcall -noname SHGetSetFolderCustomSettingsA(ptr str long)
+#707 stdcall -noname SHOpenPropSheetA(str ptr long ptr ptr ptr str) #Windows Vista has only this follow to SHUNIMPL.DLL
+#708 stdcall -noname SHGetSetFolderCustomSettingsA(ptr str long) #Windows Vista has only this follow to SHUNIMPL.DLL
 709 stdcall SHGetSetFolderCustomSettingsW(ptr wstr long) shell32.SHGetSetFolderCustomSettingsW
 711 stdcall -noname CheckWinIniForAssocs()
-712 stdcall -noname SHCopyMonikerToTemp(ptr wstr wstr long)
+#712 stdcall -noname SHCopyMonikerToTemp(ptr wstr wstr long) #Windows Vista has only this follow to SHUNIMPL.DLL
 713 stdcall -noname PathIsTemporaryA(str)
 714 stdcall -noname PathIsTemporaryW(wstr)
-715 stdcall -noname SHCreatePropertyBag(ptr ptr)
+#715 stdcall -noname SHCreatePropertyBag(ptr ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 716 stdcall SHMultiFileProperties(ptr long)
 719 stdcall -noname SHParseDarwinIDFromCacheW(wstr wstr)
-720 stdcall -noname MakeShellURLFromPathA(str str long)
-721 stdcall -noname MakeShellURLFromPathW(wstr wstr long)
+#720 stdcall -noname MakeShellURLFromPathA(str str long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#721 stdcall -noname MakeShellURLFromPathW(wstr wstr long) #Windows Vista has only this follow to SHUNIMPL.DLL
 722 stdcall -noname SHCreateInstance(long long long)
 723 stdcall -noname SHCreateSessionKey(long ptr)
 724 stdcall -noname SHIsTempDisplayMode()
-725 stdcall -noname GetFileDescriptor(ptr long long wstr)
-726 stdcall -noname CopyStreamUI(ptr ptr ptr)
+#725 stdcall -noname GetFileDescriptor(ptr long long wstr) #Windows Vista has only this follow to SHUNIMPL.DLL
+#726 stdcall -noname CopyStreamUI(ptr ptr ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 730 stdcall RestartDialogEx(long wstr long long)
 731 stdcall -noname SHRegisterDarwinLink(ptr wstr long)
 732 stdcall -noname SHReValidateDarwinCache()
@@ -273,7 +273,7 @@
 753 stdcall -noname CheckStagingArea()
 754 stdcall -noname SHLimitInputEditWithFlags(ptr long)
 755 stdcall -noname PathIsEqualOrSubFolder(wstr wstr)
-756 stdcall -noname DeleteFileThumbnail(ptr)
+#756 stdcall -noname DeleteFileThumbnail(ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 
 @ stdcall Activate_RunDLL(long ptr ptr ptr) shell32.Activate_RunDLL
 @ stdcall AppCompat_RunDLLW(ptr ptr wstr long)
@@ -529,7 +529,7 @@
 
 #Hooks
 @ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
-@ stdcall DllGetClassObject(ptr ptr ptr) ;DllGetClassObjectInternal
+@ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectInternal
 ;@ stdcall Shell_NotifyIcon(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 ;@ stdcall Shell_NotifyIconA(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) Shell_NotifyIconWInternal ;Redirected to Longhorn shell

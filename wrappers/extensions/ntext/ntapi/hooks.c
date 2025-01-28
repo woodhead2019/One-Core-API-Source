@@ -39,7 +39,7 @@ ULONG_PTR get_system_affinity_mask(void)
 
 NTSTATUS
 NTAPI
-NtQuerySectionInternal(
+NtQuerySectionInternal_Vista(
   IN HANDLE               SectionHandle,
   IN SECTION_INFORMATION_CLASS InformationClass,
   OUT PVOID               InformationBuffer,
@@ -47,21 +47,23 @@ NtQuerySectionInternal(
   OUT PSIZE_T             ResultLength OPTIONAL 
 )
 {
-	NTSTATUS Status;
-	PSECTION_IMAGE_INFORMATION Sii;
-	
-	//Implement hook for bypass major version verification on CreateProcessInternal
-	Status = NtQuerySection(SectionHandle, InformationClass, InformationBuffer, InformationBufferSize, ResultLength);
-	if(NT_SUCCESS(Status) && InformationClass == SectionImageInformation)
-	{
-		Sii = (PSECTION_IMAGE_INFORMATION)InformationBuffer;
-		Sii->SubSystemMajorVersion = 5;
-		Sii->SubSystemMinorVersion = 0;
-		InformationBuffer = Sii;
-	}	
-	return Status;
+    NTSTATUS Status;
+    PSECTION_IMAGE_INFORMATION Sii;
+    
+    //Implement hook for bypass major version verification on CreateProcessInternal
+    Status = NtQuerySection(SectionHandle, InformationClass, InformationBuffer, InformationBufferSize, ResultLength);
+    if(NT_SUCCESS(Status) && InformationClass == SectionImageInformation)
+    {
+        Sii = (PSECTION_IMAGE_INFORMATION)InformationBuffer;
+        if (Sii->SubSystemMajorVersion >= 6 || (Sii->SubSystemMajorVersion == 6 && Sii->SubSystemMinorVersion > 0)) {
+			Sii->SubSystemMajorVersion = 6;
+			Sii->SubSystemMinorVersion = 0;
+		}
+        
+        InformationBuffer = Sii;
+    }    
+    return Status;
 }
-
 /******************************************************************************
 *  NtQueryInformationToken		[NTDLL.@]
 *  ZwQueryInformationToken		[NTDLL.@]

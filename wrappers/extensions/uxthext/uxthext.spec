@@ -7,24 +7,24 @@
 8  stdcall -noname EnumThemes(wstr ptr ptr)
 9  stdcall -noname EnumThemeColors(wstr wstr long wstr)
 10 stdcall -noname EnumThemeSizes(wstr wstr long ptr)
-11 stdcall -noname ParseThemeIniFile(wstr wstr ptr ptr)
+#11 stdcall -noname ParseThemeIniFile(wstr wstr ptr ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 13 stdcall -noname DrawNCPreview(ptr long ptr wstr wstr wstr ptr ptr)
 14 stdcall -noname RegisterDefaultTheme(wstr long)
 15 stdcall -noname DumpLoadedThemeToTextFile(ptr wstr long long)
 16 stdcall -noname OpenThemeDataFromFile(ptr ptr wstr long)
 17 stdcall -noname OpenThemeFileFromData(ptr ptr)
-18 stdcall -noname GetThemeSysSize96(long long)
-19 stdcall -noname GetThemeSysFont96(long long ptr)
+#18 stdcall -noname GetThemeSysSize96(long long) #Windows Vista has only this follow to SHUNIMPL.DLL
+#19 stdcall -noname GetThemeSysFont96(long long ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 20 stdcall -noname SessionAllocate(ptr ptr ptr ptr ptr ptr ptr)
 21 stdcall -noname SessionFree(ptr)
 22 stdcall -noname ThemeHooksOn(ptr)
 23 stdcall -noname ThemeHooksOff(ptr)
 24 stdcall -noname AreThemeHooksActive(ptr)
 25 stdcall -noname GetCurrentChangeNumber(ptr)
-26 stdcall -noname GetNewChangeNumber(ptr)
+#26 stdcall -noname GetNewChangeNumber(ptr) #Windows Vista has only this follow to SHUNIMPL.DLL
 27 stdcall -noname SetGlobalTheme(ptr ptr)
 28 stdcall -noname GetGlobalTheme(ptr ptr)
-29 stdcall -noname CheckThemeSignature(wstr)
+#29 stdcall -noname CheckThemeSignature(wstr) #Windows Vista has only this follow to SHUNIMPL.DLL
 30 stdcall -noname LoadTheme(long long long wstr long long long)
 31 stdcall -noname InitUserTheme(ptr)
 32 stdcall -noname InitUserRegistry()

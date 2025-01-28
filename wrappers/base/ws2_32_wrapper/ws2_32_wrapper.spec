@@ -18,6 +18,7 @@
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
 20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
+21  stdcall  setsockopt(long long long ptr long) setsockoptInternal
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)
 51  stdcall  gethostbyaddr(ptr long long)
@@ -76,6 +77,7 @@
 @ stdcall WSAHtons(long long ptr)
 @ stdcall WSAInstallServiceClassA(ptr)
 @ stdcall WSAInstallServiceClassW(ptr)
+@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr)
 @ stdcall WSAJoinLeaf(long ptr long ptr ptr ptr ptr long)
 @ stdcall WSALookupServiceBeginA(ptr long ptr)
 @ stdcall WSALookupServiceBeginW(ptr long ptr)
@@ -97,6 +99,8 @@
 @ stdcall WSASetEvent(long) kernel32.SetEvent
 @ stdcall WSASetServiceA(ptr long long)
 @ stdcall WSASetServiceW(ptr long long)
+@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
+@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
 @ stdcall WSAStringToAddressA(str long ptr ptr ptr)
 @ stdcall WSAStringToAddressW(wstr long ptr ptr ptr)
 @ stdcall WSAWaitForMultipleEvents(long ptr long long long) kernel32.WaitForMultipleObjectsEx
@@ -128,12 +132,6 @@
 @ stdcall -arch=x86_64 WSCWriteNameSpaceOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCWriteProviderOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCUpdateProvider32(ptr wstr ptr long ptr)
-
-#Hooks
-@ stdcall setsockopt(long long long ptr long) setsockoptInternal
-@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
-@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
-@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr) WSAIoctlInternal
 
 #Vista functions
 @ stdcall FreeAddrInfoEx(ptr)

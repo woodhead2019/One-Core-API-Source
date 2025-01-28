@@ -27,11 +27,11 @@ list(APPEND SOURCE
 	input.c
 	magnification
     main.c
+	message.c
 	misc.c
 	paint.c
 	process.c
 	shutdown.c
-	syscall.c
 	sysparams.c
 	timer.c
 	touch.c

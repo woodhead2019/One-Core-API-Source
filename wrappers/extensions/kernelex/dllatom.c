@@ -27,7 +27,8 @@ ATOM WINAPI GlobalAddAtomExA(
   DWORD  Flags //Ignored for now
 )
 {
-	return GlobalAddAtomA(lpString);
+    if (Flags) DbgPrint("GlobalAddAtom:: Undocumented flags %i\n", Flags);
+    return GlobalAddAtomA(lpString);
 }
 
 ATOM WINAPI GlobalAddAtomExW(
@@ -35,5 +36,6 @@ ATOM WINAPI GlobalAddAtomExW(
   DWORD  Flags //Ignored for now
 )
 {
-	return GlobalAddAtomW(lpString);
+    if (Flags) DbgPrint("GlobalAddAtom:: Undocumented flags %i\n", Flags);
+    return GlobalAddAtomW(lpString);
 }

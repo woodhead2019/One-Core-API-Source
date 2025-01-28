@@ -20,14 +20,31 @@ Revision History:
 
 #define WIN32_NO_STATUS
 
+#include <stdarg.h>
+#include <math.h>
 
-#include <main.h>
+#define NONAMELESSUNION
+#define NONAMELESSSTRUCT
+#include <windef.h>
+#include <winbase.h>
+
+#include <pdh.h>
+#include <pdhmsg.h>
+//#include "winperf.h"
+
+#include <wine/debug.h>
+#include <wine/list.h>
+#include <wine/unicode.h>
+#include <ws2spi.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(ws2_32);
 
-int 
-WINAPI
-WSCInstallProviderAndChains(
+typedef enum _WSC_PROVIDER_INFO_TYPE {
+   ProviderInfoLspCategories,
+   ProviderInfoAudit
+} WSC_PROVIDER_INFO_TYPE ;
+
+int WSCInstallProviderAndChains(
   LPGUID              lpProviderId,
   const LPWSTR        lpszProviderDllPath,
   const LPWSTR        lpszLspName,
@@ -46,9 +63,7 @@ WSCInstallProviderAndChains(
 							  lpErrno);
 }
 
-int 
-WINAPI 
-WSCSetProviderInfo(
+int WSCSetProviderInfo(
   _In_  LPGUID                 lpProviderId,
   _In_  WSC_PROVIDER_INFO_TYPE InfoType,
   _In_  PBYTE                  Info,

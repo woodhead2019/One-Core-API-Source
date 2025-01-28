@@ -31,6 +31,8 @@
 #include <devpropdef.h>
 #include <unicode.h>
 #include <strsafe.h>
+#include <ddrawint.h>
+#include <ddrawgdi.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -54,6 +56,78 @@ typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
   D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
   D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
 } D3DKMT_SCHEDULINGPRIORITYCLASS;
+
+typedef struct _D3DDDI_CREATECONTEXTFLAGS {
+	union {
+		struct {
+			UINT NullRendering : 1;
+			UINT InitialData : 1;
+			UINT Reserved : 30;
+		};
+		UINT   Value;
+	};
+} D3DDDI_CREATECONTEXTFLAGS;
+
+typedef enum _D3DKMT_CLIENTHINT
+{
+	D3DKMT_CLIENTHINT_UNKNOWN = 0,
+	D3DKMT_CLIENTHINT_OPENGL = 1,
+	D3DKMT_CLIENTHINT_CDD = 2,       // Internal   ;internal
+	D3DKMT_CLIENTHINT_DX7 = 7,
+	D3DKMT_CLIENTHINT_DX8 = 8,
+	D3DKMT_CLIENTHINT_DX9 = 9,
+	D3DKMT_CLIENTHINT_DX10 = 10,
+} D3DKMT_CLIENTHINT;
+
+typedef struct _D3DKMT_CREATECONTEXT {
+  D3DKMT_HANDLE             hDevice;
+  UINT                      NodeOrdinal;
+  UINT                      EngineAffinity;
+  D3DDDI_CREATECONTEXTFLAGS Flags;
+  VOID                      *pPrivateDriverData;
+  UINT                      PrivateDriverDataSize;
+  D3DKMT_CLIENTHINT         ClientHint;
+  D3DKMT_HANDLE             hContext;
+  VOID                      *pCommandBuffer;
+  UINT                      CommandBufferSize;
+  D3DDDI_ALLOCATIONLIST     *pAllocationList;
+  UINT                      AllocationListSize;
+  D3DDDI_PATCHLOCATIONLIST  *pPatchLocationList;
+  UINT                      PatchLocationListSize;
+  VOID                      *CommandBuffer;
+} D3DKMT_CREATECONTEXT;
+
+typedef struct _D3DKMT_GETSCANLINE {
+    HANDLE hAdapter;       // Handle do adaptador gráfico
+    HANDLE hDevice;        // Handle do dispositivo gráfico
+    BOOL InVerticalBlank;  // Indica se está no intervalo de blanking vertical
+    UINT ScanLine;         // A posição atual do scanline
+} D3DKMT_GETSCANLINE;
+
+typedef struct _D3DNTHAL_CONTEXTCREATEDATA {
+  union {
+    PDD_DIRECTDRAW_GLOBAL lpDDGbl;
+    PDD_DIRECTDRAW_LOCAL lpDDLcl;
+  };
+  union {
+    PDD_SURFACE_LOCAL lpDDS;
+    PDD_SURFACE_LOCAL lpDDSLcl;
+  };
+  union {
+    PDD_SURFACE_LOCAL lpDDSZ;
+    PDD_SURFACE_LOCAL lpDDSZLcl;
+  };
+  DWORD dwPID;
+  ULONG_PTR dwhContext;
+  HRESULT ddrval;
+} D3DNTHAL_CONTEXTCREATEDATA, *LPD3DNTHAL_CONTEXTCREATEDATA;
+
+typedef struct _DDHAL_GETSCANLINEDATA {
+  LPDDRAWI_DIRECTDRAW_GBL lpDD;
+  DWORD dwScanLine;
+  HRESULT ddRVal;
+  LPDDHAL_GETSCANLINE GetScanLine;
+} DDHAL_GETSCANLINEDATA;
 
 struct bitblt_coords
 {

@@ -261,22 +261,29 @@ CreateWindowInBand(
 						  lpParam);
 }
 
-BOOL 
-WINAPI 
-GetWindowBand(
-	HWND hWnd, 
-	PDWORD pdwBand
-)
+// A undocumented Win32 API, only really used by Microsoft native applications.
+BOOL WINAPI GetWindowBand(
+    IN    HWND    Window,
+    OUT    PZBID    Band)
 {
-	*pdwBand = 0;
-	hWnd = GetWindow(hWnd, GW_CHILD);
-	if(hWnd){
-		return TRUE;
-	}else{
-		return FALSE;
-	}
-}
+    if (!IsWindow(Window)) {
+        SetLastError(ERROR_INVALID_WINDOW_HANDLE);
+        return FALSE;
+    }
 
+    if (!Band) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    if (Window == GetDesktopWindow()) {
+        *Band = ZBID_DESKTOP;
+    } else {
+        *Band = ZBID_DEFAULT;
+    }
+
+    return TRUE;
+}
 
 BOOL 
 WINAPI

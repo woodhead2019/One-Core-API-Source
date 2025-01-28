@@ -1673,6 +1673,7 @@
 #Win7 functions
 @ stdcall EtwEventWriteNoRegistration(ptr ptr long ptr)
 @ stdcall LdrQueryModuleServiceTags(ptr ptr long)
+@ stdcall NtOpenKeyEx(ptr long ptr long)
 @ stdcall RtlCopyContext(ptr long ptr)
 @ stdcall RtlCopyExtendedContext(ptr long ptr)
 @ stdcall RtlCompareUnicodeStrings(ptr long ptr long long)
@@ -1685,9 +1686,10 @@
 @ stdcall RtlLocateLegacyContext(ptr long)
 @ stdcall RtlLocateExtendedFeature(long long ptr)
 @ stdcall RtlQueryDynamicTimeZoneInformation(ptr)
+@ stdcall RtlQueryPerformanceCounter(ptr)
+@ stdcall RtlQueryPerformanceFrequency(ptr)
 @ stdcall RtlTryAcquireSRWLockExclusive(ptr)
 @ stdcall RtlTryAcquireSRWLockShared(ptr)
-@ stdcall NtOpenKeyEx(ptr long ptr long)
 @ stdcall ZwOpenKeyEx(ptr long ptr long) NtOpenKeyEx
 @ stdcall WinSqmAddToAverageDWORD(long long long)
 
@@ -1718,8 +1720,6 @@
 @ stdcall RtlGetExePath(wstr ptr)
 @ stdcall RtlGetExtendedContextLength2(long ptr int64)
 @ stdcall RtlLocateExtendedFeature2(ptr long ptr ptr)
-@ stdcall RtlQueryPerformanceCounter(ptr)
-@ stdcall RtlQueryPerformanceFrequency(ptr)
 @ stdcall RtlQueryThreadProfiling(ptr ptr)
 @ stdcall RtlQueryUnbiasedInterruptTime(ptr)
 @ stdcall RtlReadThreadProfilingData(ptr long ptr)

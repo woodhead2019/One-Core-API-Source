@@ -237,51 +237,51 @@ CheckIfIsOSExec(){
     }	
 }
 
-// /*************************************************************************
- // * DllGetClassObject     [SHELL32.@]
- // * SHDllGetClassObject   [SHELL32.128]
- // */
-// HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
-// {
-	// IClassFactory * pcf = NULL;
-	// HRESULT	hres;
-	// int i;
+/*************************************************************************
+ * DllGetClassObject     [SHELL32.@]
+ * SHDllGetClassObject   [SHELL32.128]
+ */
+HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+{
+	IClassFactory * pcf = NULL;
+	HRESULT	hres;
+	int i;
 	
-	// TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
+	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
-	// if (!ppv) return E_INVALIDARG;
-	// *ppv = NULL;
+	if (!ppv) return E_INVALIDARG;
+	*ppv = NULL;
 
-	// /* search our internal interface table */
-	// for(i=0;InterfaceTable[i].clsid;i++) {
-	    // if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
-	        // //TRACE("index[%u]\n", i);
-			// if(IsEqualIID(&CLSID_ShellLink, rclsid))
-			// {
-				// if(!CheckIfIsOSExec()){
-					// pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-					// break;
-				// }else{
-					// continue;
-				// }				
-			// }else{
-				// pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-				// break;				
-			// }
-	    // }			
-	// }		
+	/* search our internal interface table */
+	for(i=0;InterfaceTable[i].clsid;i++) {
+	    if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
+	        //TRACE("index[%u]\n", i);
+			if(IsEqualIID(&CLSID_ShellLink, rclsid))
+			{
+				if(!CheckIfIsOSExec()){
+					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+					break;
+				}else{
+					continue;
+				}				
+			}else{
+				pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+				break;				
+			}
+	    }			
+	}		
 
-    // if (!pcf) {
-	    // //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
-	    // return DllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
-	// }
+    if (!pcf) {
+	    //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
+	    return DllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
+	}
 
-	// hres = IClassFactory_QueryInterface(pcf, iid, ppv);
-	// IClassFactory_Release(pcf);
+	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
+	IClassFactory_Release(pcf);
 
-	// //TRACE("-- pointer to class factory: %p\n",*ppv);
-	// return hres;
-// }
+	//TRACE("-- pointer to class factory: %p\n",*ppv);
+	return hres;
+}
 
 /**************************************************************************
  * Default ClassFactory Implementation
