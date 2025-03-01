@@ -462,7 +462,7 @@
 #Missing on Windows XP SP1
 ;727 stdcall -noname SHGetImageList(long ptr ptr)
 
-; #Functions exported by Longhorn shell32.dll
+#Functions exported by Longhorn shell32.dll
 @ stdcall SHInitializeNamespace() ;version 3718
 @ stdcall SHUninitializeNamespace() ;version 3718
 @ stdcall SHEvaluateSystemCommandTemplate(wstr wstr wstr wstr)  ;Redirected to Longhorn shell
@@ -482,7 +482,7 @@
 881 stdcall -noname SHEnumClassesOfCategories(long long long long long)
 882 stdcall -noname SHWriteClassesOfCategories(long long long long long long long)
 
-; # Functions exported by the WinVista shell32.dll
+# Functions exported by the WinVista shell32.dll
 @ stdcall Shell_GetCachedImageIndexA(ptr ptr long)  ;Redirected to Longhorn shell
 @ stdcall Shell_GetCachedImageIndexW(ptr ptr long) Shell_GetCachedImageIndex
 @ stdcall SHBindToObject(ptr ptr ptr ptr ptr) ;Redirected to Longhorn shell

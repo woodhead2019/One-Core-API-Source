@@ -18,7 +18,8 @@ struct _Direct3DDevice9_INT;
 typedef struct _Direct3DSwapChain9_INT
 {
 /* 0x0000 */    D3D9BaseObject BaseObject;
-/* 0x0020 */    struct IDirect3DSwapChain9Vtbl* lpVtbl;
+/* 0x0020 */    struct IDirect3DSwapChain9ExVtbl* lpVtbl;
+/* 0x0020 */    LPDIRECT3DSWAPCHAIN9 lRealD3D9SwapChain;
 /* 0x0024 */    DWORD dwUnknown0024;
 /* 0x0028 */    struct _D3D9Surface* pPrimarySurface;
 /* 0x002c */    struct _D3D9Surface* pExtendedPrimarySurface;
@@ -71,7 +72,7 @@ typedef struct _Direct3DSwapChain9_INT
 /* 0x0200 */    D3DGAMMARAMP GammaRamp;
 } Direct3DSwapChain9_INT, FAR* LPDIRECT3DSWAPCHAIN9_INT;
 
-LPDIRECT3DSWAPCHAIN9_INT IDirect3DSwapChain9ToImpl(LPDIRECT3DSWAPCHAIN9 iface);
+LPDIRECT3DSWAPCHAIN9_INT IDirect3DSwapChain9ToImpl(LPDIRECT3DSWAPCHAIN9EX iface);
 Direct3DSwapChain9_INT* CreateDirect3DSwapChain9(enum REF_TYPE RefType, struct _Direct3DDevice9_INT* pBaseDevice, DWORD ChainIndex);
 
 VOID Direct3DSwapChain9_SetDisplayMode(Direct3DSwapChain9_INT* pThisSwapChain, D3DPRESENT_PARAMETERS* pPresentationParameters);

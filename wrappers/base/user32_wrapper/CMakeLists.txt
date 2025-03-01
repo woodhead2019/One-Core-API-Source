@@ -8,6 +8,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/win32k)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/subsys/csr)
 include_directories(${REACTOS_SOURCE_DIR}/win32ss/user/winsrv/usersrv)
 include_directories(${REACTOS_SOURCE_DIR}/win32ss/include)
+include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/libs/libpng)
 
 spec2def(user32_wrapper.dll user32_wrapper.spec)
 
@@ -44,6 +45,8 @@ add_library(user32_wrapper SHARED ${SOURCE})
 set_module_type(user32_wrapper win32dll ENTRYPOINT 0)
 
 target_link_libraries(user32_wrapper wine)
+
+add_delay_importlibs(user32_wrapper usp10)
 
 add_importlibs(user32_wrapper userbase kernel32 gdi32 ntdll advapi32 winsrv)
 

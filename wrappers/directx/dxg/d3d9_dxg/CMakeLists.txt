@@ -10,15 +10,12 @@ list(APPEND SOURCE
     d3d9.c
     d3d9_baseobject.c
     d3d9_callbacks.c
-    d3d9_caps.c
     d3d9_create.c
     d3d9_cursor.c
     d3d9_device.c
-    d3d9_haldevice.c
     d3d9_helpers.c
     d3d9_impl.c
-    d3d9_mipmap.c
-    d3d9_puredevice.c
+    d3d9_basetexture.c
     d3d9_resource.c
     d3d9_swapchain.c
     d3d9_texture.c
@@ -28,11 +25,12 @@ list(APPEND SOURCE
 
 add_library(d3d9_dxg SHARED
     ${SOURCE}
+    guid.c
     d3d9.rc
     ${CMAKE_CURRENT_BINARY_DIR}/d3d9_dxg.def)
 
 set_module_type(d3d9_dxg win32dll)
 target_link_libraries(d3d9_dxg dxguid uuid wine)
-add_importlibs(d3d9_dxg gdi32 d3d8thk user32 advapi32 msvcrt kernel32 ntdll version)
+add_importlibs(d3d9_dxg gdi32 d3d8thk d3d9core user32 advapi32 msvcrt kernel32 ntdll version)
 add_dependencies(d3d9_dxg wineheaders d3d_idl_headers)
 add_cd_file(TARGET d3d9_dxg DESTINATION reactos/system32 FOR all)

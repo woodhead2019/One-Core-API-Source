@@ -781,7 +781,7 @@ D3DKMTCheckExclusiveOwnership() {
     return stateData.ddRVal;
 }
 
-// Função simulada de D3DKMTCheckOcclusion
+//Função simulada de D3DKMTCheckOcclusion
 HRESULT 
 WINAPI 
 D3DKMTCheckOcclusion(
@@ -821,6 +821,22 @@ D3DKMTCheckOcclusion(
     return S_OK; // Janela está visível
 }
 
+// NTSTATUS WINAPI D3DKMTCheckOcclusion(const D3DKMT_CHECKOCCLUSION *unnamedParam1) {
+    // HDC dc = GetDC(unnamedParam1->hWnd);
+    // RECT rect;
+	// int result;
+
+    // if (!unnamedParam1)
+        // return STATUS_INVALID_PARAMETER;	
+	
+    // if (dc) {
+        // result = GetClipBox(dc, &rect);
+        // ReleaseDC((HWND)dc);
+        // return result == NULLREGION ? STATUS_GRAPHICS_PRESENT_OCCLUDED : STATUS_SUCCESS;
+    // }
+    // return 0x80070000 + GetLastError(); // uhh k then
+// }
+
 HRESULT D3DKMTCreateContext(D3DKMT_CREATECONTEXT* pCreateContext) {
     D3DNTHAL_CONTEXTCREATEDATA dcci = { 0 };
 	BOOL result;
@@ -854,36 +870,65 @@ HRESULT D3DKMTCreateContext(D3DKMT_CREATECONTEXT* pCreateContext) {
 }
 
 // Implementação da função D3DKMTGetScanLine
-HRESULT D3DKMTGetScanLine(D3DKMT_GETSCANLINE* pGetScanLine) {
-	DDHAL_GETSCANLINEDATA scanlineData = { 0 };
+// HRESULT D3DKMTGetScanLine(D3DKMT_GETSCANLINE* pGetScanLine) {
+	// DDHAL_GETSCANLINEDATA scanlineData = { 0 };
 	
-    if (!pGetScanLine || !pGetScanLine->hAdapter) {
-        return E_INVALIDARG;
-    }
+    // if (!pGetScanLine || !pGetScanLine->hAdapter) {
+        // return E_INVALIDARG;
+    // }
 
-    // Prepara a estrutura para consulta do estado do scanline
+    // // Prepara a estrutura para consulta do estado do scanline
     
-    scanlineData.dwSurfaceHandle = (DWORD)pGetScanLine->hDevice;
+    // scanlineData.dwSurfaceHandle = (DWORD)pGetScanLine->hDevice;
 
-    stateData.dwContext = (DWORD)pGetScanLine->hAdapter;
-    stateData.dwFlags = 0x200; // Flag personalizada para consulta de scanline
-    stateData.lpvData = &scanlineData;
-    stateData.ddRVal = DD_OK;
+    // stateData.dwContext = (DWORD)pGetScanLine->hAdapter;
+    // stateData.dwFlags = 0x200; // Flag personalizada para consulta de scanline
+    // stateData.lpvData = &scanlineData;
+    // stateData.ddRVal = DD_OK;
 
-    // Chama a função NtGdiDdGetDriverState
-    DWORD result = pNtGdiDdGetDriverState(&stateData);
+    // // Chama a função NtGdiDdGetDriverState
+    // DWORD result = pNtGdiDdGetDriverState(&stateData);
 
-    // Libera a biblioteca
-    FreeLibrary(hGdi32);
+    // // Libera a biblioteca
+    // FreeLibrary(hGdi32);
 
-    // Verifica o resultado da chamada
-    if (result != DD_OK || stateData.ddRVal != DD_OK) {
-        return E_FAIL;
-    }
+    // // Verifica o resultado da chamada
+    // if (result != DD_OK || stateData.ddRVal != DD_OK) {
+        // return E_FAIL;
+    // }
 
-    // Atualiza os valores retornados
-    pGetScanLine->InVerticalBlank = scanlineData.bInVerticalBlank;
-    pGetScanLine->ScanLine = scanlineData.dwScanLine;
+    // // Atualiza os valores retornados
+    // pGetScanLine->InVerticalBlank = scanlineData.bInVerticalBlank;
+    // pGetScanLine->ScanLine = scanlineData.dwScanLine;
 
-    return S_OK;
+    // return S_OK;
+// }
+
+NTSTATUS WINAPI D3DKMTGetScanLine(D3DKMT_GETSCANLINE *unnamedParam1) {
+    if (!unnamedParam1)
+        return STATUS_INVALID_PARAMETER;
+    unnamedParam1->InVerticalBlank = FALSE;
+    unnamedParam1->ScanLine = 405;
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS WINAPI D3DKMTSharedPrimaryLockNotification(
+    const D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION *unnamedParam1
+)
+{
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS WINAPI D3DKMTSharedPrimaryUnLockNotification(
+    const D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION *unnamedParam1
+)
+{
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS WINAPI D3DKMTReleaseProcessVidPnSourceOwners(
+    HANDLE unnamedParam1
+)
+{
+	return STATUS_SUCCESS;
 }

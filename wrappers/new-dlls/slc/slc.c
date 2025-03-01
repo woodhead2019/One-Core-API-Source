@@ -22,6 +22,7 @@
 #include "ntstatus.h"
 #define WIN32_NO_STATUS
 #include "windef.h"
+#include "winreg.h"
 #include "winbase.h"
 #include "wine/winternl.h"
 #include "wine/debug.h"

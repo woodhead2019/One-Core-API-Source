@@ -128,3 +128,12 @@ BOOL WINAPI GetSystemCpuSetInformation(
     Information->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
     return TRUE;
 }
+
+// rtworkq.dll requires this. If we actually return safe mode, then it intentionally fails to start up rtworkq.dll.
+BOOLEAN WINAPI GetOsSafeBootMode(PBOOLEAN isSafeMode) {
+    if (!isSafeMode)
+        return FALSE;
+
+    *isSafeMode = FALSE;
+    return TRUE;
+}

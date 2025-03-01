@@ -32,7 +32,7 @@
 #include <unicode.h>
 #include <strsafe.h>
 #include <ddrawint.h>
-#include <ddrawgdi.h>
+#include <d3dhal.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -97,6 +97,17 @@ typedef struct _D3DKMT_CREATECONTEXT {
   VOID                      *CommandBuffer;
 } D3DKMT_CREATECONTEXT;
 
+typedef struct _D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION {
+  LUID                           AdapterLuid;
+  D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+  RECTL                          LockRect;
+} D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION;
+
+typedef struct _D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION {
+  LUID                           AdapterLuid;
+  D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+} D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION;
+
 typedef struct _D3DKMT_GETSCANLINE {
     HANDLE hAdapter;       // Handle do adaptador gráfico
     HANDLE hDevice;        // Handle do dispositivo gráfico
@@ -122,12 +133,12 @@ typedef struct _D3DNTHAL_CONTEXTCREATEDATA {
   HRESULT ddrval;
 } D3DNTHAL_CONTEXTCREATEDATA, *LPD3DNTHAL_CONTEXTCREATEDATA;
 
-typedef struct _DDHAL_GETSCANLINEDATA {
-  LPDDRAWI_DIRECTDRAW_GBL lpDD;
-  DWORD dwScanLine;
-  HRESULT ddRVal;
-  LPDDHAL_GETSCANLINE GetScanLine;
-} DDHAL_GETSCANLINEDATA;
+// typedef struct _DDHAL_GETSCANLINEDATA {
+  // LPDDRAWI_DIRECTDRAW_GBL lpDD;
+  // DWORD dwScanLine;
+  // HRESULT ddRVal;
+  // LPDDHAL_GETSCANLINE GetScanLine;
+// } DDHAL_GETSCANLINEDATA;
 
 struct bitblt_coords
 {

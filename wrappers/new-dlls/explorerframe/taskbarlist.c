@@ -172,7 +172,7 @@ static HRESULT STDMETHODCALLTYPE taskbar_list_UnregisterTab(ITaskbarList4 *iface
 {
     FIXME("iface %p, hwndTab %p stub!\n", iface, hwndTab);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE taskbar_list_SetTabOrder(ITaskbarList4 *iface,
@@ -181,7 +181,7 @@ static HRESULT STDMETHODCALLTYPE taskbar_list_SetTabOrder(ITaskbarList4 *iface,
 {
     FIXME("iface %p, hwndTab %p, hwndInsertBefore %p stub!\n", iface, hwndTab, hwndInsertBefore);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE taskbar_list_SetTabActive(ITaskbarList4 *iface,
@@ -191,7 +191,7 @@ static HRESULT STDMETHODCALLTYPE taskbar_list_SetTabActive(ITaskbarList4 *iface,
 {
     FIXME("iface %p, hwndTab %p, hwndMDI %p, dwReserved %lx stub!\n", iface, hwndTab, hwndMDI, dwReserved);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE taskbar_list_ThumbBarAddButtons(ITaskbarList4 *iface,

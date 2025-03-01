@@ -457,11 +457,11 @@
 @ stdcall WindowsDuplicateString(ptr ptr)
 @ stdcall WindowsGetStringLen(ptr)
 @ stdcall WindowsGetStringRawBuffer(ptr ptr)
-@ stub WindowsInspectString
+#@ stub WindowsInspectString
 @ stdcall WindowsIsStringEmpty(ptr)
 @ stdcall WindowsPreallocateStringBuffer(long ptr ptr)
 @ stdcall WindowsPromoteStringBuffer(ptr ptr)
-@ stub WindowsReplaceString
+#@ stub WindowsReplaceString
 @ stdcall WindowsStringHasEmbeddedNull(ptr ptr)
 @ stdcall WindowsSubstring(ptr long ptr)
 @ stdcall WindowsSubstringWithSpecifiedLength(ptr long long ptr)

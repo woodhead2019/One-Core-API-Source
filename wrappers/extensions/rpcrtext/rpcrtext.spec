@@ -537,6 +537,7 @@
 @ stdcall tree_into_ndr() rpcrt4.tree_into_ndr
 @ stdcall tree_peek_ndr() rpcrt4.tree_peek_ndr
 @ stdcall tree_size_ndr() rpcrt4.tree_size_ndr
+@ stdcall DllRegisterServer()
 
 #Missing on Win 2k3 SP1
 @ stdcall -stub I_RpcSNCHOption(ptr ptr) ;rpcrt4.I_RpcSNCHOption
@@ -545,7 +546,6 @@
 @ stdcall -stub I_RpcBindingIsServerLocal(ptr ptr)
 
 #From Longhorn/Vista
-@ stdcall DllRegisterServer()
 @ stdcall I_RpcBindingCreateNP(wstr wstr wstr ptr)
 @ stub I_RpcCompleteAndFree
 @ stdcall I_RpcGetPortAllocationData(ptr)

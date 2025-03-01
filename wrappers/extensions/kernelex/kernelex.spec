@@ -1396,6 +1396,7 @@
 @ stdcall GetCurrentThreadStackLimits(ptr ptr)
 @ stdcall GetDynamicTimeZoneInformationEffectiveYears(ptr ptr ptr)
 @ stdcall GetFirmwareType(ptr)
+@ stdcall GetOsSafeBootMode(ptr)
 @ stdcall GetPackageFamilyName(long ptr ptr)
 @ stdcall GetPackageFullName(long ptr ptr)
 @ stdcall GetPackagesByPackageFamily(wstr ptr ptr ptr ptr)
@@ -1477,6 +1478,7 @@
 @ stdcall QueryInterruptTime(ptr)
 @ stdcall QueryInterruptTimePrecise(ptr)
 @ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
+@ stdcall SetProcessDefaultCpuSets(ptr ptr long)
 @ stdcall SetThreadDescription(long ptr)
 @ stdcall SetThreadSelectedCpuSets(ptr ptr long)
 @ stdcall WaitForDebugEventEx(ptr long)
@@ -1485,7 +1487,6 @@
 @ stdcall FlsGetValue2(long)
 @ stdcall GetTempPath2A(long str)
 @ stdcall GetTempPath2W(long wstr)
-@ stdcall SetProcessDefaultCpuSets(ptr ptr long)
 @ stdcall TlsGetValue2(long)
 
 #Import from advapi32 or registry function

@@ -17,6 +17,12 @@
 #define D3D9_INT_D3DCAPS8_VALID     1
 #define D3D9_INT_D3DCAPS9_VALID     2
 
+LPDIRECT3D9 ProxyInterface;
+LPDIRECT3DDEVICE9 DeviceProxyInterface;
+LPDIRECT3DBASETEXTURE9 BaseTextureProxyInterface;
+LPDIRECT3DTEXTURE9 TextureProxyInterface;
+LPDIRECT3DSWAPCHAIN9 SwapChainProxyInterface;
+
 typedef struct _D3D9_Unknown6BC
 {
 /* 0x0000 */    HANDLE hDirectDrawLocal;
@@ -2653,5 +2659,24 @@ typedef struct _DIRECT3D9_INT
 /* 0x47b0 */    DWORD unknown004588;
 /* 0x47b4 */    UINT SDKVersion;
 } DIRECT3D9_INT, FAR *LPDIRECT3D9_INT;
+
+typedef struct _DIRECT3D9EX_INT
+{
+/* 0x0000 */    struct IDirect3D9ExVtbl *lpVtbl; /* LPDIRECTD3D9 function table */
+/* 0x0001 */    BOOL IsD3d9Ex; /* LPDIRECTD3D9 function table */
+/* 0x0004 */    CRITICAL_SECTION d3d9_cs;
+/* 0x001c */    DWORD unknown000007;    /* 0x00000001 */
+/* 0x0020 */    DWORD dwProcessId;
+/* 0x0024 */    struct _DIRECT3D9EX_INT *lpInt;
+/* 0x0028 */    LONG lRefCnt;          /* Increases and decreases by AddRef() and Release() */
+/* 0x002c */    UINT NumDisplayAdapters;
+/* 0x0030 */    Direct3D9DisplayAdapterInfo DisplayAdapters[D3D9_INT_MAX_NUM_ADAPTERS];
+/* 0x2288 */    DWORD NumSupportedRefFormatOps;
+/* 0x228c */    LPDDSURFACEDESC pSupportedRefFormatOps;
+/* 0x3328 */    DWORD NumSupportedSoftwareFormatOps;
+/* 0x332c */    LPDDSURFACEDESC pSupportedSoftwareFormatOps;
+/* 0x47b4 */    UINT SDKVersion;
+                LPDIRECT3D9 lRealD3D9;
+} DIRECT3D9EX_INT, FAR *LPDIRECT3D9EX_INT;
 
 #endif // _D3D9_PRIVATE_H_

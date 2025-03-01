@@ -236,7 +236,9 @@ GetUserObjectSecurityInternal(
     NTSTATUS Status;
 
     Status = NtQuerySecurityObject(hObject,
-                                   *pSecurityInfo,
+                              
+
+							  *pSecurityInfo,
                                    pSecurityDescriptor,
                                    dwLength,
                                    pdwLengthNeeded);

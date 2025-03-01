@@ -39,7 +39,7 @@ ULONG_PTR get_system_affinity_mask(void)
 
 NTSTATUS
 NTAPI
-NtQuerySectionInternal_Vista(
+NtQuerySectionInternal(
   IN HANDLE               SectionHandle,
   IN SECTION_INFORMATION_CLASS InformationClass,
   OUT PVOID               InformationBuffer,

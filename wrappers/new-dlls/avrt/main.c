@@ -29,6 +29,18 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(avrt);
 
+static WCHAR *strdupAW( const char *str )
+{
+    WCHAR *ret = NULL;
+    if (str)
+    {
+        int len = MultiByteToWideChar( CP_ACP, 0, str, -1, NULL, 0 );
+        if ((ret = HeapAlloc( GetProcessHeap(), 0, len * sizeof(WCHAR) )))
+            MultiByteToWideChar( CP_ACP, 0, str, -1, ret, len );
+    }
+    return ret;
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     TRACE("(0x%p, %d, %p)\n", hinstDLL, fdwReason, lpvReserved);
@@ -120,8 +132,8 @@ HANDLE WINAPI AvSetMmMaxThreadCharacteristicsA(const char *task1, const char *ta
 
     ret = AvSetMmMaxThreadCharacteristicsW(task1W, task2W, index);
 
-    free(task2W);
-    free(task1W);
+    HeapFree(GetProcessHeap(), 0, task2W);
+    HeapFree(GetProcessHeap(), 0, task1W);
     return ret;
 }
 

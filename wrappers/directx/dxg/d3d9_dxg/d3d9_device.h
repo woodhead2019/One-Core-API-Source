@@ -19,48 +19,12 @@
 typedef struct _IDirect3DDevice9Vtbl_INT
 {
     struct IDirect3DDevice9Vtbl PublicInterface;
-
-    HRESULT (WINAPI *SetRenderStateWorker)(LPDIRECT3DDEVICE9 iface, D3DRENDERSTATETYPE State, DWORD Value); // Value = D3DDEGREETYPE Degree );
-    HRESULT (WINAPI *SetTextureStageStateI)(LPDIRECT3DDEVICE9 iface, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value);
-    HRESULT (WINAPI *SetSamplerStateI)(LPDIRECT3DDEVICE9 iface, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value);
-    HRESULT (WINAPI *SetMaterial)(LPDIRECT3DDEVICE9 iface, CONST D3DMATERIAL9* pMaterial);
-    HRESULT (WINAPI *SetVertexShader)(LPDIRECT3DDEVICE9 iface, IDirect3DVertexShader9* pShader);
-    HRESULT (WINAPI *SetVertexShaderConstantF)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST float* pConstantData,UINT Vector4fCount);
-    HRESULT (WINAPI *SetVertexShaderConstantI)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST int* pConstantData,UINT Vector4iCount);
-    HRESULT (WINAPI *SetVertexShaderConstantB)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST BOOL* pConstantData,UINT  BoolCount);
-    HRESULT (WINAPI *SetPixelShader)(LPDIRECT3DDEVICE9 iface, IDirect3DPixelShader9* pShader);
-    HRESULT (WINAPI *SetPixelShaderConstantF)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST float* pConstantData,UINT Vector4fCount);
-    HRESULT (WINAPI *SetPixelShaderConstantI)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST int* pConstantData,UINT Vector4iCount);
-    HRESULT (WINAPI *SetPixelShaderConstantB)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST BOOL* pConstantData,UINT  BoolCount);
-    HRESULT (WINAPI *SetFVF)(LPDIRECT3DDEVICE9 iface, DWORD FVF);
-    HRESULT (WINAPI *SetTexture)(LPDIRECT3DDEVICE9 iface, DWORD Stage,IDirect3DBaseTexture9* pTexture);
-    HRESULT (WINAPI *SetIndices)(LPDIRECT3DDEVICE9 iface, IDirect3DIndexBuffer9* pIndexData);
-    HRESULT (WINAPI *SetStreamSource)(LPDIRECT3DDEVICE9 iface, UINT StreamNumber,IDirect3DVertexBuffer9* pStreamData,UINT OffsetInBytes,UINT Stride);
-    HRESULT (WINAPI *SetStreamSourceFreq)(LPDIRECT3DDEVICE9 iface, UINT StreamNumber,UINT Setting);
-    VOID (WINAPI *UpdateRenderState)(LPDIRECT3DDEVICE9 iface, DWORD Unknown1, DWORD Unknown2);
-    HRESULT (WINAPI *SetTransform)(LPDIRECT3DDEVICE9 iface, D3DTRANSFORMSTATETYPE State,CONST D3DMATRIX* pMatrix);
-    HRESULT (WINAPI *MultiplyTransform)(LPDIRECT3DDEVICE9 iface, D3DTRANSFORMSTATETYPE,CONST D3DMATRIX*);
-    HRESULT (WINAPI *SetClipPlane)(LPDIRECT3DDEVICE9 iface, DWORD Index,CONST float* pPlane);
-    VOID (WINAPI *UpdateDriverState)(LPDIRECT3DDEVICE9 iface);
-    HRESULT (WINAPI *SetViewport)(LPDIRECT3DDEVICE9 iface, CONST D3DVIEWPORT9* pViewport);
-    VOID (WINAPI *SetStreamSourceInt)(LPDIRECT3DDEVICE9 iface, LPVOID UnknownStreamData);
-    HRESULT (WINAPI *SetPixelShaderConstantFWorker)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST float* pConstantData,UINT Vector4fCount);
-    HRESULT (WINAPI *SetPixelShaderConstantIWorker)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST int* pConstantData,UINT Vector4iCount);
-    HRESULT (WINAPI *SetPixelShaderConstantBWorker)(LPDIRECT3DDEVICE9 iface, UINT StartRegister,CONST BOOL* pConstantData,UINT  BoolCount);
-    VOID (WINAPI *DrawPrimitiveWorker)(LPDIRECT3DDEVICE9 iface, D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount);
-    HRESULT (WINAPI *SetLight)(LPDIRECT3DDEVICE9 iface, DWORD Index,CONST D3DLIGHT9*);
-    HRESULT (WINAPI *LightEnable)(LPDIRECT3DDEVICE9 iface, DWORD Index,BOOL Enable);
-    HRESULT (WINAPI *SetRenderStateInt)(LPDIRECT3DDEVICE9 iface, D3DRENDERSTATETYPE State, DWORD Value ); // Value = D3DDEGREETYPE Degree );
-    HRESULT (WINAPI *DrawPrimitiveUPInt)(LPDIRECT3DDEVICE9 iface, D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount);
-    HRESULT (WINAPI *Clear)(LPDIRECT3DDEVICE9 iface, DWORD Count,CONST D3DRECT* pRects,DWORD Flags,D3DCOLOR Color,float Z,DWORD Stencil);
-    VOID (WINAPI *DrawPrimitivesWorker)(LPDIRECT3DDEVICE9 iface);
-    VOID (WINAPI *UpdateVertexShader)(LPDIRECT3DDEVICE9 iface);
-    HRESULT (WINAPI *ValidateDrawCall)(LPDIRECT3DDEVICE9 iface, D3DPRIMITIVETYPE PrimitiveType, UINT Unknown1, UINT Unknown2, UINT Unknown3, INT Unknown4, UINT Unknown5, INT Unknown6);
-    HRESULT (WINAPI *Init)(LPDIRECT3DDEVICE9 iface);
-    VOID (WINAPI *InitState)(LPDIRECT3DDEVICE9 iface, INT State);
-    VOID (WINAPI *Destroy)(LPDIRECT3DDEVICE9 iface);
-    VOID (WINAPI *VirtualDestructor)(LPDIRECT3DDEVICE9 iface);
 } IDirect3DDevice9Vtbl_INT;
+
+typedef struct _IDirect3DDevice9ExVtbl_INT
+{
+    struct IDirect3DDevice9ExVtbl PublicInterface;
+} IDirect3DDevice9ExVtbl_INT;
 #endif
 
 typedef struct _D3D9HeapTexture
@@ -85,7 +49,7 @@ typedef struct _D3D9ResourceManager
 
 typedef struct _Direct3DDevice9_INT
 {
-/* 0x0000 */    struct _IDirect3DDevice9Vtbl_INT* lpVtbl;
+/* 0x0000 */    struct _IDirect3DDevice9ExVtbl_INT* lpVtbl;
 /* 0x0004 */    CRITICAL_SECTION CriticalSection;
 #ifdef D3D_DEBUG_INFO
 /* N/A    - 0x001c */   DWORD dbg0004;
@@ -132,105 +96,184 @@ typedef struct _Direct3DDevice9_INT
 /* 0x1e70 */    DWORD unknown001948;
 /* 0x1e74 */    HANDLE hDX10UMDriver;
 /* 0x1e78 */    HANDLE hDX10UMDriverInst;
-/* 0x1e7c */    DWORD unknown001951;
-/* 0x1e80 */    DWORD unknown001952;
-/* 0x1e84 */    DWORD unknown001953;
-/* 0x1e88 */    DWORD unknown001954;
-/* 0x1e8c */    DWORD unknown001955;
-/* 0x1e90 */    DWORD unknown001956;
-/* 0x1e94 */    DWORD unknown001957;
-/* 0x1e98 */    DWORD unknown001958;
-/* 0x1e9c */    DWORD unknown001959;
-/* 0x1ea0 */    DWORD unknown001960;
-/* 0x1ea4 */    DWORD unknown001961;
-/* 0x1ea8 */    DWORD unknown001962;
-/* 0x1eac */    DWORD unknown001963;
-/* 0x1eb0 */    DWORD unknown001964;
-/* 0x1eb4 */    DWORD unknown001965;
-/* 0x1eb8 */    DWORD unknown001966;
-/* 0x1ebc */    DWORD unknown001967;
-/* 0x1ec0 */    DWORD unknown001968;
-/* 0x1ec4 */    DWORD unknown001969;
-/* 0x1ec8 */    DWORD unknown001970;
-/* 0x1ecc */    DWORD unknown001971;
-/* 0x1ed0 */    DWORD unknown001972;
-/* 0x1ed4 */    DWORD unknown001973;
-/* 0x1ed8 */    DWORD unknown001974;
-/* 0x1edc */    DWORD unknown001975;
-/* 0x1ee0 */    DWORD unknown001976;
-/* 0x1ee4 */    DWORD unknown001977;
-/* 0x1ee8 */    DWORD unknown001978;
-/* 0x1eec */    DWORD unknown001979;
-/* 0x1ef0 */    DWORD unknown001980;
-/* 0x1ef4 */    DWORD unknown001981;
-/* 0x1ef8 */    DWORD unknown001982;
-/* 0x1efc */    DWORD unknown001983;
-/* 0x1f00 */    DWORD unknown001984;
-/* 0x1f04 */    DWORD unknown001985;
-/* 0x1f08 */    DWORD unknown001986;
-/* 0x1f0c */    DWORD unknown001987;
-/* 0x1f10 */    DWORD unknown001988;
-/* 0x1f14 */    DWORD unknown001989;
-/* 0x1f18 */    DWORD unknown001990;
-/* 0x1f1c */    DWORD unknown001991;
-/* 0x1f20 */    DWORD unknown001992;
-/* 0x1f24 */    DWORD unknown001993;
-/* 0x1f28 */    DWORD unknown001994;
-/* 0x1f2c */    DWORD unknown001995;
-/* 0x1f30 */    DWORD unknown001996;
-/* 0x1f34 */    DWORD unknown001997;
-/* 0x1f38 */    DWORD unknown001998;
-/* 0x1f3c */    DWORD unknown001999;
-/* 0x1f40 */    DWORD unknown002000;
-/* 0x1f44 */    DWORD unknown002001;
 } DIRECT3DDEVICE9_INT, FAR* LPDIRECT3DDEVICE9_INT;
 
+typedef struct _Direct3DDevice9Ex_INT
+{
+/* 0x0000 */    struct _IDirect3DDevice9ExVtbl_INT* lpVtbl;
+                LPDIRECT3DDEVICE9 lRealD3D9DeviceEx;
+/* 0x0004 */    CRITICAL_SECTION CriticalSection;
+/* 0x001c - 0x0054 */   BOOL bLockDevice;
+/* 0x0020 - 0x0058 */   DWORD dwProcessId;
+/* 0x0024 - 0x005c */   IUnknown* pUnknown;
+/* 0x0028 - 0x0060 */   DWORD dwDXVersion;
+/* 0x002c - 0x0064 */   DWORD unknown000011;
+/* 0x0030 - 0x0068 */   LONG lRefCnt;
+/* 0x0034 - 0x006c */   DWORD unknown000013;
+/* 0x0038 - 0x0070 */   D3D9ResourceManager* pResourceManager;
+/* 0x003c - 0x0074 */   HWND hWnd;
+/* 0x0040 - 0x0078 */   DWORD AdjustedBehaviourFlags;
+/* 0x0044 - 0x007c */   DWORD BehaviourFlags;
+/* 0x0048 - 0x0080 */   D3D9BaseSurface* pUnknown0010;
+/* 0x004c - 0x0084 */   DWORD NumAdaptersInDevice;
+/* 0x0050 - 0x0088 */   D3DDISPLAYMODE CurrentDisplayMode[D3D9_INT_MAX_NUM_ADAPTERS];
+/* 0x0110 - 0x0148 */   DWORD AdapterIndexInGroup[D3D9_INT_MAX_NUM_ADAPTERS]; 
+/* 0x0140 - 0x0178 */   D3D9_DEVICEDATA DeviceData[D3D9_INT_MAX_NUM_ADAPTERS];
+/* 0x1df0 - 0x1e28 */   LPDIRECT3DSWAPCHAIN9_INT pSwapChains[D3D9_INT_MAX_NUM_ADAPTERS];
+/* 0x1e20 - 0x1e58 */   LPDIRECT3DSWAPCHAIN9_INT pSwapChains2[D3D9_INT_MAX_NUM_ADAPTERS];
+/* 0x1e50 */    D3D9BaseSurface* pRenderTargetList;
+/* 0x1e64 */    D3DDEVTYPE DeviceType;
+/* 0x1e68 */    LPDIRECT3D9_INT pDirect3D9;
+/* 0x1e6c */    D3D9DriverSurface* pDriverSurfaceList;
+/* 0x1e74 */    HANDLE hDX10UMDriver;
+/* 0x1e78 */    HANDLE hDX10UMDriverInst;
+} DIRECT3DDEVICE9EX_INT, FAR* LPDIRECT3DDEVICE9EX_INT;
+
+
 /* Helper functions */
-LPDIRECT3DDEVICE9_INT IDirect3DDevice9ToImpl(LPDIRECT3DDEVICE9 iface);
+LPDIRECT3DDEVICE9EX_INT IDirect3DDevice9ToImpl(LPDIRECT3DDEVICE9EX  iface);
 
 /* IUnknown interface */
-HRESULT WINAPI IDirect3DDevice9Base_QueryInterface(LPDIRECT3DDEVICE9 iface, REFIID riid, void** ppvObject);
-ULONG WINAPI IDirect3DDevice9Base_AddRef(LPDIRECT3DDEVICE9 iface);
-ULONG WINAPI IDirect3DDevice9Base_Release(LPDIRECT3DDEVICE9 iface);
+HRESULT WINAPI IDirect3DDevice9Impl_QueryInterface(LPDIRECT3DDEVICE9EX  iface, REFIID riid, void** ppvObject);
+ULONG WINAPI IDirect3DDevice9Impl_AddRef(LPDIRECT3DDEVICE9EX  iface);
+ULONG WINAPI IDirect3DDevice9Impl_Release(LPDIRECT3DDEVICE9EX  iface);
 
 /* IDirect3DDevice9 public interface */
-HRESULT WINAPI IDirect3DDevice9Base_TestCooperativeLevel(LPDIRECT3DDEVICE9 iface);
-UINT WINAPI IDirect3DDevice9Base_GetAvailableTextureMem(LPDIRECT3DDEVICE9 iface);
-HRESULT WINAPI IDirect3DDevice9Base_EvictManagedResources(LPDIRECT3DDEVICE9 iface);
-HRESULT WINAPI IDirect3DDevice9Base_GetDirect3D(LPDIRECT3DDEVICE9 iface, IDirect3D9** ppD3D9);
-HRESULT WINAPI IDirect3DDevice9Base_GetDeviceCaps(LPDIRECT3DDEVICE9 iface, D3DCAPS9* pCaps);
-HRESULT WINAPI IDirect3DDevice9Base_GetDisplayMode(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, D3DDISPLAYMODE* pMode);
-HRESULT WINAPI IDirect3DDevice9Base_GetCreationParameters(LPDIRECT3DDEVICE9 iface, D3DDEVICE_CREATION_PARAMETERS* pParameters);
-HRESULT WINAPI IDirect3DDevice9Base_SetCursorProperties(LPDIRECT3DDEVICE9 iface, UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap);
-VOID WINAPI IDirect3DDevice9Base_SetCursorPosition(LPDIRECT3DDEVICE9 iface, int X, int Y, DWORD Flags);
-BOOL WINAPI IDirect3DDevice9Base_ShowCursor(LPDIRECT3DDEVICE9 iface, BOOL bShow);
-HRESULT WINAPI IDirect3DDevice9Base_CreateAdditionalSwapChain(LPDIRECT3DDEVICE9 iface, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain);
-HRESULT WINAPI IDirect3DDevice9Base_GetSwapChain(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, IDirect3DSwapChain9** ppSwapChain);
-UINT WINAPI IDirect3DDevice9Base_GetNumberOfSwapChains(LPDIRECT3DDEVICE9 iface);
-HRESULT WINAPI IDirect3DDevice9Base_Reset(LPDIRECT3DDEVICE9 iface, D3DPRESENT_PARAMETERS* pPresentationParameters);
-HRESULT WINAPI IDirect3DDevice9Base_Present(LPDIRECT3DDEVICE9 iface, CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion);
-HRESULT WINAPI IDirect3DDevice9Base_GetBackBuffer(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
-HRESULT WINAPI IDirect3DDevice9Base_GetRasterStatus(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus);
-HRESULT WINAPI IDirect3DDevice9Base_SetDialogBoxMode(LPDIRECT3DDEVICE9 iface, BOOL bEnableDialogs);
-VOID WINAPI IDirect3DDevice9Base_SetGammaRamp(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp);
-VOID WINAPI IDirect3DDevice9Base_GetGammaRamp(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, D3DGAMMARAMP* pRamp);
-HRESULT WINAPI IDirect3DDevice9Base_CreateTexture(LPDIRECT3DDEVICE9 iface, UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateVolumeTexture(LPDIRECT3DDEVICE9 iface, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateCubeTexture(LPDIRECT3DDEVICE9 iface, UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateVertexBuffer(LPDIRECT3DDEVICE9 iface, UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateIndexBuffer(LPDIRECT3DDEVICE9 iface, UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateRenderTarget(LPDIRECT3DDEVICE9 iface, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_CreateDepthStencilSurface(LPDIRECT3DDEVICE9 iface, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
-HRESULT WINAPI IDirect3DDevice9Base_UpdateSurface(LPDIRECT3DDEVICE9 iface, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint);
-HRESULT WINAPI IDirect3DDevice9Base_UpdateTexture(LPDIRECT3DDEVICE9 iface, IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture);
-HRESULT WINAPI IDirect3DDevice9Base_GetRenderTargetData(LPDIRECT3DDEVICE9 iface, IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface);
-HRESULT WINAPI IDirect3DDevice9Base_GetFrontBufferData(LPDIRECT3DDEVICE9 iface, UINT iSwapChain, IDirect3DSurface9* pDestSurface);
-HRESULT WINAPI IDirect3DDevice9Base_StretchRect(LPDIRECT3DDEVICE9 iface, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter);
-HRESULT WINAPI IDirect3DDevice9Base_ColorFill(LPDIRECT3DDEVICE9 iface, IDirect3DSurface9* pSurface, CONST RECT* pRect, D3DCOLOR color);
-HRESULT WINAPI IDirect3DDevice9Base_CreateOffscreenPlainSurface(LPDIRECT3DDEVICE9 iface, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_TestCooperativeLevel(LPDIRECT3DDEVICE9EX  iface);
+UINT WINAPI IDirect3DDevice9Impl_GetAvailableTextureMem(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_EvictManagedResources(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_GetDirect3D(LPDIRECT3DDEVICE9EX  iface, IDirect3D9** ppD3D9);
+HRESULT WINAPI IDirect3DDevice9Impl_GetDeviceCaps(LPDIRECT3DDEVICE9EX  iface, D3DCAPS9* pCaps);
+HRESULT WINAPI IDirect3DDevice9Impl_GetDisplayMode(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, D3DDISPLAYMODE* pMode);
+HRESULT WINAPI IDirect3DDevice9Impl_GetCreationParameters(LPDIRECT3DDEVICE9EX  iface, D3DDEVICE_CREATION_PARAMETERS* pParameters);
+HRESULT WINAPI IDirect3DDevice9Impl_SetCursorProperties(LPDIRECT3DDEVICE9EX  iface, UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap);
+VOID WINAPI IDirect3DDevice9Impl_SetCursorPosition(LPDIRECT3DDEVICE9EX  iface, int X, int Y, DWORD Flags);
+BOOL WINAPI IDirect3DDevice9Impl_ShowCursor(LPDIRECT3DDEVICE9EX  iface, BOOL bShow);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateAdditionalSwapChain(LPDIRECT3DDEVICE9EX  iface, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain);
+HRESULT WINAPI IDirect3DDevice9Impl_GetSwapChain(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, IDirect3DSwapChain9** ppSwapChain);
+UINT WINAPI IDirect3DDevice9Impl_GetNumberOfSwapChains(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_Reset(LPDIRECT3DDEVICE9EX  iface, D3DPRESENT_PARAMETERS* pPresentationParameters);
+HRESULT WINAPI IDirect3DDevice9Impl_Present(LPDIRECT3DDEVICE9EX  iface, CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion);
+HRESULT WINAPI IDirect3DDevice9Impl_GetBackBuffer(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
+HRESULT WINAPI IDirect3DDevice9Impl_GetRasterStatus(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus);
+HRESULT WINAPI IDirect3DDevice9Impl_SetDialogBoxMode(LPDIRECT3DDEVICE9EX  iface, BOOL bEnableDialogs);
+VOID WINAPI IDirect3DDevice9Impl_SetGammaRamp(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp);
+VOID WINAPI IDirect3DDevice9Impl_GetGammaRamp(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, D3DGAMMARAMP* pRamp);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateTexture(LPDIRECT3DDEVICE9EX  iface, UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateVolumeTexture(LPDIRECT3DDEVICE9EX  iface, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateCubeTexture(LPDIRECT3DDEVICE9EX  iface, UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateVertexBuffer(LPDIRECT3DDEVICE9EX  iface, UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateIndexBuffer(LPDIRECT3DDEVICE9EX  iface, UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateRenderTarget(LPDIRECT3DDEVICE9EX  iface, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateDepthStencilSurface(LPDIRECT3DDEVICE9EX  iface, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
+HRESULT WINAPI IDirect3DDevice9Impl_UpdateSurface(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint);
+HRESULT WINAPI IDirect3DDevice9Impl_UpdateTexture(LPDIRECT3DDEVICE9EX  iface, IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture);
+HRESULT WINAPI IDirect3DDevice9Impl_GetRenderTargetData(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface);
+HRESULT WINAPI IDirect3DDevice9Impl_GetFrontBufferData(LPDIRECT3DDEVICE9EX  iface, UINT iSwapChain, IDirect3DSurface9* pDestSurface);
+HRESULT WINAPI IDirect3DDevice9Impl_StretchRect(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter);
+HRESULT WINAPI IDirect3DDevice9Impl_ColorFill(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9* pSurface, CONST RECT* pRect, D3DCOLOR color);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateOffscreenPlainSurface(LPDIRECT3DDEVICE9EX  iface, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
+/* IDirect3D9Device public interface */
+HRESULT WINAPI IDirect3DDevice9Impl_SetRenderTarget(LPDIRECT3DDEVICE9EX  iface, DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget);
+HRESULT WINAPI IDirect3DDevice9Impl_GetRenderTarget(LPDIRECT3DDEVICE9EX  iface, DWORD RenderTargetIndex,IDirect3DSurface9** ppRenderTarget);
+HRESULT WINAPI IDirect3DDevice9Impl_SetDepthStencilSurface(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9* pNewZStencil);
+HRESULT WINAPI IDirect3DDevice9Impl_GetDepthStencilSurface(LPDIRECT3DDEVICE9EX  iface, IDirect3DSurface9** ppZStencilSurface);
+HRESULT WINAPI IDirect3DDevice9Impl_BeginScene(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_EndScene(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_Clear(LPDIRECT3DDEVICE9EX  iface, DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil);
+HRESULT WINAPI IDirect3DDevice9Impl_SetTransform(LPDIRECT3DDEVICE9EX  iface, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix);
+HRESULT WINAPI IDirect3DDevice9Impl_GetTransform(LPDIRECT3DDEVICE9EX  iface, D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix);
+HRESULT WINAPI IDirect3DDevice9Impl_MultiplyTransform(LPDIRECT3DDEVICE9EX  iface, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix);
+HRESULT WINAPI IDirect3DDevice9Impl_SetViewport(LPDIRECT3DDEVICE9EX  iface, CONST D3DVIEWPORT9* pViewport);
+HRESULT WINAPI IDirect3DDevice9Impl_GetViewport(LPDIRECT3DDEVICE9EX  iface, D3DVIEWPORT9* pViewport);
+HRESULT WINAPI IDirect3DDevice9Impl_SetMaterial(LPDIRECT3DDEVICE9EX  iface, CONST D3DMATERIAL9* pMaterial);
+HRESULT WINAPI IDirect3DDevice9Impl_GetMaterial(LPDIRECT3DDEVICE9EX  iface, D3DMATERIAL9* pMaterial);
+HRESULT WINAPI IDirect3DDevice9Impl_SetLight(LPDIRECT3DDEVICE9EX  iface, DWORD Index, CONST D3DLIGHT9* pLight);
+HRESULT WINAPI IDirect3DDevice9Impl_GetLight(LPDIRECT3DDEVICE9EX  iface, DWORD Index, D3DLIGHT9* pLight);
+HRESULT WINAPI IDirect3DDevice9Impl_LightEnable(LPDIRECT3DDEVICE9EX  iface, DWORD Index, BOOL Enable);
+HRESULT WINAPI IDirect3DDevice9Impl_GetLightEnable(LPDIRECT3DDEVICE9EX  iface, DWORD Index, BOOL* pEnable);
+HRESULT WINAPI IDirect3DDevice9Impl_SetClipPlane(LPDIRECT3DDEVICE9EX  iface, DWORD Index, CONST float* pPlane);
+HRESULT WINAPI IDirect3DDevice9Impl_GetClipPlane(LPDIRECT3DDEVICE9EX  iface, DWORD Index, float* pPlane);
+HRESULT WINAPI IDirect3DDevice9Impl_SetRenderState(LPDIRECT3DDEVICE9EX  iface, D3DRENDERSTATETYPE State, DWORD Value);
+HRESULT WINAPI IDirect3DDevice9Impl_GetRenderState(LPDIRECT3DDEVICE9EX  iface, D3DRENDERSTATETYPE State, DWORD* pValue);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateStateBlock(LPDIRECT3DDEVICE9EX  iface, D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB);
+HRESULT WINAPI IDirect3DDevice9Impl_BeginStateBlock(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_EndStateBlock(LPDIRECT3DDEVICE9EX  iface, IDirect3DStateBlock9** ppSB);
+HRESULT WINAPI IDirect3DDevice9Impl_SetClipStatus(LPDIRECT3DDEVICE9EX  iface, CONST D3DCLIPSTATUS9* pClipStatus);
+HRESULT WINAPI IDirect3DDevice9Impl_GetClipStatus(LPDIRECT3DDEVICE9EX  iface, D3DCLIPSTATUS9* pClipStatus);
+HRESULT WINAPI IDirect3DDevice9Impl_GetTexture(LPDIRECT3DDEVICE9EX  iface, DWORD Stage, IDirect3DBaseTexture9** ppTexture);
+HRESULT WINAPI IDirect3DDevice9Impl_SetTexture(LPDIRECT3DDEVICE9EX  iface, DWORD Stage, IDirect3DBaseTexture9* pTexture);
+HRESULT WINAPI IDirect3DDevice9Impl_GetTextureStageState(LPDIRECT3DDEVICE9EX  iface, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue);
+HRESULT WINAPI IDirect3DDevice9Impl_SetTextureStageState(LPDIRECT3DDEVICE9EX  iface, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value);
+HRESULT WINAPI IDirect3DDevice9Impl_GetSamplerState(LPDIRECT3DDEVICE9EX  iface, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue);
+HRESULT WINAPI IDirect3DDevice9Impl_SetSamplerState(LPDIRECT3DDEVICE9EX  iface, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value);
+HRESULT WINAPI IDirect3DDevice9Impl_ValidateDevice(LPDIRECT3DDEVICE9EX  iface, DWORD* pNumPasses);
+HRESULT WINAPI IDirect3DDevice9Impl_SetPaletteEntries(LPDIRECT3DDEVICE9EX  iface, UINT PaletteNumber, CONST PALETTEENTRY* pEntries);
+HRESULT WINAPI IDirect3DDevice9Impl_GetPaletteEntries(LPDIRECT3DDEVICE9EX  iface, UINT PaletteNumber, PALETTEENTRY* pEntries);
+HRESULT WINAPI IDirect3DDevice9Impl_SetCurrentTexturePalette(LPDIRECT3DDEVICE9EX  iface, UINT PaletteNumber);
+HRESULT WINAPI IDirect3DDevice9Impl_GetCurrentTexturePalette(LPDIRECT3DDEVICE9EX  iface, UINT* pPaletteNumber);
+HRESULT WINAPI IDirect3DDevice9Impl_SetScissorRect(LPDIRECT3DDEVICE9EX  iface, CONST RECT* pRect);
+HRESULT WINAPI IDirect3DDevice9Impl_GetScissorRect(LPDIRECT3DDEVICE9EX  iface, RECT* pRect);
+HRESULT WINAPI IDirect3DDevice9Impl_SetSoftwareVertexProcessing(LPDIRECT3DDEVICE9EX  iface, BOOL bSoftware);
+BOOL WINAPI IDirect3DDevice9Impl_GetSoftwareVertexProcessing(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_SetNPatchMode(LPDIRECT3DDEVICE9EX  iface, float nSegments);
+float WINAPI IDirect3DDevice9Impl_GetNPatchMode(LPDIRECT3DDEVICE9EX  iface);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawPrimitive(LPDIRECT3DDEVICE9EX  iface, D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawIndexedPrimitive(LPDIRECT3DDEVICE9EX  iface, D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawPrimitiveUP(LPDIRECT3DDEVICE9EX  iface, D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawIndexedPrimitiveUP(LPDIRECT3DDEVICE9EX  iface, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+HRESULT WINAPI IDirect3DDevice9Impl_ProcessVertices(LPDIRECT3DDEVICE9EX  iface, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateVertexDeclaration(LPDIRECT3DDEVICE9EX  iface, CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl);
+HRESULT WINAPI IDirect3DDevice9Impl_SetVertexDeclaration(LPDIRECT3DDEVICE9EX  iface, IDirect3DVertexDeclaration9* pDecl);
+HRESULT WINAPI IDirect3DDevice9Impl_GetVertexDeclaration(LPDIRECT3DDEVICE9EX  iface, IDirect3DVertexDeclaration9** ppDecl);
+HRESULT WINAPI IDirect3DDevice9Impl_SetFVF(LPDIRECT3DDEVICE9EX  iface, DWORD FVF);
+HRESULT WINAPI IDirect3DDevice9Impl_GetFVF(LPDIRECT3DDEVICE9EX  iface, DWORD* pFVF);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateVertexShader(LPDIRECT3DDEVICE9EX  iface, CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader);
+HRESULT WINAPI IDirect3DDevice9Impl_SetVertexShader(LPDIRECT3DDEVICE9EX  iface, IDirect3DVertexShader9* pShader);
+HRESULT WINAPI IDirect3DDevice9Impl_GetVertexShader(LPDIRECT3DDEVICE9EX  iface, IDirect3DVertexShader9** ppShader);
+HRESULT WINAPI IDirect3DDevice9Impl_SetVertexShaderConstantF(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetVertexShaderConstantF(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, float* pConstantData, UINT Vector4fCount);
+HRESULT WINAPI IDirect3DDevice9Impl_SetVertexShaderConstantI(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetVertexShaderConstantI(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, int* pConstantData, UINT Vector4iCount);
+HRESULT WINAPI IDirect3DDevice9Impl_SetVertexShaderConstantB(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetVertexShaderConstantB(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, BOOL* pConstantData, UINT BoolCount);
+HRESULT WINAPI IDirect3DDevice9Impl_SetStreamSource(LPDIRECT3DDEVICE9EX  iface, UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride);
+HRESULT WINAPI IDirect3DDevice9Impl_GetStreamSource(LPDIRECT3DDEVICE9EX  iface, UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride);
+HRESULT WINAPI IDirect3DDevice9Impl_SetStreamSourceFreq(LPDIRECT3DDEVICE9EX  iface, UINT StreamNumber,UINT Setting);
+HRESULT WINAPI IDirect3DDevice9Impl_GetStreamSourceFreq(LPDIRECT3DDEVICE9EX  iface, UINT StreamNumber, UINT* pSetting);
+HRESULT WINAPI IDirect3DDevice9Impl_SetIndices(LPDIRECT3DDEVICE9EX  iface, IDirect3DIndexBuffer9* pIndexData);
+HRESULT WINAPI IDirect3DDevice9Impl_GetIndices(LPDIRECT3DDEVICE9EX  iface, IDirect3DIndexBuffer9** ppIndexData);
+HRESULT WINAPI IDirect3DDevice9Impl_CreatePixelShader(LPDIRECT3DDEVICE9EX  iface, CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader);
+HRESULT WINAPI IDirect3DDevice9Impl_SetPixelShader(LPDIRECT3DDEVICE9EX  iface, IDirect3DPixelShader9* pShader);
+HRESULT WINAPI IDirect3DDevice9Impl_GetPixelShader(LPDIRECT3DDEVICE9EX  iface, IDirect3DPixelShader9** ppShader);
+HRESULT WINAPI IDirect3DDevice9Impl_SetPixelShaderConstantF(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetPixelShaderConstantF(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, float* pConstantData, UINT Vector4fCount);
+HRESULT WINAPI IDirect3DDevice9Impl_SetPixelShaderConstantI(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetPixelShaderConstantI(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, int* pConstantData, UINT Vector4iCount);
+HRESULT WINAPI IDirect3DDevice9Impl_SetPixelShaderConstantB(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount);
+HRESULT WINAPI IDirect3DDevice9Impl_GetPixelShaderConstantB(LPDIRECT3DDEVICE9EX  iface, UINT StartRegister, BOOL* pConstantData, UINT BoolCount);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawRectPatch(LPDIRECT3DDEVICE9EX  iface, UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo);
+HRESULT WINAPI IDirect3DDevice9Impl_DrawTriPatch(LPDIRECT3DDEVICE9EX  iface, UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo);
+HRESULT WINAPI IDirect3DDevice9Impl_DeletePatch(LPDIRECT3DDEVICE9EX  iface, UINT Handle);
+HRESULT WINAPI IDirect3DDevice9Impl_CreateQuery(LPDIRECT3DDEVICE9EX  iface, D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery);
 
 /* IDirect3DDevice9 private interface */
-VOID WINAPI IDirect3DDevice9Base_Destroy(LPDIRECT3DDEVICE9 iface);
-VOID WINAPI IDirect3DDevice9Base_VirtualDestructor(LPDIRECT3DDEVICE9 iface);
+VOID WINAPI IDirect3DDevice9Impl_Destroy(LPDIRECT3DDEVICE9EX  iface);
+VOID WINAPI IDirect3DDevice9Impl_VirtualDestructor(LPDIRECT3DDEVICE9EX  iface);
+
+#if !defined(__cplusplus) || defined(CINTERFACE)
+extern IDirect3DDevice9ExVtbl_INT Direct3DDevice9Ex_Vtbl;
+extern IDirect3DSwapChain9ExVtbl Direct3DSwapChain9Ex_Vtbl;
+#endif
+
+typedef struct _D3D9PUREDEVICE
+{
+/* 0x0000 - 0x0000 */   DIRECT3DDEVICE9_INT BaseDevice;
+} D3D9PUREDEVICE, FAR *LPD3D9PUREDEVICE;
+
+typedef struct _D3D9HALDEVICE
+{
+/* 0x0000 */    D3D9PUREDEVICE PureDevice;
+} D3D9HALDEVICE, FAR *LPD3D9HALDEVICE;
 
 #endif /* _D3D9_DEVICE_H_ */

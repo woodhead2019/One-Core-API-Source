@@ -494,3 +494,28 @@ HRESULT WINAPI DwmpGetColorizationParameters(DWM_COLORIZATION_PARAMS *parameters
     parameters->fOpaque = TRUE;
     return S_OK;
 } 
+
+HRESULT WINAPI DwmpDxGetWindowSharedSurface(int a1, int a2, int a3, int a4, int a5, int *a6, ULONG *a7, ULONG *a8){
+	return DWM_E_COMPOSITIONDISABLED;
+}
+
+HRESULT WINAPI DwmpDxUpdateWindowSharedSurface(HWND hWnd, int a2, ULONG_PTR a3, HMONITOR hMonitor, ULONG *a5)
+{
+	return DWM_E_COMPOSITIONDISABLED;	
+}
+
+/**********************************************************************
+ *           DwmEnableComposition         (DWMAPI.102)
+ */
+HRESULT WINAPI DwmpEnableRedirection(UINT uCompositionAction)
+{
+    //FIXME("(%d) stub\n", uCompositionAction);
+
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
+		return S_OK;
+	else 
+		return DWM_E_COMPOSITIONDISABLED;
+}

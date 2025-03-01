@@ -28,60 +28,117 @@ WINE_DEFAULT_DEBUG_CHANNEL(d3d9_impl);
 #define DDI_MULTISAMPLE_TYPE(x) (1 << ((x)-1))
 
 /* Convert a IDirect3D9 pointer safely to the internal implementation struct */
-static LPDIRECT3D9_INT IDirect3D9ToImpl(LPDIRECT3D9 iface)
+static LPDIRECT3D9EX_INT IDirect3D9ToImpl(LPDIRECT3D9EX iface)
 {
     if (NULL == iface)
         return NULL;
 
-    return (LPDIRECT3D9_INT)((ULONG_PTR)iface - FIELD_OFFSET(DIRECT3D9_INT, lpVtbl));
+    return (LPDIRECT3D9EX_INT)((ULONG_PTR)iface - FIELD_OFFSET(DIRECT3D9EX_INT, lpVtbl));
+}
+
+HRESULT CreateD3D9DeviceEx(OUT LPDIRECT3DDEVICE9EX *ppDirect3D9, LPDIRECT3DDEVICE9 DeviceProxyInterface)
+{
+    LPDIRECT3DDEVICE9EX_INT pThisBaseDevice;
+	
+	DbgPrint("CreateD3D9DeviceEx called\n");
+	
+    if (ppDirect3D9 == 0)
+        return DDERR_INVALIDPARAMS;
+
+    if (AlignedAlloc((LPVOID *)&pThisBaseDevice, sizeof(DIRECT3DDEVICE9EX_INT)) != S_OK)
+        return DDERR_OUTOFMEMORY;
+
+    if (pThisBaseDevice == 0)
+        return DDERR_OUTOFMEMORY;	
+
+    pThisBaseDevice->lpVtbl = &Direct3DDevice9Ex_Vtbl;
+    pThisBaseDevice->dwProcessId = GetCurrentThreadId();
+    pThisBaseDevice->lRealD3D9DeviceEx = DeviceProxyInterface;
+    pThisBaseDevice->lRefCnt = 1;
+
+    InitializeCriticalSection(&pThisBaseDevice->CriticalSection);
+
+    *ppDirect3D9 = (LPDIRECT3DDEVICE9EX)&pThisBaseDevice->lpVtbl;
+
+    return D3D_OK;
 }
 
 /* IDirect3D9: IUnknown implementation */
-static HRESULT WINAPI IDirect3D9Impl_QueryInterface(LPDIRECT3D9 iface, REFIID riid, LPVOID* ppvObject)
+static HRESULT WINAPI IDirect3D9Impl_QueryInterface(LPDIRECT3D9EX iface, REFIID riid, LPVOID* ppvObject)
 {
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_QueryInterface called\n");
 
-    if (IsEqualGUID(riid, &IID_IUnknown) || IsEqualGUID(riid, &IID_IDirect3D9))
+    // if (IsEqualGUID(riid, &IID_IUnknown) || IsEqualGUID(riid, &IID_IDirect3D9Ex) || IsEqualGUID(riid, &IID_IDirect3D9))
+    // {
+        // IUnknown_AddRef(iface);
+        // *ppvObject = &This->lpVtbl;
+        // return S_OK;
+    // }
+
+   // *ppvObject = NULL;
+
+    if (IsEqualGUID(riid, &IID_IDirect3D9)
+            || IsEqualGUID(riid, &IID_IUnknown))
     {
+        // IDirect3D9Ex_AddRef(&d3d9->IDirect3D9Ex_iface);
+        // *out = &d3d9->IDirect3D9Ex_iface;
+        // return S_OK;
+		IUnknown_AddRef(iface);
+		return IDirect3D9_QueryInterface(This->lRealD3D9, riid, ppvObject);		
+    }
+
+    if (IsEqualGUID(riid, &IID_IDirect3D9Ex))
+    {
+        if (!This->IsD3d9Ex)
+        {
+            WARN("Application asks for IDirect3D9Ex, but this instance wasn't created with Direct3DCreate9Ex.\n");
+            *ppvObject = NULL;
+            return E_NOINTERFACE;
+        }
+
         IUnknown_AddRef(iface);
         *ppvObject = &This->lpVtbl;
         return S_OK;
     }
 
     *ppvObject = NULL;
-    return E_NOINTERFACE;
+    return E_NOINTERFACE;	
 }
 
-static ULONG WINAPI IDirect3D9Impl_AddRef(LPDIRECT3D9 iface)
+static ULONG WINAPI IDirect3D9Impl_AddRef(LPDIRECT3D9EX iface)
 {
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    ULONG ref = InterlockedIncrement(&This->lRefCnt);
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_AddRef called\n");
+    // ULONG ref = InterlockedIncrement(&This->lRefCnt);
 
-    return ref;
+    return IDirect3D9_AddRef(This->lRealD3D9);
 }
 
-static ULONG WINAPI IDirect3D9Impl_Release(LPDIRECT3D9 iface)
+static ULONG WINAPI IDirect3D9Impl_Release(LPDIRECT3D9EX iface)
 {
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    ULONG ref = InterlockedDecrement(&This->lRefCnt);
+    ULONG Ref;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface); 
 
-    if (ref == 0)
-    {
-        EnterCriticalSection(&This->d3d9_cs);
-        /* TODO: Free resources here */
-        LeaveCriticalSection(&This->d3d9_cs);
+    DbgPrint("IDirect3D9Impl_Release called\n");	
+
+    Ref = IDirect3D9_Release(This->lRealD3D9);
+    if (Ref == 0) {
         AlignedFree(This);
     }
-
-    return ref;
+    return Ref;
 }
 
 /* IDirect3D9 interface */
-static HRESULT WINAPI IDirect3D9Impl_RegisterSoftwareDevice(LPDIRECT3D9 iface, void* pInitializeFunction)
+static HRESULT WINAPI IDirect3D9Impl_RegisterSoftwareDevice(LPDIRECT3D9EX iface, void* pInitializeFunction)
 {
-    UNIMPLEMENTED;
-
-    return D3D_OK;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);	
+	
+	DbgPrint("IDirect3D9Impl_Release called\n");	
+	
+    return IDirect3D9_RegisterSoftwareDevice(This->lRealD3D9, pInitializeFunction);
 }
 
 /*++
@@ -97,17 +154,13 @@ static HRESULT WINAPI IDirect3D9Impl_RegisterSoftwareDevice(LPDIRECT3D9 iface, v
 * The number of display adapters on the system when Direct3DCreate9() was called.
 *
 */
-static UINT WINAPI IDirect3D9Impl_GetAdapterCount(LPDIRECT3D9 iface)
+static UINT WINAPI IDirect3D9Impl_GetAdapterCount(LPDIRECT3D9EX iface)
 {
-    UINT NumDisplayAdapters;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
-
-    NumDisplayAdapters = This->NumDisplayAdapters;
-
-    UNLOCK_D3D9();
-    return NumDisplayAdapters;
+    DbgPrint("IDirect3D9Impl_GetAdapterCount called\n");		
+	
+	return IDirect3D9_GetAdapterCount(This->lRealD3D9);
 }
 
 /*++
@@ -137,44 +190,50 @@ static UINT WINAPI IDirect3D9Impl_GetAdapterCount(LPDIRECT3D9 iface)
 * will be D3DERR_INVALIDCALL.
 *
 */
-HRESULT WINAPI IDirect3D9Impl_GetAdapterIdentifier(LPDIRECT3D9 iface, UINT Adapter, DWORD Flags,
+HRESULT WINAPI IDirect3D9Impl_GetAdapterIdentifier(LPDIRECT3D9EX iface, UINT Adapter, DWORD Flags,
                                                           D3DADAPTER_IDENTIFIER9* pIdentifier)
 {
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (Flags & ~D3DENUM_WHQL_LEVEL)
-    {
-        DPRINT1("Invalid Flags specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Flags & ~D3DENUM_WHQL_LEVEL)
+    // {
+        // DPRINT1("Invalid Flags specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (NULL == pIdentifier)
-    {
-        DPRINT1("Invalid pIdentifier parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (NULL == pIdentifier)
+    // {
+        // DPRINT1("Invalid pIdentifier parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    memset(pIdentifier, 0, sizeof(D3DADAPTER_IDENTIFIER9));
+    // memset(pIdentifier, 0, sizeof(D3DADAPTER_IDENTIFIER9));
 
-    if (FALSE == GetAdapterInfo(This->DisplayAdapters[Adapter].szDeviceName, pIdentifier))
-    {
-        DPRINT1("Internal error: Couldn't get the adapter info for device (%d): %s", Adapter, This->DisplayAdapters[Adapter].szDeviceName);
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (FALSE == GetAdapterInfo(This->DisplayAdapters[Adapter].szDeviceName, pIdentifier))
+    // {
+        // DPRINT1("Internal error: Couldn't get the adapter info for device (%d): %s", Adapter, This->DisplayAdapters[Adapter].szDeviceName);
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    UNLOCK_D3D9();
-    return D3D_OK;
+    // UNLOCK_D3D9();
+    // return D3D_OK;
+	
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+
+    DbgPrint("IDirect3D9Impl_GetAdapterIdentifier called\n");		
+	
+	return IDirect3D9_GetAdapterIdentifier(This->lRealD3D9, Adapter, Flags, pIdentifier);	
 }
 
 /*++
@@ -199,37 +258,42 @@ HRESULT WINAPI IDirect3D9Impl_GetAdapterIdentifier(LPDIRECT3D9 iface, UINT Adapt
 * If Adapter is out of range, the return value will be 0.
 *
 */
-static UINT WINAPI IDirect3D9Impl_GetAdapterModeCount(LPDIRECT3D9 iface, UINT Adapter, D3DFORMAT Format)
+static UINT WINAPI IDirect3D9Impl_GetAdapterModeCount(LPDIRECT3D9EX iface, UINT Adapter, D3DFORMAT Format)
 {
-    UINT AdapterModeCount;
+    // UINT AdapterModeCount;
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (Format != D3DFMT_A2R10G10B10)
-    {
-        AdapterModeCount = GetDisplayFormatCount(
-            Format,
-            This->DisplayAdapters[Adapter].pSupportedD3DFormats,
-            This->DisplayAdapters[Adapter].NumSupportedD3DFormats);
-    }
-    else
-    {
-        AdapterModeCount = GetDisplayFormatCount(
-            Format,
-            This->DisplayAdapters[Adapter].pSupportedD3DExtendedFormats,
-            This->DisplayAdapters[Adapter].NumSupportedD3DExtendedFormats);
-    }
+    // if (Format != D3DFMT_A2R10G10B10)
+    // {
+        // AdapterModeCount = GetDisplayFormatCount(
+            // Format,
+            // This->DisplayAdapters[Adapter].pSupportedD3DFormats,
+            // This->DisplayAdapters[Adapter].NumSupportedD3DFormats);
+    // }
+    // else
+    // {
+        // AdapterModeCount = GetDisplayFormatCount(
+            // Format,
+            // This->DisplayAdapters[Adapter].pSupportedD3DExtendedFormats,
+            // This->DisplayAdapters[Adapter].NumSupportedD3DExtendedFormats);
+    // }
 
-    UNLOCK_D3D9();
-    return AdapterModeCount;
+    // UNLOCK_D3D9();
+    // return AdapterModeCount;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+
+    DbgPrint("IDirect3D9Impl_GetAdapterModeCount called\n");		
+	
+	return IDirect3D9_GetAdapterModeCount(This->lRealD3D9, Adapter, Format);
 }
 
 /*++
@@ -264,55 +328,60 @@ static UINT WINAPI IDirect3D9Impl_GetAdapterModeCount(LPDIRECT3D9 iface, UINT Ad
 * format was found or the mode parameter was invalid - the return value will be D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_EnumAdapterModes(LPDIRECT3D9 iface, UINT Adapter, D3DFORMAT Format,
+static HRESULT WINAPI IDirect3D9Impl_EnumAdapterModes(LPDIRECT3D9EX iface, UINT Adapter, D3DFORMAT Format,
                                                       UINT Mode, D3DDISPLAYMODE* pMode)
 {
-    const D3DDISPLAYMODE* pMatchingDisplayFormat;
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // const D3DDISPLAYMODE* pMatchingDisplayFormat;
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (NULL == pMode)
-    {
-        DPRINT1("Invalid pMode parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (NULL == pMode)
+    // {
+        // DPRINT1("Invalid pMode parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (Format != D3DFMT_A2R10G10B10)
-    {
-        pMatchingDisplayFormat = FindDisplayFormat(
-            Format,
-            Mode,
-            This->DisplayAdapters[Adapter].pSupportedD3DFormats,
-            This->DisplayAdapters[Adapter].NumSupportedD3DFormats);
-    }
-    else
-    {
-        pMatchingDisplayFormat = FindDisplayFormat(
-            Format,
-            Mode,
-            This->DisplayAdapters[Adapter].pSupportedD3DExtendedFormats,
-            This->DisplayAdapters[Adapter].NumSupportedD3DExtendedFormats);
-    }
+    // if (Format != D3DFMT_A2R10G10B10)
+    // {
+        // pMatchingDisplayFormat = FindDisplayFormat(
+            // Format,
+            // Mode,
+            // This->DisplayAdapters[Adapter].pSupportedD3DFormats,
+            // This->DisplayAdapters[Adapter].NumSupportedD3DFormats);
+    // }
+    // else
+    // {
+        // pMatchingDisplayFormat = FindDisplayFormat(
+            // Format,
+            // Mode,
+            // This->DisplayAdapters[Adapter].pSupportedD3DExtendedFormats,
+            // This->DisplayAdapters[Adapter].NumSupportedD3DExtendedFormats);
+    // }
 
-    if (pMatchingDisplayFormat != NULL)
-    {
-        *pMode = *pMatchingDisplayFormat;
-    }
-    UNLOCK_D3D9();
+    // if (pMatchingDisplayFormat != NULL)
+    // {
+        // *pMode = *pMatchingDisplayFormat;
+    // }
+    // UNLOCK_D3D9();
 
 
-    if (pMatchingDisplayFormat == NULL)
-        return D3DERR_INVALIDCALL;
+    // if (pMatchingDisplayFormat == NULL)
+        // return D3DERR_INVALIDCALL;
 
-    return D3D_OK;
+    // return D3D_OK;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+
+    DbgPrint("IDirect3D9Impl_EnumAdapterModes called\n");		
+
+	return IDirect3D9_EnumAdapterModes(This->lRealD3D9, Adapter, Format, Mode, pMode);
 }
 
 /*++
@@ -337,31 +406,36 @@ static HRESULT WINAPI IDirect3D9Impl_EnumAdapterModes(LPDIRECT3D9 iface, UINT Ad
 * If Adapter is out of range or pMode is a bad pointer, the return value will be D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_GetAdapterDisplayMode(LPDIRECT3D9 iface, UINT Adapter, D3DDISPLAYMODE* pMode)
+static HRESULT WINAPI IDirect3D9Impl_GetAdapterDisplayMode(LPDIRECT3D9EX iface, UINT Adapter, D3DDISPLAYMODE* pMode)
 {
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (NULL == pMode)
-    {
-        DPRINT1("Invalid pMode parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (NULL == pMode)
+    // {
+        // DPRINT1("Invalid pMode parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    /* TODO: Handle (This->DisplayAdapters[Adapter].bInUseFlag == FALSE) */
-    if (FALSE == GetAdapterMode(This->DisplayAdapters[Adapter].szDeviceName, pMode))
-        DPRINT1("Internal error, GetAdapterMode() failed.");
+    // /* TODO: Handle (This->DisplayAdapters[Adapter].bInUseFlag == FALSE) */
+    // if (FALSE == GetAdapterMode(This->DisplayAdapters[Adapter].szDeviceName, pMode))
+        // DPRINT1("Internal error, GetAdapterMode() failed.");
 
-    UNLOCK_D3D9();
-    return D3D_OK;
+    // UNLOCK_D3D9();
+    // return D3D_OK;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);	
+	
+	DbgPrint("IDirect3D9Impl_GetAdapterDisplayMode called\n");	
+
+	return IDirect3D9_GetAdapterDisplayMode(This->lRealD3D9, Adapter, pMode);
 }
 
 
@@ -398,61 +472,68 @@ static HRESULT WINAPI IDirect3D9Impl_GetAdapterDisplayMode(LPDIRECT3D9 iface, UI
 * DisplayFormat or BackBufferFormat is invalid - the return value will be D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_CheckDeviceType(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType,
+static HRESULT WINAPI IDirect3D9Impl_CheckDeviceType(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType,
                                                      D3DFORMAT DisplayFormat, D3DFORMAT BackBufferFormat, BOOL Windowed)
 {
-    HRESULT hResult;
+    // HRESULT hResult;
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (DeviceType != D3DDEVTYPE_HAL &&
-        DeviceType != D3DDEVTYPE_REF &&
-        DeviceType != D3DDEVTYPE_SW)
-    {
-        DPRINT1("Invalid DeviceType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (DeviceType != D3DDEVTYPE_HAL &&
+        // DeviceType != D3DDEVTYPE_REF &&
+        // DeviceType != D3DDEVTYPE_SW)
+    // {
+        // DPRINT1("Invalid DeviceType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if ((BackBufferFormat == D3DFMT_UNKNOWN) &&
-        (Windowed != FALSE))
-    {
-        BackBufferFormat = DisplayFormat;
-    }
+    // if ((BackBufferFormat == D3DFMT_UNKNOWN) &&
+        // (Windowed != FALSE))
+    // {
+        // BackBufferFormat = DisplayFormat;
+    // }
 
-    if (DisplayFormat == D3DFMT_UNKNOWN && BackBufferFormat == D3DFMT_UNKNOWN)
-    {
-        DPRINT1("Invalid D3DFORMAT specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (DisplayFormat == D3DFMT_UNKNOWN && BackBufferFormat == D3DFMT_UNKNOWN)
+    // {
+        // DPRINT1("Invalid D3DFORMAT specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (FALSE == IsBackBufferFormat(BackBufferFormat))
-    {
-        DPRINT1("Invalid D3DFORMAT specified");
-        UNLOCK_D3D9();
-        return D3DERR_NOTAVAILABLE;
-    }
+    // if (FALSE == IsBackBufferFormat(BackBufferFormat))
+    // {
+        // DPRINT1("Invalid D3DFORMAT specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_NOTAVAILABLE;
+    // }
 
-    if (TRUE == Windowed && TRUE == IsExtendedFormat(DisplayFormat))
-    {
-        DPRINT1("Extended display modes can only be used in fullscreen mode");
-        UNLOCK_D3D9();
-        return D3DERR_NOTAVAILABLE;
-    }
+    // if (TRUE == Windowed && TRUE == IsExtendedFormat(DisplayFormat))
+    // {
+        // DPRINT1("Extended display modes can only be used in fullscreen mode");
+        // UNLOCK_D3D9();
+        // return D3DERR_NOTAVAILABLE;
+    // }
 
-    hResult = CheckDeviceType(&This->DisplayAdapters[Adapter].DriverCaps, DisplayFormat, BackBufferFormat, Windowed);
+    // hResult = CheckDeviceType(&This->DisplayAdapters[Adapter].DriverCaps, DisplayFormat, BackBufferFormat, Windowed);
 
-    UNLOCK_D3D9();
-    return hResult;
+    // UNLOCK_D3D9();
+    // return hResult;	
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);	
+	
+	DbgPrint("IDirect3D9Impl_CheckDeviceType called\n");
+
+	IDirect3D9_CheckDeviceType(This->lRealD3D9, Adapter, D3DDEVTYPE_HAL, DisplayFormat, BackBufferFormat, Windowed);	
+	
+	return D3D_OK;
 }
 
 
@@ -495,161 +576,168 @@ static HRESULT WINAPI IDirect3D9Impl_CheckDeviceType(LPDIRECT3D9 iface, UINT Ada
 * Usage and RType isn't compatible - the return value will be D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_CheckDeviceFormat(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType,
+static HRESULT WINAPI IDirect3D9Impl_CheckDeviceFormat(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType,
                                                        D3DFORMAT AdapterFormat, DWORD Usage, D3DRESOURCETYPE RType,
                                                        D3DFORMAT CheckFormat)
 {
-    LPD3D9_DRIVERCAPS pDriverCaps;
-    BOOL bIsTextureRType = FALSE;
-    HRESULT hResult;
+    // LPD3D9_DRIVERCAPS pDriverCaps;
+    // BOOL bIsTextureRType = FALSE;
+    // HRESULT hResult;
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (DeviceType != D3DDEVTYPE_HAL &&
-        DeviceType != D3DDEVTYPE_REF &&
-        DeviceType != D3DDEVTYPE_SW)
-    {
-        DPRINT1("Invalid DeviceType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (DeviceType != D3DDEVTYPE_HAL &&
+        // DeviceType != D3DDEVTYPE_REF &&
+        // DeviceType != D3DDEVTYPE_SW)
+    // {
+        // DPRINT1("Invalid DeviceType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (AdapterFormat == D3DFMT_UNKNOWN ||
-        CheckFormat == D3DFMT_UNKNOWN)
-    {
-        DPRINT1("Invalid D3DFORMAT specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (AdapterFormat == D3DFMT_UNKNOWN ||
+        // CheckFormat == D3DFMT_UNKNOWN)
+    // {
+        // DPRINT1("Invalid D3DFORMAT specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if ((Usage & (D3DUSAGE_DONOTCLIP | D3DUSAGE_NPATCHES | D3DUSAGE_POINTS | D3DUSAGE_RTPATCHES | D3DUSAGE_TEXTAPI | D3DUSAGE_WRITEONLY)) != 0) //TO be removed to support Directx9EX
-    {
-        DPRINT1("Invalid Usage specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if ((Usage & (D3DUSAGE_DONOTCLIP | D3DUSAGE_NPATCHES | D3DUSAGE_POINTS | D3DUSAGE_RTPATCHES | D3DUSAGE_TEXTAPI | D3DUSAGE_WRITEONLY)) != 0) //TO be removed to support Directx9EX
+    // {
+        // DPRINT1("Invalid Usage specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (RType == D3DRTYPE_TEXTURE ||
-        RType == D3DRTYPE_VOLUMETEXTURE ||
-        RType == D3DRTYPE_CUBETEXTURE)
-    {
-        bIsTextureRType = TRUE;
-    }
-    else if (RType == D3DRTYPE_SURFACE &&
-            (Usage & (D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) == 0 &&
-            Usage != 0)
-    {
-        DPRINT1("When RType is set to D3DRTYPE_SURFACE, Usage must be 0 or have set D3DUSAGE_DEPTHSTENCIL or D3DUSAGE_RENDERTARGET");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (RType == D3DRTYPE_TEXTURE ||
+        // RType == D3DRTYPE_VOLUMETEXTURE ||
+        // RType == D3DRTYPE_CUBETEXTURE)
+    // {
+        // bIsTextureRType = TRUE;
+    // }
+    // else if (RType == D3DRTYPE_SURFACE &&
+            // (Usage & (D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) == 0 &&
+            // Usage != 0)
+    // {
+        // DPRINT1("When RType is set to D3DRTYPE_SURFACE, Usage must be 0 or have set D3DUSAGE_DEPTHSTENCIL or D3DUSAGE_RENDERTARGET");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if ((Usage & D3DUSAGE_DEPTHSTENCIL) != 0)
-    {
-        if (FALSE == IsZBufferFormat(CheckFormat))
-        {
-            DPRINT1("Invalid CheckFormat Z-Buffer format");
-            UNLOCK_D3D9();
-            return D3DERR_INVALIDCALL;
-        }
+    // if ((Usage & D3DUSAGE_DEPTHSTENCIL) != 0)
+    // {
+        // if (FALSE == IsZBufferFormat(CheckFormat))
+        // {
+            // DPRINT1("Invalid CheckFormat Z-Buffer format");
+            // UNLOCK_D3D9();
+            // return D3DERR_INVALIDCALL;
+        // }
 
-        if ((Usage & D3DUSAGE_AUTOGENMIPMAP) != 0)
-        {
-            DPRINT1("Invalid Usage specified, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_AUTOGENMIPMAP can't be combined.");
-            UNLOCK_D3D9();
-            return D3DERR_INVALIDCALL;
-        }
-    }
+        // if ((Usage & D3DUSAGE_AUTOGENMIPMAP) != 0)
+        // {
+            // DPRINT1("Invalid Usage specified, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_AUTOGENMIPMAP can't be combined.");
+            // UNLOCK_D3D9();
+            // return D3DERR_INVALIDCALL;
+        // }
+    // }
 
-    if (FALSE == bIsTextureRType &&
-        RType != D3DRTYPE_SURFACE &&
-        RType != D3DRTYPE_VOLUME)
-    {
-        DPRINT1("Invalid RType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (FALSE == bIsTextureRType &&
+        // RType != D3DRTYPE_SURFACE &&
+        // RType != D3DRTYPE_VOLUME)
+    // {
+        // DPRINT1("Invalid RType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if ((Usage & (D3DUSAGE_AUTOGENMIPMAP | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) != 0)
-    {
-        if (RType == D3DRTYPE_VOLUME || RType == D3DRTYPE_VOLUMETEXTURE)
-        {
-            DPRINT1("Invalid Usage specified, D3DUSAGE_AUTOGENMIPMAP, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET can't be combined with RType D3DRTYPE_VOLUME or D3DRTYPE_VOLUMETEXTURE");
-            UNLOCK_D3D9();
-            return D3DERR_INVALIDCALL;
-        }
-    }
+    // if ((Usage & (D3DUSAGE_AUTOGENMIPMAP | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) != 0)
+    // {
+        // if (RType == D3DRTYPE_VOLUME || RType == D3DRTYPE_VOLUMETEXTURE)
+        // {
+            // DPRINT1("Invalid Usage specified, D3DUSAGE_AUTOGENMIPMAP, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET can't be combined with RType D3DRTYPE_VOLUME or D3DRTYPE_VOLUMETEXTURE");
+            // UNLOCK_D3D9();
+            // return D3DERR_INVALIDCALL;
+        // }
+    // }
 
-    if (FALSE == bIsTextureRType &&
-        (Usage & D3DUSAGE_QUERY_VERTEXTEXTURE) != 0)
-    {
-        DPRINT1("Invalid Usage specified, D3DUSAGE_QUERY_VERTEXTEXTURE can only be used with a texture RType");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (FALSE == bIsTextureRType &&
+        // (Usage & D3DUSAGE_QUERY_VERTEXTEXTURE) != 0)
+    // {
+        // DPRINT1("Invalid Usage specified, D3DUSAGE_QUERY_VERTEXTEXTURE can only be used with a texture RType");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if ((Usage & D3DUSAGE_AUTOGENMIPMAP) != 0 &&
-        TRUE == IsMultiElementFormat(CheckFormat))
-    {
-        DPRINT1("Invalid Usage specified, D3DUSAGE_AUTOGENMIPMAP can't be used with a multi-element format");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if ((Usage & D3DUSAGE_AUTOGENMIPMAP) != 0 &&
+        // TRUE == IsMultiElementFormat(CheckFormat))
+    // {
+        // DPRINT1("Invalid Usage specified, D3DUSAGE_AUTOGENMIPMAP can't be used with a multi-element format");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    pDriverCaps = &This->DisplayAdapters[Adapter].DriverCaps;
-    if (((Usage & D3DUSAGE_DYNAMIC) != 0) && (bIsTextureRType != FALSE))
-    {
-        if ((pDriverCaps->DriverCaps9.Caps2 & D3DCAPS2_DYNAMICTEXTURES) == 0)
-        {
-            DPRINT1("Driver doesn't support dynamic textures");
-            UNLOCK_D3D9();
-            return D3DERR_NOTAVAILABLE;
-        }
+    // pDriverCaps = &This->DisplayAdapters[Adapter].DriverCaps;
+    // if (((Usage & D3DUSAGE_DYNAMIC) != 0) && (bIsTextureRType != FALSE))
+    // {
+        // if ((pDriverCaps->DriverCaps9.Caps2 & D3DCAPS2_DYNAMICTEXTURES) == 0)
+        // {
+            // DPRINT1("Driver doesn't support dynamic textures");
+            // UNLOCK_D3D9();
+            // return D3DERR_NOTAVAILABLE;
+        // }
 
-        if ((Usage & (D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) != 0)
-        {
-            DPRINT1("Invalid Usage specified, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET can't be combined with D3DUSAGE_DYNAMIC and a texture RType");
-            UNLOCK_D3D9();
-            return D3DERR_INVALIDCALL;
-        }
-    }
+        // if ((Usage & (D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_RENDERTARGET)) != 0)
+        // {
+            // DPRINT1("Invalid Usage specified, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET can't be combined with D3DUSAGE_DYNAMIC and a texture RType");
+            // UNLOCK_D3D9();
+            // return D3DERR_INVALIDCALL;
+        // }
+    // }
 
-    if ((Usage & D3DUSAGE_DMAP) != 0)
-    {
-        if ((pDriverCaps->DriverCaps9.DevCaps2 & (D3DDEVCAPS2_PRESAMPLEDDMAPNPATCH | D3DDEVCAPS2_DMAPNPATCH)) == 0)
-        {
-            DPRINT1("Driver doesn't support displacement mapping");
-            UNLOCK_D3D9();
-            return D3DERR_NOTAVAILABLE;
-        }
+    // if ((Usage & D3DUSAGE_DMAP) != 0)
+    // {
+        // if ((pDriverCaps->DriverCaps9.DevCaps2 & (D3DDEVCAPS2_PRESAMPLEDDMAPNPATCH | D3DDEVCAPS2_DMAPNPATCH)) == 0)
+        // {
+            // DPRINT1("Driver doesn't support displacement mapping");
+            // UNLOCK_D3D9();
+            // return D3DERR_NOTAVAILABLE;
+        // }
 
-        if (RType != D3DRTYPE_TEXTURE)
-        {
-            DPRINT1("Invalid Usage specified, D3DUSAGE_DMAP must be combined with RType D3DRTYPE_TEXTURE");
-            UNLOCK_D3D9();
-            return D3DERR_INVALIDCALL;
-        }
-    }
+        // if (RType != D3DRTYPE_TEXTURE)
+        // {
+            // DPRINT1("Invalid Usage specified, D3DUSAGE_DMAP must be combined with RType D3DRTYPE_TEXTURE");
+            // UNLOCK_D3D9();
+            // return D3DERR_INVALIDCALL;
+        // }
+    // }
 
-    hResult = CheckDeviceFormat(pDriverCaps, AdapterFormat, Usage, RType, CheckFormat);
+    // hResult = CheckDeviceFormat(pDriverCaps, AdapterFormat, Usage, RType, CheckFormat);
 
-    UNLOCK_D3D9();
-    return hResult;
+    // UNLOCK_D3D9();
+    // return hResult;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_CheckDeviceFormat called\n");
+
+	IDirect3D9_CheckDeviceFormat(This->lRealD3D9, Adapter, D3DDEVTYPE_HAL, AdapterFormat, Usage, RType, CheckFormat);
+	
+	return D3D_OK;
 }
 
 static 
 HRESULT 
 WINAPI 
 IDirect3D9Impl_CheckDeviceMultiSampleType(
-	LPDIRECT3D9 iface, 
+	LPDIRECT3D9EX iface, 
 	UINT Adapter, 
 	D3DDEVTYPE DeviceType,
     D3DFORMAT SurfaceFormat,
@@ -757,8 +845,11 @@ IDirect3D9Impl_CheckDeviceMultiSampleType(
             // }
         // }
     // }
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_CheckDeviceMultiSampleType called\n");
 
-    return D3DERR_NOTAVAILABLE;
+    return IDirect3D9_CheckDeviceMultiSampleType(This->lRealD3D9, Adapter, DeviceType, SurfaceFormat, Windowed, MultiSampleType, pQualityLevels);
 }
 
 
@@ -798,44 +889,49 @@ IDirect3D9Impl_CheckDeviceMultiSampleType(
 * AdapterFormat, RenderTargetFormat or DepthStencilFormat is invalid, the method returns D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_CheckDepthStencilMatch(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType,
+static HRESULT WINAPI IDirect3D9Impl_CheckDepthStencilMatch(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType,
                                                             D3DFORMAT AdapterFormat, D3DFORMAT RenderTargetFormat,
                                                             D3DFORMAT DepthStencilFormat)
 {
-    HRESULT hResult;
+    // HRESULT hResult;
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (DeviceType != D3DDEVTYPE_HAL &&
-        DeviceType != D3DDEVTYPE_REF &&
-        DeviceType != D3DDEVTYPE_SW)
-    {
-        DPRINT1("Invalid DeviceType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (DeviceType != D3DDEVTYPE_HAL &&
+        // DeviceType != D3DDEVTYPE_REF &&
+        // DeviceType != D3DDEVTYPE_SW)
+    // {
+        // DPRINT1("Invalid DeviceType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (AdapterFormat == D3DFMT_UNKNOWN ||
-        RenderTargetFormat == D3DFMT_UNKNOWN ||
-        DepthStencilFormat == D3DFMT_UNKNOWN)
-    {
-        DPRINT1("Invalid D3DFORMAT specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (AdapterFormat == D3DFMT_UNKNOWN ||
+        // RenderTargetFormat == D3DFMT_UNKNOWN ||
+        // DepthStencilFormat == D3DFMT_UNKNOWN)
+    // {
+        // DPRINT1("Invalid D3DFORMAT specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    hResult = CheckDepthStencilMatch(&This->DisplayAdapters[Adapter].DriverCaps, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
+    // hResult = CheckDepthStencilMatch(&This->DisplayAdapters[Adapter].DriverCaps, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
 
-    UNLOCK_D3D9();
-    return hResult;
+    // UNLOCK_D3D9();
+    // return hResult;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_CheckDepthStencilMatch called\n");
+
+	return IDirect3D9_CheckDepthStencilMatch(This->lRealD3D9, Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
 }
 
 
@@ -869,48 +965,53 @@ static HRESULT WINAPI IDirect3D9Impl_CheckDepthStencilMatch(LPDIRECT3D9 iface, U
 * SourceFormat or TargetFormat is invalid, the method returns D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_CheckDeviceFormatConversion(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType,
+static HRESULT WINAPI IDirect3D9Impl_CheckDeviceFormatConversion(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType,
                                                                  D3DFORMAT SourceFormat, D3DFORMAT TargetFormat)
 {
-    HRESULT hResult;
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // HRESULT hResult;
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (DeviceType != D3DDEVTYPE_HAL &&
-        DeviceType != D3DDEVTYPE_REF &&
-        DeviceType != D3DDEVTYPE_SW)
-    {
-        DPRINT1("Invalid DeviceType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (DeviceType != D3DDEVTYPE_HAL &&
+        // DeviceType != D3DDEVTYPE_REF &&
+        // DeviceType != D3DDEVTYPE_SW)
+    // {
+        // DPRINT1("Invalid DeviceType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (SourceFormat == D3DFMT_UNKNOWN ||
-        TargetFormat == D3DFMT_UNKNOWN)
-    {
-        DPRINT1("Invalid D3DFORMAT specified");
-        UNLOCK_D3D9();
-        return D3DERR_NOTAVAILABLE;
-    }
+    // if (SourceFormat == D3DFMT_UNKNOWN ||
+        // TargetFormat == D3DFMT_UNKNOWN)
+    // {
+        // DPRINT1("Invalid D3DFORMAT specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_NOTAVAILABLE;
+    // }
 
-    if (DeviceType == D3DDEVTYPE_HAL)
-    {
-        hResult = CheckDeviceFormatConversion(&This->DisplayAdapters[Adapter].DriverCaps, SourceFormat, TargetFormat);
-    }
-    else
-    {
-        hResult = D3DERR_NOTAVAILABLE;
-    }
+    // if (DeviceType == D3DDEVTYPE_HAL)
+    // {
+        // hResult = CheckDeviceFormatConversion(&This->DisplayAdapters[Adapter].DriverCaps, SourceFormat, TargetFormat);
+    // }
+    // else
+    // {
+        // hResult = D3DERR_NOTAVAILABLE;
+    // }
 
-    UNLOCK_D3D9();
-    return hResult;
+    // UNLOCK_D3D9();
+    // return hResult;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_CheckDeviceFormatConversion called\n");
+
+	return IDirect3D9_CheckDeviceFormatConversion(This->lRealD3D9, Adapter, DeviceType, SourceFormat, TargetFormat);
 }
 
 
@@ -941,30 +1042,35 @@ static HRESULT WINAPI IDirect3D9Impl_CheckDeviceFormatConversion(LPDIRECT3D9 ifa
 * If DeviceType is invalid, the return value will be D3DERR_INVALIDDEVICE.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_GetDeviceCaps(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9* pCaps)
+static HRESULT WINAPI IDirect3D9Impl_GetDeviceCaps(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9* pCaps)
 {
-    HRESULT hResult;
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // HRESULT hResult;
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    if (NULL == pCaps)
-    {
-        DPRINT1("Invalid pCaps parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
+    // if (NULL == pCaps)
+    // {
+        // DPRINT1("Invalid pCaps parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
 
-    hResult = GetAdapterCaps(&This->DisplayAdapters[Adapter], DeviceType, pCaps);
+    // hResult = GetAdapterCaps(&This->DisplayAdapters[Adapter], DeviceType, pCaps);
 
-    UNLOCK_D3D9();
-    return hResult;
+    // UNLOCK_D3D9();
+    // return hResult;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_GetDeviceCaps called\n");
+
+	return IDirect3D9_GetDeviceCaps(This->lRealD3D9, Adapter, DeviceType, pCaps);
 }
 
 /*++
@@ -986,24 +1092,29 @@ static HRESULT WINAPI IDirect3D9Impl_GetDeviceCaps(LPDIRECT3D9 iface, UINT Adapt
 * If the method fails, the return value is NULL.
 *
 */
-static HMONITOR WINAPI IDirect3D9Impl_GetAdapterMonitor(LPDIRECT3D9 iface, UINT Adapter)
+static HMONITOR WINAPI IDirect3D9Impl_GetAdapterMonitor(LPDIRECT3D9EX iface, UINT Adapter)
 {
-    HMONITOR hAdapterMonitor = NULL;
+    // HMONITOR hAdapterMonitor = NULL;
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
 
-    if (Adapter < This->NumDisplayAdapters)
-    {
-        hAdapterMonitor = GetAdapterMonitor(This->DisplayAdapters[Adapter].szDeviceName);
-    }
-    else
-    {
-        DPRINT1("Invalid Adapter number specified");
-    }
+    // if (Adapter < This->NumDisplayAdapters)
+    // {
+        // hAdapterMonitor = GetAdapterMonitor(This->DisplayAdapters[Adapter].szDeviceName);
+    // }
+    // else
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+    // }
 
-    UNLOCK_D3D9();
-    return hAdapterMonitor;
+    // UNLOCK_D3D9();
+    // return hAdapterMonitor;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_GetAdapterMonitor called\n");
+
+	return IDirect3D9_GetAdapterMonitor(This->lRealD3D9, Adapter);
 }
 
 /*++
@@ -1046,103 +1157,284 @@ static HMONITOR WINAPI IDirect3D9Impl_GetAdapterMonitor(LPDIRECT3D9 iface, UINT 
 * will be D3DERR_INVALIDCALL.
 *
 */
-static HRESULT WINAPI IDirect3D9Impl_CreateDevice(LPDIRECT3D9 iface, UINT Adapter, D3DDEVTYPE DeviceType,
+static HRESULT WINAPI IDirect3D9Impl_CreateDevice(LPDIRECT3D9EX iface, UINT Adapter, D3DDEVTYPE DeviceType,
                                                   HWND hFocusWindow, DWORD BehaviourFlags,
                                                   D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                   struct IDirect3DDevice9** ppReturnedDeviceInterface)
 {
-    DWORD NumAdaptersToCreate;
     HRESULT Ret;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);	
+	
+	Ret = IDirect3D9_CreateDevice(This->lRealD3D9, Adapter, DeviceType, hFocusWindow, BehaviourFlags, pPresentationParameters, &DeviceProxyInterface);
 
-    LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
-    LOCK_D3D9();
+	if(Ret == D3D_OK){
+       Ret = CreateD3D9DeviceEx((LPDIRECT3DDEVICE9EX *)ppReturnedDeviceInterface, DeviceProxyInterface);
+	}
+	
+	DbgPrint("IDirect3D9Impl_CreateDevice called\n");
 
-    if (Adapter >= This->NumDisplayAdapters)
-    {
-        DPRINT1("Invalid Adapter number specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (DeviceType != D3DDEVTYPE_HAL &&
-        DeviceType != D3DDEVTYPE_REF &&
-        DeviceType != D3DDEVTYPE_SW)
-    {
-        DPRINT1("Invalid DeviceType specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (DeviceType != D3DDEVTYPE_HAL)
-    {
-        UNIMPLEMENTED;
-        DPRINT1("Sorry, only D3DDEVTYPE_HAL is implemented at this time...");
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (hFocusWindow != NULL && FALSE == IsWindow(hFocusWindow))
-    {
-        DPRINT1("Invalid hFocusWindow parameter specified, expected NULL or a valid HWND");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (NULL == pPresentationParameters)
-    {
-        DPRINT1("Invalid pPresentationParameters parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (pPresentationParameters->hDeviceWindow != NULL && FALSE == IsWindow(pPresentationParameters->hDeviceWindow))
-    {
-        DPRINT1("Invalid pPresentationParameters->hDeviceWindow parameter specified, expected NULL or a valid HWND");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (FALSE == pPresentationParameters->Windowed && hFocusWindow == NULL)
-    {
-        DPRINT1("When pPresentationParameters->Windowed is not set, hFocusWindow must be a valid HWND");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (NULL == hFocusWindow && NULL == pPresentationParameters->hDeviceWindow)
-    {
-        DPRINT1("Any of pPresentationParameters->Windowed and hFocusWindow must be set to a valid HWND");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (Adapter > 0 && NULL == pPresentationParameters->hDeviceWindow)
-    {
-        DPRINT1("Invalid pPresentationParameters->hDeviceWindow, must be set to a valid unique HWND when Adapter is greater than 0");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (NULL == ppReturnedDeviceInterface)
-    {
-        DPRINT1("Invalid ppReturnedDeviceInterface parameter specified");
-        UNLOCK_D3D9();
-        return D3DERR_INVALIDCALL;
-    }
-
-    if ((BehaviourFlags & D3DCREATE_ADAPTERGROUP_DEVICE) != 0)
-        NumAdaptersToCreate = This->DisplayAdapters[Adapter].NumAdaptersInGroup;
-    else
-        NumAdaptersToCreate = 1;
-
-    *ppReturnedDeviceInterface = 0;
-
-    Ret = CreateD3D9HalDevice(This, Adapter, hFocusWindow, BehaviourFlags, pPresentationParameters, NumAdaptersToCreate, ppReturnedDeviceInterface);
-
-    UNLOCK_D3D9();
     return Ret;
 }
 
-IDirect3D9Vtbl Direct3D9_Vtbl =
+static UINT WINAPI IDirect3D9Impl_GetAdapterModeCountEx(IDirect3D9Ex *iface,
+        UINT adapter, const D3DDISPLAYMODEFILTER *filter)
+{
+    UINT count; 
+	LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_GetAdapterModeCountEx called\n");
+	
+	if (!filter || filter->Size != sizeof(D3DDISPLAYMODEFILTER)) 
+        return 0;
+    
+    count = IDirect3D9_GetAdapterModeCount(This->lRealD3D9, adapter, filter->Format);
+	
+	return count;
+}
+
+static HRESULT WINAPI IDirect3D9Impl_EnumAdapterModesEx(IDirect3D9Ex *iface,
+        UINT adapter, const D3DDISPLAYMODEFILTER *filter, UINT mode_idx, D3DDISPLAYMODEEX *mode)
+{
+    D3DDISPLAYMODE pMode;
+    HRESULT hr;
+	LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_EnumAdapterModesEx called\n");
+    
+    if (!mode || mode->Size != sizeof(D3DDISPLAYMODEEX)) 
+        return D3DERR_INVALIDCALL;
+    
+    pMode.Width = mode->Width;
+    pMode.Height = mode->Height;
+    pMode.RefreshRate = mode->RefreshRate;
+    pMode.Format = mode->Format;
+    
+    hr = IDirect3D9_EnumAdapterModes(This->lRealD3D9, adapter, filter->Format, mode_idx, &pMode);
+    if (SUCCEEDED(hr)) {      
+	    DbgPrint("IDirect3D9Impl_EnumAdapterModesEx::IDirect3D9_EnumAdapterModes sucessful\n");
+        mode->Width = pMode.Width;
+        mode->Height = pMode.Height;
+        mode->RefreshRate = pMode.RefreshRate;
+        mode->Format = pMode.Format;
+        mode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    }
+	
+	if(hr == D3D_OK){
+		DbgPrint("IDirect3D9Impl_EnumAdapterModesEx::IDirect3D9_EnumAdapterModes sucessful\n");
+	}	
+    
+    return hr;    
+}
+
+static HRESULT WINAPI IDirect3D9Impl_GetAdapterDisplayModeEx(IDirect3D9Ex *iface,
+        UINT adapter, D3DDISPLAYMODEEX *mode, D3DDISPLAYROTATION *rotation)
+{
+    D3DDISPLAYMODE pMode;
+    HRESULT hr;
+	LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_GetAdapterDisplayModeEx called\n");
+    
+    if (!mode) {
+        if (!rotation)
+            return D3DERR_INVALIDCALL;
+        *rotation = D3DDISPLAYROTATION_IDENTITY;
+        return S_OK;
+    } else if (mode->Size != sizeof(D3DDISPLAYMODEEX))
+        return D3DERR_INVALIDCALL;
+    
+    pMode.Width = mode->Width;
+    pMode.Height = mode->Height;
+    pMode.RefreshRate = mode->RefreshRate;
+    pMode.Format = mode->Format;
+    
+    hr = IDirect3D9_GetAdapterDisplayMode(This->lRealD3D9, adapter,  &pMode);
+    if (SUCCEEDED(hr)) {
+		DbgPrint("IDirect3D9Impl_GetAdapterDisplayModeEx::IDirect3D9_GetAdapterDisplayMode sucessful\n");
+        if (rotation)
+            *rotation = D3DDISPLAYROTATION_IDENTITY;
+        
+        mode->Width = pMode.Width;
+        mode->Height = pMode.Height;
+        mode->RefreshRate = pMode.RefreshRate;
+        mode->Format = pMode.Format;
+        mode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    }
+	
+	if(hr == D3D_OK){
+		DbgPrint("IDirect3D9Impl_GetAdapterDisplayModeEx sucessful\n");
+	}	
+    
+    return hr;
+}
+
+static HRESULT WINAPI IDirect3D9Impl_CreateDeviceEx(IDirect3D9Ex *iface,
+        UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviourFlags,
+        D3DPRESENT_PARAMETERS *pPresentationParameters, D3DDISPLAYMODEEX *mode, IDirect3DDevice9Ex **ppReturnedDeviceInterface)
+{
+    // DWORD NumAdaptersToCreate;
+    // HRESULT Ret;
+    // LPDIRECT3D9_INT This = IDirect3D9ToImpl(iface);
+    // LOCK_D3D9();
+
+    // if (Adapter >= This->NumDisplayAdapters)
+    // {
+        // DPRINT1("Invalid Adapter number specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (DeviceType != D3DDEVTYPE_HAL &&
+        // DeviceType != D3DDEVTYPE_REF &&
+        // DeviceType != D3DDEVTYPE_SW)
+    // {
+        // DPRINT1("Invalid DeviceType specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (DeviceType != D3DDEVTYPE_HAL)
+    // {
+        // UNIMPLEMENTED;
+        // DPRINT1("Sorry, only D3DDEVTYPE_HAL is implemented at this time...");
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (hFocusWindow != NULL && FALSE == IsWindow(hFocusWindow))
+    // {
+        // DPRINT1("Invalid hFocusWindow parameter specified, expected NULL or a valid HWND");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (NULL == pPresentationParameters)
+    // {
+        // DPRINT1("Invalid pPresentationParameters parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (pPresentationParameters->hDeviceWindow != NULL && FALSE == IsWindow(pPresentationParameters->hDeviceWindow))
+    // {
+        // DPRINT1("Invalid pPresentationParameters->hDeviceWindow parameter specified, expected NULL or a valid HWND");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (FALSE == pPresentationParameters->Windowed && hFocusWindow == NULL)
+    // {
+        // DPRINT1("When pPresentationParameters->Windowed is not set, hFocusWindow must be a valid HWND");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (NULL == hFocusWindow && NULL == pPresentationParameters->hDeviceWindow)
+    // {
+        // DPRINT1("Any of pPresentationParameters->Windowed and hFocusWindow must be set to a valid HWND");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (Adapter > 0 && NULL == pPresentationParameters->hDeviceWindow)
+    // {
+        // DPRINT1("Invalid pPresentationParameters->hDeviceWindow, must be set to a valid unique HWND when Adapter is greater than 0");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if (NULL == ppReturnedDeviceInterface)
+    // {
+        // DPRINT1("Invalid ppReturnedDeviceInterface parameter specified");
+        // UNLOCK_D3D9();
+        // return D3DERR_INVALIDCALL;
+    // }
+
+    // if ((BehaviourFlags & D3DCREATE_ADAPTERGROUP_DEVICE) != 0)
+        // NumAdaptersToCreate = This->DisplayAdapters[Adapter].NumAdaptersInGroup;
+    // else
+        // NumAdaptersToCreate = 1;
+
+    // *ppReturnedDeviceInterface = 0;
+	
+	// Ret = IDirect3D9_CreateDevice(ProxyInterface, Adapter, DeviceType, hFocusWindow, BehaviourFlags, pPresentationParameters, &DeviceProxyInterface);
+
+
+	// //ppReturnedDeviceInterface.lpVtbl = &Direct3DDevice9ExHAL_Vtbl;
+	// //*ppReturnedDeviceInterface = DeviceProxyInterface;
+	// if(Ret == S_OK){
+		// Ret = CreateD3D9HalDeviceEx(This, Adapter, hFocusWindow, BehaviourFlags, pPresentationParameters, NumAdaptersToCreate, ppReturnedDeviceInterface);	
+	// }
+
+    // UNLOCK_D3D9();
+    // return Ret;
+    HRESULT Ret;
+    LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);	
+	
+	DbgPrint("IDirect3D9Impl_CreateDeviceEx called\n");
+	
+	Ret = IDirect3D9_CreateDevice(This->lRealD3D9, Adapter, D3DDEVTYPE_HAL, hFocusWindow, BehaviourFlags, pPresentationParameters, &DeviceProxyInterface);
+
+	if(Ret == D3D_OK){
+	   DbgPrint("IDirect3D9Impl_CreateDeviceEx::IDirect3D9_CreateDevice sucessful\n");
+       Ret = CreateD3D9DeviceEx(ppReturnedDeviceInterface, DeviceProxyInterface);
+	}
+	
+	if(Ret == D3D_OK){
+		DbgPrint("IDirect3D9Impl_CreateDeviceEx::CreateD3D9DeviceEx sucessful\n");
+	}
+
+    return Ret;
+}
+
+static HRESULT WINAPI IDirect3D9Impl_GetAdapterLUID(IDirect3D9Ex *iface, UINT Adapter, LUID *pLuid)
+{
+    // struct d3d9 *d3d9 = impl_from_IDirect3D9Ex(iface);
+    // struct wined3d_adapter_identifier adapter_id;
+    // struct wined3d_adapter *wined3d_adapter;
+    // unsigned int output_idx;
+    // HRESULT hr;
+
+    // TRACE("iface %p, adapter %u, luid %p.\n", iface, adapter, luid);
+
+    // output_idx = adapter;
+    // if (output_idx >= d3d9->wined3d_output_count)
+        // return D3DERR_INVALIDCALL;
+
+    // adapter_id.driver_size = 0;
+    // adapter_id.description_size = 0;
+
+    // wined3d_adapter = wined3d_output_get_adapter(d3d9->wined3d_outputs[output_idx]);
+    // if (SUCCEEDED(hr = wined3d_adapter_get_identifier(wined3d_adapter, 0, &adapter_id)))
+        // *luid = adapter_id.adapter_luid;
+
+    D3DADAPTER_IDENTIFIER9 adapterIdentifier;
+    HRESULT hr;
+	LPDIRECT3D9EX_INT This = IDirect3D9ToImpl(iface);
+	
+	DbgPrint("IDirect3D9Impl_GetAdapterLUID called\n");
+
+    if (!iface || !pLuid)
+        return D3DERR_INVALIDCALL;
+
+    // Obtém as informações do adaptador
+    hr = IDirect3D9_GetAdapterIdentifier(This->lRealD3D9, Adapter, 0, &adapterIdentifier);
+    if (FAILED(hr))
+        return hr;
+
+    // Gera um LUID baseado nas informações do adaptador
+    // Aqui, estamos usando o DeviceId e o VendorId para criar um LUID simples
+    // Isso não é um LUID real, mas serve como um identificador único para o adaptador
+    pLuid->LowPart = adapterIdentifier.DeviceId;
+    pLuid->HighPart = adapterIdentifier.VendorId;
+	
+	if(hr == D3D_OK){
+		DbgPrint("IDirect3D9Impl_GetAdapterLUID::IDirect3D9_GetAdapterIdentifier sucessful\n");
+	}		
+
+    return hr;
+}
+
+IDirect3D9ExVtbl Direct3D9Ex_Vtbl =
 {
     /* IUnknown */
     IDirect3D9Impl_QueryInterface,
@@ -1163,5 +1455,35 @@ IDirect3D9Vtbl Direct3D9_Vtbl =
     IDirect3D9Impl_CheckDeviceFormatConversion,
     IDirect3D9Impl_GetDeviceCaps,
     IDirect3D9Impl_GetAdapterMonitor,
-    IDirect3D9Impl_CreateDevice
+    IDirect3D9Impl_CreateDevice,
+    /* IDirect3D9Ex */
+    IDirect3D9Impl_GetAdapterModeCountEx,
+    IDirect3D9Impl_EnumAdapterModesEx,
+    IDirect3D9Impl_GetAdapterDisplayModeEx,
+    IDirect3D9Impl_CreateDeviceEx,
+    IDirect3D9Impl_GetAdapterLUID	
 };
+
+// IDirect3D9Vtbl Direct3D9_Vtbl =
+// {
+    // /* IUnknown */
+    // IDirect3D9Impl_QueryInterface,
+    // IDirect3D9Impl_AddRef,
+    // IDirect3D9Impl_Release,
+
+    // /* IDirect3D9 */
+    // IDirect3D9Impl_RegisterSoftwareDevice,
+    // IDirect3D9Impl_GetAdapterCount,
+    // IDirect3D9Impl_GetAdapterIdentifier,
+    // IDirect3D9Impl_GetAdapterModeCount,
+    // IDirect3D9Impl_EnumAdapterModes,
+    // IDirect3D9Impl_GetAdapterDisplayMode,
+    // IDirect3D9Impl_CheckDeviceType,
+    // IDirect3D9Impl_CheckDeviceFormat,
+    // IDirect3D9Impl_CheckDeviceMultiSampleType,
+    // IDirect3D9Impl_CheckDepthStencilMatch,
+    // IDirect3D9Impl_CheckDeviceFormatConversion,
+    // IDirect3D9Impl_GetDeviceCaps,
+    // IDirect3D9Impl_GetAdapterMonitor,
+    // IDirect3D9Impl_CreateDevice
+// };

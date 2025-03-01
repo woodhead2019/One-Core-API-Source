@@ -264,7 +264,7 @@ CreateWindowInBand(
 // A undocumented Win32 API, only really used by Microsoft native applications.
 BOOL WINAPI GetWindowBand(
     IN    HWND    Window,
-    OUT    PZBID    Band)
+    OUT    PDWORD    Band)
 {
     if (!IsWindow(Window)) {
         SetLastError(ERROR_INVALID_WINDOW_HANDLE);

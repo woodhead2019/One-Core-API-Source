@@ -122,6 +122,8 @@ struct threadpool
     int                     num_busy_workers;
     HANDLE                  compl_port;
     TP_POOL_STACK_INFORMATION stack_info;
+    /* One-Core-API extension to add ThreadBasePriority */
+    DWORD                   priority;	
 };
 
 enum threadpool_objtype
@@ -863,10 +865,10 @@ static NTSTATUS tp_new_worker_thread( struct threadpool *pool )
     status = RtlCreateUserThread( NtCurrentProcess(), NULL, FALSE, 0,
                                   pool->stack_info.StackReserve, pool->stack_info.StackCommit,
                                   (PTHREAD_START_ROUTINE)threadpool_worker_proc, pool, &thread, NULL );
-	if (status == STATUS_SUCCESS)
-    {
+    if (status == STATUS_SUCCESS) {
         InterlockedIncrement( &pool->refcount );
         pool->num_workers++;
+        NtSetInformationThread(thread, ThreadBasePriority, &(pool->priority), sizeof(LONG));
         NtClose( thread );
     }
     return status;
@@ -1412,6 +1414,7 @@ static NTSTATUS tp_threadpool_alloc( struct threadpool **out )
     pool->num_busy_workers        = 0;
     pool->stack_info.StackReserve = nt->OptionalHeader.SizeOfStackReserve;
     pool->stack_info.StackCommit  = nt->OptionalHeader.SizeOfStackCommit;
+	pool->priority = 0;
 
   // DbgPrint( "allocated threadpool %p\n", pool );
 
@@ -2988,4 +2991,62 @@ NTSTATUS WINAPI TpQueryPoolStackInformation( TP_POOL *pool, TP_POOL_STACK_INFORM
     RtlLeaveCriticalSection( &this->cs );
 
     return STATUS_SUCCESS;
+}
+
+NTSTATUS
+WINAPI
+TpSetPoolThreadBasePriority(PTP_POOL pool, ULONG BasePriority) {
+    struct threadpool *this = impl_from_TP_POOL( pool );
+    
+    DbgPrint( "%p\n", pool );
+
+    // if (!stack_info) // TODO: check if valid priority
+        // return STATUS_INVALID_PARAMETER;
+
+    RtlEnterCriticalSection( &this->cs );
+    this->priority = BasePriority;
+    RtlLeaveCriticalSection( &this->cs );
+
+    return STATUS_SUCCESS;
+};
+
+typedef struct _TP_ALPC TP_ALPC, *PTP_ALPC;
+
+ // private
+typedef VOID (NTAPI *PTP_ALPC_CALLBACK)(
+   _Inout_ PTP_CALLBACK_INSTANCE Instance,
+   _Inout_opt_ PVOID Context,
+   _In_ PTP_ALPC Alpc
+);
+
+NTSTATUS
+WINAPI
+TpAllocAlpcCompletion(
+    _Out_ PTP_ALPC *AlpcReturn,
+    _In_ HANDLE AlpcPort,
+    _In_ PTP_ALPC_CALLBACK Callback,
+    _Inout_opt_ PVOID Context,
+    _In_opt_ PTP_CALLBACK_ENVIRON CallbackEnviron
+    ) {
+    return STATUS_NOT_IMPLEMENTED;
+}
+
+NTSYSAPI
+VOID
+NTAPI
+TpReleaseAlpcCompletion(
+   _Inout_ PTP_ALPC Alpc
+  )
+{
+	;
+}
+
+NTSYSAPI
+VOID
+NTAPI
+TpWaitForAlpcCompletion(
+   _Inout_ PTP_ALPC Alpc
+  )
+{
+	;
 }

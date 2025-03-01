@@ -1,12 +1,12 @@
-100 stub DwmpDxGetWindowSharedSurface
-101 stub DwmpDxUpdateWindowSharedSurface
+100 stdcall DwmpDxGetWindowSharedSurface(long long long long long long ptr ptr)
+101 stdcall DwmpDxUpdateWindowSharedSurface(long long long long ptr)
 102 stdcall DwmEnableComposition(long)
 103 stub -noname DwmpRestartComposition
 104 stub -noname DwmpSetColorizationColor
 105 stub -noname DwmpStartOrStopFlip3D
 106 stub -noname DwmpIsCompositionCapable
 107 stub -noname DwmpGetGlobalState
-108 stub -noname DwmpEnableRedirection
+108 stdcall -noname DwmpEnableRedirection(long)
 109 stub -noname DwmpOpenGraphicsStream
 110 stub -noname DwmpCloseGraphicsStream
 112 stub -noname DwmpSetGraphicsStreamTransformHint

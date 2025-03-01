@@ -1613,12 +1613,22 @@ BOOL WINAPI SetThreadSelectedCpuSets(HANDLE thread, const ULONG *cpu_set_ids, UL
 }
 
 // For performance reasons... modern jemalloc will use these APIs if avaliable.
-LPVOID WINAPI TlsGetValue2(DWORD dwTlsIndex) {
-    DWORD LastError = RtlGetLastWin32Error();
-    LPVOID Result = TlsGetValue(dwTlsIndex);
-    RtlSetLastWin32Error(LastError);
-    return Result;
+// A faster implementation of TlsGetValue.
+LPVOID WINAPI TlsGetValue2( DWORD index )
+{
+    if (index < TLS_MINIMUM_AVAILABLE)
+        return NtCurrentTeb()->TlsSlots[index];
+       
+    index -= TLS_MINIMUM_AVAILABLE;
+    if (index >= 8 * sizeof(NtCurrentTeb()->ProcessEnvironmentBlock->TlsExpansionBitmapBits))
+        return NULL;
+    
+    if (NtCurrentTeb()->TlsExpansionSlots) 
+        return NtCurrentTeb()->TlsExpansionSlots[index];
+    
+    return NULL;
 }
+
 LPVOID WINAPI FlsGetValue2(DWORD dwFlsIndex) {
     DWORD LastError = RtlGetLastWin32Error();
     LPVOID Result = FlsGetValue(dwFlsIndex);

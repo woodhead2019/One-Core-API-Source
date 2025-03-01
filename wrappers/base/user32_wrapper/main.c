@@ -20,7 +20,7 @@
 #include <main.h>
 
 typedef DWORD CONFIGRET;
-HMODULE huser32;
+HMODULE hinst;
 
 static CRITICAL_SECTION user_section;
 static CRITICAL_SECTION_DEBUG critsect_debug =
@@ -37,8 +37,8 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     switch(fdwReason)
     {
         case DLL_PROCESS_ATTACH:
-			huser32 = GetModuleHandleA("userbase.dll");
-			pUpdateLayeredWindowIndirect = (void *)GetProcAddress(huser32, "UpdateLayeredWindowIndirect");
+			hinst = GetModuleHandleA("userbase.dll");
+			//pUpdateLayeredWindowIndirect = (void *)GetProcAddress(huser32, "UpdateLayeredWindowIndirect");
             break;
     }
 

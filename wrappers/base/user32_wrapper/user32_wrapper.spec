@@ -773,7 +773,7 @@
 @ stdcall DoSoundConnect()
 @ stdcall DoSoundDisconnect()
 @ stdcall DwmHintDxUpdate(ptr long) userbase.DwmHintDxUpdate
-@ stdcall DwmGetDxRgn() userbase.DwmGetDxRgn
+@ stdcall -stub DwmGetDxRgn() ;userbase.DwmGetDxRgn
 @ stdcall DwmGetSurfaceData() userbase.DwmGetSurfaceData
 @ stdcall DwmShutdown() userbase.DwmShutdown
 @ stdcall DwmStartRedirection(ptr) userbase.DwmStartRedirection
@@ -883,7 +883,7 @@
 @ stdcall CloseGestureInfoHandle(ptr)
 @ stdcall CloseTouchInputHandle(ptr)
 @ stdcall ConsoleControl(long ptr long)
-@ stdcall ControlMagnification(long ptr)
+@ stdcall -stub ControlMagnification(long ptr)
 
 #Win8 functions
 @ stdcall GetDisplayAutoRotationPreferences(ptr)

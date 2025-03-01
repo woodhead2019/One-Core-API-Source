@@ -1,5 +1,6 @@
 add_subdirectory(appid)
 add_subdirectory(bootanim)
+add_subdirectory(genfbvmp)
 add_subdirectory(ndisext)
 add_subdirectory(netio)
 #add_subdirectory(nsiproxy)

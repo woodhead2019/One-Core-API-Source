@@ -8,7 +8,7 @@
 185 stdcall ForceSyncFgPolicy(wstr)                                          #stdcall ForceSyncFgPolicy(4)
 186 stdcall FreeGPOListA(ptr)                                                  #stdcall FreeGPOListA(ptr)
 187 stdcall FreeGPOListW(ptr)                                                 #stdcall FreeGPOListW(ptr)
-188 stdcall GenerateRsopPolicy(long wstr wstr ptr wstr wstr ptr wstr ptr ptr ptr)                                           #stdcall GenerateRsopPolicy(48)
+188 stdcall GenerateRsopPolicy(long wstr wstr ptr wstr wstr ptr wstr ptr ptr ptr)  userenv.GenerateRsopPolicy #not present on Windows Vista+                                         #stdcall GenerateRsopPolicy(48)
 189 stdcall GetAllUsersProfileDirectoryA(str ptr)
 190 stdcall GetAllUsersProfileDirectoryW(wstr ptr)
 191 stdcall GetAppliedGPOListA(long str ptr ptr ptr)                                         #stdcall GetAppliedGPOListA(long str ptr ptr ptr)

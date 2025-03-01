@@ -76,89 +76,6 @@ static const struct {
 	{NULL, NULL}
 };		   
 
-/*************************************************************************
- * Shell_NotifyIconW            [SHELL32.298]
- */
-BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW pnid)
-{
-    BOOL ret = FALSE;
-    HWND hShellTrayWnd;
-    DWORD cbSize, dwValidFlags;
-    TRAYNOTIFYDATAW tnid;
-    COPYDATASTRUCT data;
-
-    /* Find a handle to the shell tray window */
-    hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
-    if (!hShellTrayWnd)
-        return FALSE; // None found, bail out
-
-    /* Validate the structure size and the flags */
-    cbSize = pnid->cbSize;
-    dwValidFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
-    if (cbSize == sizeof(NOTIFYICONDATAW))
-    {
-        dwValidFlags |= NIF_STATE | NIF_INFO | NIF_GUID /* | NIF_REALTIME | NIF_SHOWTIP */;
-    }
-    else if (cbSize == NOTIFYICONDATAW_V3_SIZE)
-    {
-        dwValidFlags |= NIF_STATE | NIF_INFO | NIF_GUID;
-    }
-    else if (cbSize == NOTIFYICONDATAW_V2_SIZE)
-    {
-        dwValidFlags |= NIF_STATE | NIF_INFO;
-    }
-    else // if cbSize == NOTIFYICONDATAW_V1_SIZE or something else
-    {
-        if (cbSize != NOTIFYICONDATAW_V1_SIZE)
-        {
-            WARN("Invalid cbSize (%d) - using only Win95 fields (size=%d)\n",
-                cbSize, NOTIFYICONDATAW_V1_SIZE);
-            cbSize = NOTIFYICONDATAW_V1_SIZE;
-        }
-    }
-
-    /* Build the data structure */
-    ZeroMemory(&tnid, sizeof(tnid));
-    tnid.dwSignature = NI_NOTIFY_SIG;
-    tnid.dwMessage   = dwMessage;
-
-    /* Copy only the needed data, everything else is zeroed out */
-    CopyMemory(&tnid.nid, pnid, cbSize);
-    /* Adjust the size (the NOTIFYICONDATA structure is the full-fledged one) and the flags */
-    tnid.nid.cbSize = sizeof(tnid.nid);
-    tnid.nid.uFlags &= dwValidFlags;
-
-    /* Be sure the szTip member (that could be cut-off) is correctly NULL-terminated */
-    if (tnid.nid.uFlags & NIF_TIP)
-    {
-        if (cbSize <= NOTIFYICONDATAW_V1_SIZE)
-        {
-#define NIDV1_TIP_SIZE_W  (NOTIFYICONDATAW_V1_SIZE - FIELD_OFFSET(NOTIFYICONDATAW, szTip))/sizeof(WCHAR)
-            tnid.nid.szTip[NIDV1_TIP_SIZE_W - 1] = 0;
-#undef NIDV1_TIP_SIZE_W
-        }
-        else
-        {
-            tnid.nid.szTip[_countof(tnid.nid.szTip) - 1] = 0;
-        }
-    }
-
-    /* Be sure the info strings are correctly NULL-terminated */
-    if (tnid.nid.uFlags & NIF_INFO)
-    {
-        tnid.nid.szInfo[_countof(tnid.nid.szInfo) - 1] = 0;
-        tnid.nid.szInfoTitle[_countof(tnid.nid.szInfoTitle) - 1] = 0;
-    }
-
-    /* Send the data */
-    data.dwData = TABDMC_NOTIFY;
-    data.cbData = sizeof(tnid);
-    data.lpData = &tnid;
-    if (SendMessageW(hShellTrayWnd, WM_COPYDATA, (WPARAM)pnid->hWnd, (LPARAM)&data))
-        ret = TRUE;
-
-    return ret;
-}
 
 BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
     if (lpData->cbSize > NOTIFYICONDATAW_V2_SIZE) {
@@ -181,9 +98,9 @@ BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) 
         }
         if (lpXPData.uVersion > 3)
             lpXPData.uVersion = 3;
-        return Shell_NotifyIconW(dwMessage, &lpXPData);
+        return Shell_NotifyIconWNative(dwMessage, &lpXPData);
     }
-    return Shell_NotifyIconW(dwMessage, lpData);
+    return Shell_NotifyIconWNative(dwMessage, lpData);
 }
 
 BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
