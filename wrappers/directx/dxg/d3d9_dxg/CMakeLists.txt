@@ -31,6 +31,6 @@ add_library(d3d9_dxg SHARED
 
 set_module_type(d3d9_dxg win32dll)
 target_link_libraries(d3d9_dxg dxguid uuid wine)
-add_importlibs(d3d9_dxg gdi32 d3d8thk d3d9core user32 advapi32 msvcrt kernel32 ntdll version)
+add_importlibs(d3d9_dxg gdi32 d3d8thk d3d9 user32 advapi32 msvcrt kernel32 ntdll version)
 add_dependencies(d3d9_dxg wineheaders d3d_idl_headers)
 add_cd_file(TARGET d3d9_dxg DESTINATION reactos/system32 FOR all)

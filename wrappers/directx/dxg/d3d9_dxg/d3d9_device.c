@@ -577,20 +577,18 @@ UINT WINAPI IDirect3DDevice9Impl_GetNumberOfSwapChains(LPDIRECT3DDEVICE9EX  ifac
 
 HRESULT WINAPI IDirect3DDevice9Impl_Reset(LPDIRECT3DDEVICE9EX  iface, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
-	// LPDIRECT3DDEVICE9EX_INT This = IDirect3DDevice9ToImpl(iface);
-	// HRESULT Ret;
+	LPDIRECT3DDEVICE9EX_INT This = IDirect3DDevice9ToImpl(iface);
+	HRESULT Ret;
 	
-	// DbgPrint("IDirect3DDevice9Impl_Reset called\n");
+	DbgPrint("IDirect3DDevice9Impl_Reset called\n");
 
-    // Ret =  IDirect3DDevice9_Reset(This->lRealD3D9DeviceEx, pPresentationParameters);
+    Ret =  IDirect3DDevice9_Reset(This->lRealD3D9DeviceEx, pPresentationParameters);
 	
-	// if(Ret == D3D_OK){
-		// DbgPrint("IDirect3DDevice9Impl_Reset::IDirect3DDevice9_Reset sucessful\n");
-	// }	
-	
-	return D3D_OK;
+	if(Ret == D3D_OK){
+		DbgPrint("IDirect3DDevice9Impl_Reset::IDirect3DDevice9_Reset sucessful\n");
+	}		
 
-	//return Ret;
+	return Ret;
 }
 
 /*++

@@ -1013,8 +1013,8 @@
 @ stdcall IsProcessorFeaturePresent(long) IsProcessorFeaturePresentInternal
 @ stdcall LoadLibraryA(str) 
 @ stdcall LoadLibraryW(wstr) 
-@ stdcall LoadLibraryExA( str long long) LoadLibraryExInternalA
-@ stdcall LoadLibraryExW(wstr long long) LoadLibraryExInternalW
+@ stdcall LoadLibraryExA( str long long) LoadLibraryExAInternal
+@ stdcall LoadLibraryExW(wstr long long) LoadLibraryExWInternal
 @ stdcall SetFileApisToANSI() SetpFileApisToANSI
 @ stdcall SetFileApisToOEM() SetpFileApisToOEM
 @ stdcall HeapSetInformation(ptr long ptr long) HeapSetInformationInternal

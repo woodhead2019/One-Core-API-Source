@@ -823,7 +823,7 @@
 @ stdcall OpenThreadDesktop(long long long long)
 @ stdcall PackTouchHitTestingProximityEvaluation(ptr ptr)
 @ stdcall PaintMonitor(ptr ptr ptr) ;not-implemented
-@ stdcall PrivateRegisterICSProc(ptr) userbase.PrivateRegisterICSProc
+@ stdcall PrivateRegisterICSProc(ptr) ;userbase.PrivateRegisterICSProc
 @ stdcall PhysicalToLogicalPoint(ptr ptr)
 @ stdcall QueryDisplayConfig(long ptr ptr ptr ptr ptr)
 @ stdcall RegisterErrorReportingDialog(ptr long)
