@@ -39,3 +39,4 @@
 @ stdcall WinHttpWebSocketClose(ptr long ptr long)
 @ stdcall WinHttpWebSocketReceive(ptr ptr long ptr ptr)
 @ stdcall WinHttpWebSocketSend(ptr long ptr long)
+@ stdcall WinHttpWebSocketShutdown(ptr long ptr long)

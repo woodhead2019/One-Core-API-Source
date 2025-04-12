@@ -117,3 +117,9 @@ DWORD WINAPI WinHttpGetProxyResult( HINTERNET hresolver, WINHTTP_PROXY_RESULT *r
     FIXME("%p, %p\n", hresolver, result);
     return ERROR_WINHTTP_AUTO_PROXY_SERVICE_ERROR;
 }
+
+DWORD WINAPI WinHttpWebSocketShutdown( HINTERNET hsocket, USHORT status, void *reason, DWORD len )
+{
+    FIXME("%p, %p\n", hresolver, result);
+    return ERROR_WINHTTP_AUTO_PROXY_SERVICE_ERROR;
+}

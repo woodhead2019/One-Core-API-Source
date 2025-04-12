@@ -118,7 +118,7 @@
 125 stdcall CredUnmarshalCredentialA(str ptr ptr)
 126 stdcall CredUnmarshalCredentialW(wstr ptr ptr)
 127 stdcall CredWriteA(ptr long)
-128 stdcall CredWriteDomainCredentialsA(ptr ptr long) advapibase.CredWriteDomainCredentialsA ;for reactos
+128 stdcall CredWriteDomainCredentialsA(ptr ptr long) advapi32.CredWriteDomainCredentialsA ;for reactos
 129 stdcall CredWriteDomainCredentialsW(ptr ptr long)
 130 stdcall CredWriteW(ptr long)
 131 stdcall CredpConvertCredential(long long long ptr)
@@ -228,7 +228,7 @@
 237 stdcall GetEffectiveRightsFromAclA(ptr ptr ptr)
 238 stdcall GetEffectiveRightsFromAclW(ptr ptr ptr)
 239 stdcall GetEventLogInformation(long long ptr long ptr)
-240 stdcall GetExplicitEntriesFromAclA(ptr ptr ptr) advapibase.GetExplicitEntriesFromAclW
+240 stdcall GetExplicitEntriesFromAclA(ptr ptr ptr) advapi32.GetExplicitEntriesFromAclW
 241 stdcall GetExplicitEntriesFromAclW(ptr ptr ptr)
 242 stdcall GetFileSecurityA(str long ptr long ptr)
 243 stdcall GetFileSecurityW(wstr long ptr long ptr)
@@ -648,7 +648,7 @@
 684 stdcall WriteEncryptedFileRaw(ptr ptr ptr)
 
 #Only on XP
-;@ stdcall CreateProcessAsUserSecure(ptr str str ptr ptr long long ptr str ptr ptr) advapibase.CreateProcessAsUserSecure;only on XP (needed for synchronization)
+;@ stdcall CreateProcessAsUserSecure(ptr str str ptr ptr long long ptr str ptr ptr) advapi32.CreateProcessAsUserSecure;only on XP (needed for synchronization)
 @ stdcall QueryWindows31FilesMigration(long)
 @ stdcall SynchronizeWindows31FilesAndWindowsNTRegistry(long long long long) ;only on XP (needed for synchronization)
 
@@ -657,7 +657,7 @@
 476 stdcall RegDisableReflectionKey(ptr)
 
 #Missing on XP SP1
-190 stdcall ElfFlushEventLog(long) advapibase.ElfFlushEventLog
+190 stdcall ElfFlushEventLog(long) advapi32.ElfFlushEventLog
 
 #Missing on Server 2003 RTM and XP 
 202 stdcall ElfReportEventAndSourceW(long long ptr long long long ptr ptr long long ptr ptr long ptr ptr)
@@ -672,7 +672,7 @@
 502 stdcall RegQueryReflectionKey(ptr ptr)	 ;native on Server 2003, but, missing on XP (needed for synchronization)
 
 #Vista function, however, is supported by advapi32 from XP/2003 post-SP with updates
-;@ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr) advapibase.LogonUserExExW
+;@ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr) advapi32.LogonUserExExW
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
@@ -886,8 +886,8 @@
 583 stdcall SetTokenInformation(ptr long ptr long) SetTokenInformationInternal
 
 #Missing on Longhorn/vista
-648 stdcall WmiCloseTraceWithCursor(ptr) advapibase.WmiCloseTraceWithCursor
-649 stdcall WmiConvertTimestamp(long long long) advapibase.WmiConvertTimestamp
-659 stdcall WmiGetNextEvent(long) advapibase.WmiGetNextEvent
-666 stdcall WmiOpenTraceWithCursor(long long) advapibase.WmiOpenTraceWithCursor
-667 stdcall WmiParseTraceEvent(long long long long long) advapibase.WmiParseTraceEvent
+648 stdcall WmiCloseTraceWithCursor(ptr) advapi32.WmiCloseTraceWithCursor
+649 stdcall WmiConvertTimestamp(long long long) advapi32.WmiConvertTimestamp
+659 stdcall WmiGetNextEvent(long) advapi32.WmiGetNextEvent
+666 stdcall WmiOpenTraceWithCursor(long long) advapi32.WmiOpenTraceWithCursor
+667 stdcall WmiParseTraceEvent(long long long long long) advapi32.WmiParseTraceEvent

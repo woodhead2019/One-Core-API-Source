@@ -20,7 +20,9 @@
 #include <main.h>
 #include <ntstrsafe.h>
 //#include <d3dnthal.h>
-//#include <ddrawi.h>
+#undef _WIN32
+#include <ddrawi.h>
+#include <ddrawgdi.h>
 
 #define MAX_GDI_HANDLES  16384
 #define FIRST_GDI_HANDLE 32
@@ -229,6 +231,108 @@ NTSTATUS WINAPI D3DKMTCloseAdapter( const D3DKMT_CLOSEADAPTER *desc )
 #define BMF_TOPDOWN   0x0001
 #define BMF_NOZEROINIT   0x0002
 
+/* bitmap object */
+
+typedef struct tagBITMAPOBJ
+{
+    //struct gdi_obj_header obj;
+    DIBSECTION            dib;
+    SIZE                  size;   /* For SetBitmapDimension() */
+    RGBQUAD              *color_table;  /* DIB color table if <= 8bpp (always 1 << bpp in size) */
+} BITMAPOBJ;
+
+const RGBQUAD *get_default_color_table( int bpp )
+{
+    static const RGBQUAD table_1[2] =
+    {
+        { 0x00, 0x00, 0x00 }, { 0xff, 0xff, 0xff }
+    };
+    static const RGBQUAD table_4[16] =
+    {
+        { 0x00, 0x00, 0x00 }, { 0x00, 0x00, 0x80 }, { 0x00, 0x80, 0x00 }, { 0x00, 0x80, 0x80 },
+        { 0x80, 0x00, 0x00 }, { 0x80, 0x00, 0x80 }, { 0x80, 0x80, 0x00 }, { 0x80, 0x80, 0x80 },
+        { 0xc0, 0xc0, 0xc0 }, { 0x00, 0x00, 0xff }, { 0x00, 0xff, 0x00 }, { 0x00, 0xff, 0xff },
+        { 0xff, 0x00, 0x00 }, { 0xff, 0x00, 0xff }, { 0xff, 0xff, 0x00 }, { 0xff, 0xff, 0xff },
+    };
+    static const RGBQUAD table_8[256] =
+    {
+        /* first and last 10 entries are the default system palette entries */
+        { 0x00, 0x00, 0x00 }, { 0x00, 0x00, 0x80 }, { 0x00, 0x80, 0x00 }, { 0x00, 0x80, 0x80 },
+        { 0x80, 0x00, 0x00 }, { 0x80, 0x00, 0x80 }, { 0x80, 0x80, 0x00 }, { 0xc0, 0xc0, 0xc0 },
+        { 0xc0, 0xdc, 0xc0 }, { 0xf0, 0xca, 0xa6 }, { 0x00, 0x20, 0x40 }, { 0x00, 0x20, 0x60 },
+        { 0x00, 0x20, 0x80 }, { 0x00, 0x20, 0xa0 }, { 0x00, 0x20, 0xc0 }, { 0x00, 0x20, 0xe0 },
+        { 0x00, 0x40, 0x00 }, { 0x00, 0x40, 0x20 }, { 0x00, 0x40, 0x40 }, { 0x00, 0x40, 0x60 },
+        { 0x00, 0x40, 0x80 }, { 0x00, 0x40, 0xa0 }, { 0x00, 0x40, 0xc0 }, { 0x00, 0x40, 0xe0 },
+        { 0x00, 0x60, 0x00 }, { 0x00, 0x60, 0x20 }, { 0x00, 0x60, 0x40 }, { 0x00, 0x60, 0x60 },
+        { 0x00, 0x60, 0x80 }, { 0x00, 0x60, 0xa0 }, { 0x00, 0x60, 0xc0 }, { 0x00, 0x60, 0xe0 },
+        { 0x00, 0x80, 0x00 }, { 0x00, 0x80, 0x20 }, { 0x00, 0x80, 0x40 }, { 0x00, 0x80, 0x60 },
+        { 0x00, 0x80, 0x80 }, { 0x00, 0x80, 0xa0 }, { 0x00, 0x80, 0xc0 }, { 0x00, 0x80, 0xe0 },
+        { 0x00, 0xa0, 0x00 }, { 0x00, 0xa0, 0x20 }, { 0x00, 0xa0, 0x40 }, { 0x00, 0xa0, 0x60 },
+        { 0x00, 0xa0, 0x80 }, { 0x00, 0xa0, 0xa0 }, { 0x00, 0xa0, 0xc0 }, { 0x00, 0xa0, 0xe0 },
+        { 0x00, 0xc0, 0x00 }, { 0x00, 0xc0, 0x20 }, { 0x00, 0xc0, 0x40 }, { 0x00, 0xc0, 0x60 },
+        { 0x00, 0xc0, 0x80 }, { 0x00, 0xc0, 0xa0 }, { 0x00, 0xc0, 0xc0 }, { 0x00, 0xc0, 0xe0 },
+        { 0x00, 0xe0, 0x00 }, { 0x00, 0xe0, 0x20 }, { 0x00, 0xe0, 0x40 }, { 0x00, 0xe0, 0x60 },
+        { 0x00, 0xe0, 0x80 }, { 0x00, 0xe0, 0xa0 }, { 0x00, 0xe0, 0xc0 }, { 0x00, 0xe0, 0xe0 },
+        { 0x40, 0x00, 0x00 }, { 0x40, 0x00, 0x20 }, { 0x40, 0x00, 0x40 }, { 0x40, 0x00, 0x60 },
+        { 0x40, 0x00, 0x80 }, { 0x40, 0x00, 0xa0 }, { 0x40, 0x00, 0xc0 }, { 0x40, 0x00, 0xe0 },
+        { 0x40, 0x20, 0x00 }, { 0x40, 0x20, 0x20 }, { 0x40, 0x20, 0x40 }, { 0x40, 0x20, 0x60 },
+        { 0x40, 0x20, 0x80 }, { 0x40, 0x20, 0xa0 }, { 0x40, 0x20, 0xc0 }, { 0x40, 0x20, 0xe0 },
+        { 0x40, 0x40, 0x00 }, { 0x40, 0x40, 0x20 }, { 0x40, 0x40, 0x40 }, { 0x40, 0x40, 0x60 },
+        { 0x40, 0x40, 0x80 }, { 0x40, 0x40, 0xa0 }, { 0x40, 0x40, 0xc0 }, { 0x40, 0x40, 0xe0 },
+        { 0x40, 0x60, 0x00 }, { 0x40, 0x60, 0x20 }, { 0x40, 0x60, 0x40 }, { 0x40, 0x60, 0x60 },
+        { 0x40, 0x60, 0x80 }, { 0x40, 0x60, 0xa0 }, { 0x40, 0x60, 0xc0 }, { 0x40, 0x60, 0xe0 },
+        { 0x40, 0x80, 0x00 }, { 0x40, 0x80, 0x20 }, { 0x40, 0x80, 0x40 }, { 0x40, 0x80, 0x60 },
+        { 0x40, 0x80, 0x80 }, { 0x40, 0x80, 0xa0 }, { 0x40, 0x80, 0xc0 }, { 0x40, 0x80, 0xe0 },
+        { 0x40, 0xa0, 0x00 }, { 0x40, 0xa0, 0x20 }, { 0x40, 0xa0, 0x40 }, { 0x40, 0xa0, 0x60 },
+        { 0x40, 0xa0, 0x80 }, { 0x40, 0xa0, 0xa0 }, { 0x40, 0xa0, 0xc0 }, { 0x40, 0xa0, 0xe0 },
+        { 0x40, 0xc0, 0x00 }, { 0x40, 0xc0, 0x20 }, { 0x40, 0xc0, 0x40 }, { 0x40, 0xc0, 0x60 },
+        { 0x40, 0xc0, 0x80 }, { 0x40, 0xc0, 0xa0 }, { 0x40, 0xc0, 0xc0 }, { 0x40, 0xc0, 0xe0 },
+        { 0x40, 0xe0, 0x00 }, { 0x40, 0xe0, 0x20 }, { 0x40, 0xe0, 0x40 }, { 0x40, 0xe0, 0x60 },
+        { 0x40, 0xe0, 0x80 }, { 0x40, 0xe0, 0xa0 }, { 0x40, 0xe0, 0xc0 }, { 0x40, 0xe0, 0xe0 },
+        { 0x80, 0x00, 0x00 }, { 0x80, 0x00, 0x20 }, { 0x80, 0x00, 0x40 }, { 0x80, 0x00, 0x60 },
+        { 0x80, 0x00, 0x80 }, { 0x80, 0x00, 0xa0 }, { 0x80, 0x00, 0xc0 }, { 0x80, 0x00, 0xe0 },
+        { 0x80, 0x20, 0x00 }, { 0x80, 0x20, 0x20 }, { 0x80, 0x20, 0x40 }, { 0x80, 0x20, 0x60 },
+        { 0x80, 0x20, 0x80 }, { 0x80, 0x20, 0xa0 }, { 0x80, 0x20, 0xc0 }, { 0x80, 0x20, 0xe0 },
+        { 0x80, 0x40, 0x00 }, { 0x80, 0x40, 0x20 }, { 0x80, 0x40, 0x40 }, { 0x80, 0x40, 0x60 },
+        { 0x80, 0x40, 0x80 }, { 0x80, 0x40, 0xa0 }, { 0x80, 0x40, 0xc0 }, { 0x80, 0x40, 0xe0 },
+        { 0x80, 0x60, 0x00 }, { 0x80, 0x60, 0x20 }, { 0x80, 0x60, 0x40 }, { 0x80, 0x60, 0x60 },
+        { 0x80, 0x60, 0x80 }, { 0x80, 0x60, 0xa0 }, { 0x80, 0x60, 0xc0 }, { 0x80, 0x60, 0xe0 },
+        { 0x80, 0x80, 0x00 }, { 0x80, 0x80, 0x20 }, { 0x80, 0x80, 0x40 }, { 0x80, 0x80, 0x60 },
+        { 0x80, 0x80, 0x80 }, { 0x80, 0x80, 0xa0 }, { 0x80, 0x80, 0xc0 }, { 0x80, 0x80, 0xe0 },
+        { 0x80, 0xa0, 0x00 }, { 0x80, 0xa0, 0x20 }, { 0x80, 0xa0, 0x40 }, { 0x80, 0xa0, 0x60 },
+        { 0x80, 0xa0, 0x80 }, { 0x80, 0xa0, 0xa0 }, { 0x80, 0xa0, 0xc0 }, { 0x80, 0xa0, 0xe0 },
+        { 0x80, 0xc0, 0x00 }, { 0x80, 0xc0, 0x20 }, { 0x80, 0xc0, 0x40 }, { 0x80, 0xc0, 0x60 },
+        { 0x80, 0xc0, 0x80 }, { 0x80, 0xc0, 0xa0 }, { 0x80, 0xc0, 0xc0 }, { 0x80, 0xc0, 0xe0 },
+        { 0x80, 0xe0, 0x00 }, { 0x80, 0xe0, 0x20 }, { 0x80, 0xe0, 0x40 }, { 0x80, 0xe0, 0x60 },
+        { 0x80, 0xe0, 0x80 }, { 0x80, 0xe0, 0xa0 }, { 0x80, 0xe0, 0xc0 }, { 0x80, 0xe0, 0xe0 },
+        { 0xc0, 0x00, 0x00 }, { 0xc0, 0x00, 0x20 }, { 0xc0, 0x00, 0x40 }, { 0xc0, 0x00, 0x60 },
+        { 0xc0, 0x00, 0x80 }, { 0xc0, 0x00, 0xa0 }, { 0xc0, 0x00, 0xc0 }, { 0xc0, 0x00, 0xe0 },
+        { 0xc0, 0x20, 0x00 }, { 0xc0, 0x20, 0x20 }, { 0xc0, 0x20, 0x40 }, { 0xc0, 0x20, 0x60 },
+        { 0xc0, 0x20, 0x80 }, { 0xc0, 0x20, 0xa0 }, { 0xc0, 0x20, 0xc0 }, { 0xc0, 0x20, 0xe0 },
+        { 0xc0, 0x40, 0x00 }, { 0xc0, 0x40, 0x20 }, { 0xc0, 0x40, 0x40 }, { 0xc0, 0x40, 0x60 },
+        { 0xc0, 0x40, 0x80 }, { 0xc0, 0x40, 0xa0 }, { 0xc0, 0x40, 0xc0 }, { 0xc0, 0x40, 0xe0 },
+        { 0xc0, 0x60, 0x00 }, { 0xc0, 0x60, 0x20 }, { 0xc0, 0x60, 0x40 }, { 0xc0, 0x60, 0x60 },
+        { 0xc0, 0x60, 0x80 }, { 0xc0, 0x60, 0xa0 }, { 0xc0, 0x60, 0xc0 }, { 0xc0, 0x60, 0xe0 },
+        { 0xc0, 0x80, 0x00 }, { 0xc0, 0x80, 0x20 }, { 0xc0, 0x80, 0x40 }, { 0xc0, 0x80, 0x60 },
+        { 0xc0, 0x80, 0x80 }, { 0xc0, 0x80, 0xa0 }, { 0xc0, 0x80, 0xc0 }, { 0xc0, 0x80, 0xe0 },
+        { 0xc0, 0xa0, 0x00 }, { 0xc0, 0xa0, 0x20 }, { 0xc0, 0xa0, 0x40 }, { 0xc0, 0xa0, 0x60 },
+        { 0xc0, 0xa0, 0x80 }, { 0xc0, 0xa0, 0xa0 }, { 0xc0, 0xa0, 0xc0 }, { 0xc0, 0xa0, 0xe0 },
+        { 0xc0, 0xc0, 0x00 }, { 0xc0, 0xc0, 0x20 }, { 0xc0, 0xc0, 0x40 }, { 0xc0, 0xc0, 0x60 },
+        { 0xc0, 0xc0, 0x80 }, { 0xc0, 0xc0, 0xa0 }, { 0xf0, 0xfb, 0xff }, { 0xa4, 0xa0, 0xa0 },
+        { 0x80, 0x80, 0x80 }, { 0x00, 0x00, 0xff }, { 0x00, 0xff, 0x00 }, { 0x00, 0xff, 0xff },
+        { 0xff, 0x00, 0x00 }, { 0xff, 0x00, 0xff }, { 0xff, 0xff, 0x00 }, { 0xff, 0xff, 0xff },
+    };
+
+    switch (bpp)
+    {
+    case 1: return table_1;
+    case 4: return table_4;
+    case 8: return table_8;
+    default: return NULL;
+    }
+}
+
+
 /***********************************************************************
  *           D3DKMTCreateDCFromMemory    (GDI32.@)
  */
@@ -243,103 +347,210 @@ NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
 	if(pD3dCreateDC){
 		return pD3dCreateDC(desc);
 	}else{
-		const struct d3dddi_format_info
-		{
-			D3DDDIFORMAT format;
-			unsigned int bit_count;
-			DWORD compression;
-			unsigned int palette_size;
-			DWORD mask_r, mask_g, mask_b;
-		} *format = NULL;
-		BITMAPINFO *bmpInfo = NULL;
-		BITMAPV5HEADER *bmpHeader = NULL;
-		HBITMAP bitmap;
-		unsigned int i;
-		HDC dc;	
-		static const struct d3dddi_format_info format_info[] =
-		{
-			{ D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-			{ D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-			{ D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-			{ D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
-			{ D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-			{ D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-			{ D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-			{ D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-			{ D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
-		};
+		// const struct d3dddi_format_info
+		// {
+			// D3DDDIFORMAT format;
+			// unsigned int bit_count;
+			// DWORD compression;
+			// unsigned int palette_size;
+			// DWORD mask_r, mask_g, mask_b;
+		// } *format = NULL;
+		// BITMAPINFO *bmpInfo = NULL;
+		// BITMAPV5HEADER *bmpHeader = NULL;
+		// HBITMAP bitmap;
+		// unsigned int i;
+		// HDC dc;	
+		// static const struct d3dddi_format_info format_info[] =
+		// {
+			// { D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			// { D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			// { D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			// { D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
+			// { D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+			// { D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+			// { D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+			// { D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+			// { D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
+		// };
 		
-		DbgPrint("D3DKMTCreateDCFromMemory:: calling function\n");
+		// DbgPrint("D3DKMTCreateDCFromMemory:: calling function\n");
 
-		if (!desc) return STATUS_INVALID_PARAMETER;
+		// if (!desc) return STATUS_INVALID_PARAMETER;
 
-		if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
+		// if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
 
-		for (i = 0; i < sizeof(format_info) / sizeof(*format_info); ++i)
-		{
-			if (format_info[i].format == desc->Format)
-			{
-				format = &format_info[i];
-				break;
-			}
-		}
-		if (!format) return STATUS_INVALID_PARAMETER;
+		// for (i = 0; i < sizeof(format_info) / sizeof(*format_info); ++i)
+		// {
+			// if (format_info[i].format == desc->Format)
+			// {
+				// format = &format_info[i];
+				// break;
+			// }
+		// }
+		// if (!format) return STATUS_INVALID_PARAMETER;
 
-		if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
-			!desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
-			!desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
+		// if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
+			// !desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
+			// !desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
 
-		if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
+		// if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
 
-		if (!(bmpInfo = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpInfo) + (format->palette_size * sizeof(RGBQUAD)) ))) goto error;
-		if (!(bmpHeader = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpHeader) ))) goto error;
+		// if (!(bmpInfo = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpInfo) + (format->palette_size * sizeof(RGBQUAD)) ))) goto error;
+		// if (!(bmpHeader = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpHeader) ))) goto error;
 
 		
-		bmpHeader->bV5Size        = sizeof(*bmpHeader);
-		bmpHeader->bV5Width       = desc->Width;
-		bmpHeader->bV5Height      = desc->Height;
-		bmpHeader->bV5SizeImage   = desc->Pitch;
-		bmpHeader->bV5Planes      = 1;
-		bmpHeader->bV5BitCount    = format->bit_count;
-		bmpHeader->bV5Compression = BI_BITFIELDS;
-		bmpHeader->bV5RedMask     = format->mask_r;
-		bmpHeader->bV5GreenMask   = format->mask_g;
-		bmpHeader->bV5BlueMask    = format->mask_b;
+		// bmpHeader->bV5Size        = sizeof(*bmpHeader);
+		// bmpHeader->bV5Width       = desc->Width;
+		// bmpHeader->bV5Height      = desc->Height;
+		// bmpHeader->bV5SizeImage   = desc->Pitch;
+		// bmpHeader->bV5Planes      = 1;
+		// bmpHeader->bV5BitCount    = format->bit_count;
+		// bmpHeader->bV5Compression = BI_BITFIELDS;
+		// bmpHeader->bV5RedMask     = format->mask_r;
+		// bmpHeader->bV5GreenMask   = format->mask_g;
+		// bmpHeader->bV5BlueMask    = format->mask_b;
 
-		bmpInfo->bmiHeader.biSize         = sizeof(BITMAPINFOHEADER);
-		bmpInfo->bmiHeader.biWidth        = desc->Width;
-		bmpInfo->bmiHeader.biHeight       = -(LONG)desc->Height;
-		bmpInfo->bmiHeader.biPlanes       = 1;
-		bmpInfo->bmiHeader.biBitCount     = format->bit_count;
-		bmpInfo->bmiHeader.biCompression  = format->compression;
-		bmpInfo->bmiHeader.biClrUsed      = format->palette_size;
-		bmpInfo->bmiHeader.biClrImportant = format->palette_size;
+		// bmpInfo->bmiHeader.biSize         = sizeof(BITMAPINFOHEADER);
+		// bmpInfo->bmiHeader.biWidth        = desc->Width;
+		// bmpInfo->bmiHeader.biHeight       = -(LONG)desc->Height;
+		// bmpInfo->bmiHeader.biPlanes       = 1;
+		// bmpInfo->bmiHeader.biBitCount     = format->bit_count;
+		// bmpInfo->bmiHeader.biCompression  = format->compression;
+		// bmpInfo->bmiHeader.biClrUsed      = format->palette_size;
+		// bmpInfo->bmiHeader.biClrImportant = format->palette_size;
 
-		if (desc->pColorTable)
-		{
-			for (i = 0; i < format->palette_size; ++i)
-			{
-				 bmpInfo->bmiColors[i].rgbRed   = desc->pColorTable[i].peRed;
-				 bmpInfo->bmiColors[i].rgbGreen = desc->pColorTable[i].peGreen;
-				 bmpInfo->bmiColors[i].rgbBlue = desc->pColorTable[i].peBlue;
-				 bmpInfo->bmiColors[i].rgbReserved = 0;
-			}
-		}
+		// if (desc->pColorTable)
+		// {
+			// for (i = 0; i < format->palette_size; ++i)
+			// {
+				 // bmpInfo->bmiColors[i].rgbRed   = desc->pColorTable[i].peRed;
+				 // bmpInfo->bmiColors[i].rgbGreen = desc->pColorTable[i].peGreen;
+				 // bmpInfo->bmiColors[i].rgbBlue = desc->pColorTable[i].peBlue;
+				 // bmpInfo->bmiColors[i].rgbReserved = 0;
+			// }
+		// }
 
-		if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
+		// if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
 
-		desc->hDc = dc;
-		desc->hBitmap = bitmap;
-		SelectObject( dc, bitmap );
-		DbgPrint("D3DKMTCreateDCFromMemory:: return STATUS_SUCCESS\n");
-		return STATUS_SUCCESS;
+		// desc->hDc = dc;
+		// desc->hBitmap = bitmap;
+		// SelectObject( dc, bitmap );
+		// DbgPrint("D3DKMTCreateDCFromMemory:: return STATUS_SUCCESS\n");
+		// return STATUS_SUCCESS;
 
-	error:
-		if (bmpInfo)  HeapFree( GetProcessHeap(), 0, bmpInfo );
-		if (bmpHeader) HeapFree( GetProcessHeap(), 0, bmpHeader );
+	// error:
+		// if (bmpInfo)  HeapFree( GetProcessHeap(), 0, bmpInfo );
+		// if (bmpHeader) HeapFree( GetProcessHeap(), 0, bmpHeader );
 
-		DeleteDC( dc );
-		return STATUS_INVALID_PARAMETER;		
+		// DeleteDC( dc );
+		// return STATUS_INVALID_PARAMETER;	
+    const struct d3dddi_format_info
+    {
+        D3DDDIFORMAT format;
+        unsigned int bit_count;
+        DWORD compression;
+        unsigned int palette_size;
+        DWORD mask_r, mask_g, mask_b;
+    } *format = NULL;
+    BITMAPOBJ *bmp = NULL;
+    HBITMAP bitmap;
+    unsigned int i;
+    HDC dc;
+
+    static const struct d3dddi_format_info format_info[] =
+    {
+        { D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+        { D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+        { D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+        { D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
+        { D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+        { D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+        { D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+        { D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+        { D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
+    };
+
+    if (!desc) return STATUS_INVALID_PARAMETER;
+
+    TRACE("memory %p, format %#x, width %u, height %u, pitch %u, device dc %p, color table %p.\n",
+          desc->pMemory, desc->Format, desc->Width, desc->Height,
+          desc->Pitch, desc->hDeviceDc, desc->pColorTable);
+
+    if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
+
+    for (i = 0; i < ARRAY_SIZE( format_info ); ++i)
+    {
+        if (format_info[i].format == desc->Format)
+        {
+            format = &format_info[i];
+            break;
+        }
+    }
+    if (!format) return STATUS_INVALID_PARAMETER;
+
+    if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
+        !desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
+        !desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
+
+    if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
+        return STATUS_INVALID_PARAMETER;
+
+    if (!(bmp = calloc( 1, sizeof(*bmp) ))) goto error;
+
+    bmp->dib.dsBm.bmWidth      = desc->Width;
+    bmp->dib.dsBm.bmHeight     = desc->Height;
+    bmp->dib.dsBm.bmWidthBytes = desc->Pitch;
+    bmp->dib.dsBm.bmPlanes     = 1;
+    bmp->dib.dsBm.bmBitsPixel  = format->bit_count;
+    bmp->dib.dsBm.bmBits       = desc->pMemory;
+
+    bmp->dib.dsBmih.biSize         = sizeof(bmp->dib.dsBmih);
+    bmp->dib.dsBmih.biWidth        = desc->Width;
+    bmp->dib.dsBmih.biHeight       = -(LONG)desc->Height;
+    bmp->dib.dsBmih.biPlanes       = 1;
+    bmp->dib.dsBmih.biBitCount     = format->bit_count;
+    bmp->dib.dsBmih.biCompression  = format->compression;
+    bmp->dib.dsBmih.biClrUsed      = format->palette_size;
+    bmp->dib.dsBmih.biClrImportant = format->palette_size;
+
+    bmp->dib.dsBitfields[0] = format->mask_r;
+    bmp->dib.dsBitfields[1] = format->mask_g;
+    bmp->dib.dsBitfields[2] = format->mask_b;
+
+    if (format->palette_size)
+    {
+        if (!(bmp->color_table = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, format->palette_size * sizeof(*bmp->color_table) )))
+            goto error;
+        if (desc->pColorTable)
+        {
+            for (i = 0; i < format->palette_size; ++i)
+            {
+                bmp->color_table[i].rgbRed      = desc->pColorTable[i].peRed;
+                bmp->color_table[i].rgbGreen    = desc->pColorTable[i].peGreen;
+                bmp->color_table[i].rgbBlue     = desc->pColorTable[i].peBlue;
+                bmp->color_table[i].rgbReserved = 0;
+            }
+        }
+        else
+        {
+            memcpy( bmp->color_table, get_default_color_table( format->bit_count ),
+                    format->palette_size * sizeof(*bmp->color_table) );
+        }
+    }
+
+    if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
+
+    desc->hDc = dc;
+    desc->hBitmap = bitmap;
+    SelectObject( dc, bitmap );
+    return STATUS_SUCCESS;
+
+error:
+    if (bmp) HeapFree( GetProcessHeap(), 0, bmp->color_table );
+    HeapFree( GetProcessHeap(), 0, bmp );	
+    DeleteDC( dc );
+    return STATUS_INVALID_PARAMETER;
+		
 	}
 }
 
@@ -408,140 +619,199 @@ D3DKMTEscape( const D3DKMT_ESCAPE *pData )
     return STATUS_NO_MEMORY;
 }
 
-/******************************************************************************
- *		D3DKMTOpenAdapterFromGdiDisplayName [GDI32.@]
- */
-NTSTATUS WINAPI D3DKMTOpenAdapterFromGdiDisplayName( D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME *desc )
-{
-    static const WCHAR displayW[] = {'\\','\\','.','\\','D','I','S','P','L','A','Y'};
-    static const WCHAR state_flagsW[] = {'S','t','a','t','e','F','l','a','g','s',0};
-    static const WCHAR video_value_fmtW[] = {'\\','D','e','v','i','c','e','\\',
-                                             'V','i','d','e','o','%','d',0};
-    static const WCHAR video_keyW[] = {'H','A','R','D','W','A','R','E','\\',
-                                       'D','E','V','I','C','E','M','A','P','\\',
-                                       'V','I','D','E','O','\\',0};
-    static const WCHAR gpu_idW[] = {'G','P','U','I','D',0};
-    WCHAR *end, key_nameW[MAX_PATH], bufferW[MAX_PATH];
-    HDEVINFO devinfo = INVALID_HANDLE_VALUE;
-    NTSTATUS status = STATUS_UNSUCCESSFUL;
-    static D3DKMT_HANDLE handle_start = 0;
-    struct d3dkmt_adapter *adapter;
-    SP_DEVINFO_DATA device_data;
-    DWORD size, state_flags;
-    DEVPROPTYPE type;
-    HANDLE mutex;
-    LUID luid;
-    int index;
+// /******************************************************************************
+ // *		D3DKMTOpenAdapterFromGdiDisplayName [GDI32.@]
+ // */
+// NTSTATUS WINAPI D3DKMTOpenAdapterFromGdiDisplayName( D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME *desc )
+// {
+    // static const WCHAR displayW[] = {'\\','\\','.','\\','D','I','S','P','L','A','Y'};
+    // static const WCHAR state_flagsW[] = {'S','t','a','t','e','F','l','a','g','s',0};
+    // static const WCHAR video_value_fmtW[] = {'\\','D','e','v','i','c','e','\\',
+                                             // 'V','i','d','e','o','%','d',0};
+    // static const WCHAR video_keyW[] = {'H','A','R','D','W','A','R','E','\\',
+                                       // 'D','E','V','I','C','E','M','A','P','\\',
+                                       // 'V','I','D','E','O','\\',0};
+    // static const WCHAR gpu_idW[] = {'G','P','U','I','D',0};
+    // WCHAR *end, key_nameW[MAX_PATH], bufferW[MAX_PATH];
+    // HDEVINFO devinfo = INVALID_HANDLE_VALUE;
+    // NTSTATUS status = STATUS_UNSUCCESSFUL;
+    // static D3DKMT_HANDLE handle_start = 0;
+    // struct d3dkmt_adapter *adapter;
+    // SP_DEVINFO_DATA device_data;
+    // DWORD size, state_flags;
+    // DEVPROPTYPE type;
+    // HANDLE mutex;
+    // LUID luid;
+    // int index;
 
-    TRACE("(%p)\n", desc);
+    // TRACE("(%p)\n", desc);
 
-    if (!desc)
-        return STATUS_UNSUCCESSFUL;
+    // if (!desc)
+        // return STATUS_UNSUCCESSFUL;
 
-    TRACE("DeviceName: %s\n", wine_dbgstr_w( desc->DeviceName ));
-    if (strncmpiW( desc->DeviceName, displayW, ARRAY_SIZE(displayW) ))
-        return STATUS_UNSUCCESSFUL;
+    // TRACE("DeviceName: %s\n", wine_dbgstr_w( desc->DeviceName ));
+    // if (strncmpiW( desc->DeviceName, displayW, ARRAY_SIZE(displayW) ))
+        // return STATUS_UNSUCCESSFUL;
 
-    index = strtolW( desc->DeviceName + ARRAY_SIZE(displayW), &end, 10 ) - 1;
-    if (*end)
-        return STATUS_UNSUCCESSFUL;
+    // index = strtolW( desc->DeviceName + ARRAY_SIZE(displayW), &end, 10 ) - 1;
+    // if (*end)
+        // return STATUS_UNSUCCESSFUL;
 
-    adapter = heap_alloc( sizeof( *adapter ) );
-    if (!adapter)
-        return STATUS_NO_MEMORY;
+    // adapter = heap_alloc( sizeof( *adapter ) );
+    // if (!adapter)
+        // return STATUS_NO_MEMORY;
 
-    /* Get adapter LUID from SetupAPI */
-    mutex = get_display_device_init_mutex();
+    // /* Get adapter LUID from SetupAPI */
+    // mutex = get_display_device_init_mutex();
 
-    size = sizeof( bufferW );
-    sprintfW( key_nameW, video_value_fmtW, index );
-    if (RegGetValueW( HKEY_LOCAL_MACHINE, video_keyW, key_nameW, RRF_RT_REG_SZ, NULL, bufferW, &size ))
-        goto done;
+    // size = sizeof( bufferW );
+    // sDbgPrintW( key_nameW, video_value_fmtW, index );
+    // if (RegGetValueW( HKEY_LOCAL_MACHINE, video_keyW, key_nameW, RRF_RT_REG_SZ, NULL, bufferW, &size ))
+        // goto done;
 
-    /* Strip \Registry\Machine\ prefix and retrieve Wine specific data set by the display driver */
-    lstrcpyW( key_nameW, bufferW + 18 );
-    size = sizeof( state_flags );
-    if (RegGetValueW( HKEY_CURRENT_CONFIG, key_nameW, state_flagsW, RRF_RT_REG_DWORD, NULL,
-                      &state_flags, &size ))
-        goto done;
+    // /* Strip \Registry\Machine\ prefix and retrieve Wine specific data set by the display driver */
+    // lstrcpyW( key_nameW, bufferW + 18 );
+    // size = sizeof( state_flags );
+    // if (RegGetValueW( HKEY_CURRENT_CONFIG, key_nameW, state_flagsW, RRF_RT_REG_DWORD, NULL,
+                      // &state_flags, &size ))
+        // goto done;
 
-    if (!(state_flags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP))
-        goto done;
+    // if (!(state_flags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP))
+        // goto done;
 
-    size = sizeof( bufferW );
-    if (RegGetValueW( HKEY_CURRENT_CONFIG, key_nameW, gpu_idW, RRF_RT_REG_SZ, NULL, bufferW, &size ))
-        goto done;
+    // size = sizeof( bufferW );
+    // if (RegGetValueW( HKEY_CURRENT_CONFIG, key_nameW, gpu_idW, RRF_RT_REG_SZ, NULL, bufferW, &size ))
+        // goto done;
 
-    devinfo = SetupDiCreateDeviceInfoList( &GUID_DEVCLASS_DISPLAY, NULL );
-    device_data.cbSize = sizeof( device_data );
-    SetupDiOpenDeviceInfoW( devinfo, bufferW, NULL, 0, &device_data );
-    if (!SetupDiGetDevicePropertyW( devinfo, &device_data, &DEVPROPKEY_GPU_LUID, &type,
-                                    (BYTE *)&luid, sizeof( luid ), NULL, 0))
-        goto done;
+    // devinfo = SetupDiCreateDeviceInfoList( &GUID_DEVCLASS_DISPLAY, NULL );
+    // device_data.cbSize = sizeof( device_data );
+    // SetupDiOpenDeviceInfoW( devinfo, bufferW, NULL, 0, &device_data );
+    // if (!SetupDiGetDevicePropertyW( devinfo, &device_data, &DEVPROPKEY_GPU_LUID, &type,
+                                    // (BYTE *)&luid, sizeof( luid ), NULL, 0))
+        // goto done;
 
-    EnterCriticalSection( &driver_section );
-    /* D3DKMT_HANDLE is UINT, so we can't use pointer as handle */
-    adapter->handle = ++handle_start;
-    list_add_tail( &d3dkmt_adapters, &adapter->entry );
-    LeaveCriticalSection( &driver_section );
+    // EnterCriticalSection( &driver_section );
+    // /* D3DKMT_HANDLE is UINT, so we can't use pointer as handle */
+    // adapter->handle = ++handle_start;
+    // list_add_tail( &d3dkmt_adapters, &adapter->entry );
+    // LeaveCriticalSection( &driver_section );
 
-    desc->hAdapter = handle_start;
-    desc->AdapterLuid = luid;
-    desc->VidPnSourceId = index;
-    status = STATUS_SUCCESS;
+    // desc->hAdapter = handle_start;
+    // desc->AdapterLuid = luid;
+    // desc->VidPnSourceId = index;
+    // status = STATUS_SUCCESS;
 
-done:
-    SetupDiDestroyDeviceInfoList( devinfo );
-    release_display_device_init_mutex( mutex );
-    if (status != STATUS_SUCCESS)
-        heap_free( adapter );
-    return status;
-}
+// done:
+    // SetupDiDestroyDeviceInfoList( devinfo );
+    // release_display_device_init_mutex( mutex );
+    // if (status != STATUS_SUCCESS)
+        // heap_free( adapter );
+    // return status;
+// }
 
-/******************************************************************************
- *		D3DKMTCreateDevice [GDI32.@]
- */
-NTSTATUS WINAPI D3DKMTCreateDevice( D3DKMT_CREATEDEVICE *desc )
-{
-    static D3DKMT_HANDLE handle_start = 0;
-    struct d3dkmt_adapter *adapter;
-    struct d3dkmt_device *device;
-    BOOL found = FALSE;
+// /******************************************************************************
+ // *		D3DKMTCreateDevice [GDI32.@]
+ // */
+// NTSTATUS WINAPI D3DKMTCreateDevice( D3DKMT_CREATEDEVICE *desc )
+// {
+    // static D3DKMT_HANDLE handle_start = 0;
+    // struct d3dkmt_adapter *adapter;
+    // struct d3dkmt_device *device;
+    // BOOL found = FALSE;
 
-    TRACE("(%p)\n", desc);
+    // TRACE("(%p)\n", desc);
 
-    if (!desc)
-        return STATUS_INVALID_PARAMETER;
+    // if (!desc)
+        // return STATUS_INVALID_PARAMETER;
 
-    EnterCriticalSection( &driver_section );
-    LIST_FOR_EACH_ENTRY( adapter, &d3dkmt_adapters, struct d3dkmt_adapter, entry )
-    {
-        if (adapter->handle == desc->hAdapter)
-        {
-            found = TRUE;
-            break;
-        }
+    // EnterCriticalSection( &driver_section );
+    // LIST_FOR_EACH_ENTRY( adapter, &d3dkmt_adapters, struct d3dkmt_adapter, entry )
+    // {
+        // if (adapter->handle == desc->hAdapter)
+        // {
+            // found = TRUE;
+            // break;
+        // }
+    // }
+    // LeaveCriticalSection( &driver_section );
+
+    // if (!found)
+        // return STATUS_INVALID_PARAMETER;
+
+    // if (desc->Flags.LegacyMode || desc->Flags.RequestVSync || desc->Flags.DisableGpuTimeout)
+        // FIXME("Flags unsupported.\n");
+
+    // device = heap_alloc_zero( sizeof( *device ) );
+    // if (!device)
+        // return STATUS_NO_MEMORY;
+
+    // EnterCriticalSection( &driver_section );
+    // device->handle = ++handle_start;
+    // list_add_tail( &d3dkmt_devices, &device->entry );
+    // LeaveCriticalSection( &driver_section );
+
+    // desc->hDevice = device->handle;
+    // return STATUS_SUCCESS;
+// }
+
+NTSTATUS 
+WINAPI 
+D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *pCreateDevice) {
+    HDC hdcScreen;
+	DDRAWI_DIRECTDRAW_GBL directDrawGlobal;
+	
+	directDrawGlobal.hDD = 0;
+
+    // Validar parâmetro de entrada
+    if (!pCreateDevice) {
+        return STATUS_INVALID_PARAMETER; // STATUS_INVALID_PARAMETER
     }
-    LeaveCriticalSection( &driver_section );
 
-    if (!found)
-        return STATUS_INVALID_PARAMETER;
+    // Obter HDC da tela principal
+    hdcScreen = GetDC(NULL);
+    if (!hdcScreen) {
+        DbgPrint("Erro: Falha ao obter HDC da tela\n");
+        return STATUS_DEVICE_CONFIGURATION_ERROR; // STATUS_DEVICE_CONFIGURATION_ERROR
+    }
 
-    if (desc->Flags.LegacyMode || desc->Flags.RequestVSync || desc->Flags.DisableGpuTimeout)
-        FIXME("Flags unsupported.\n");
+    // Inicializar estrutura temporária para DirectDraw
+    //ZeroMemory(directDrawGlobal, sizeof(directDrawGlobal));
 
-    device = heap_alloc_zero( sizeof( *device ) );
-    if (!device)
-        return STATUS_NO_MEMORY;
+    // Criar um objeto DirectDraw com DdCreateDirectDrawObject
+    if (!GdiEntry1(&directDrawGlobal, hdcScreen)) {
+        DbgPrint("Erro: Falha ao criar dispositivo DirectDraw\n");
+        ReleaseDC(NULL, hdcScreen);
+        return STATUS_UNSUCCESSFUL; // STATUS_UNSUCCESSFUL
+    }
 
-    EnterCriticalSection( &driver_section );
-    device->handle = ++handle_start;
-    list_add_tail( &d3dkmt_devices, &device->entry );
-    LeaveCriticalSection( &driver_section );
+    // Preencher os dados da estrutura de saída
+    pCreateDevice->hDevice = (D3DKMT_HANDLE)directDrawGlobal.hDD; // Handle do dispositivo DirectDraw
+    pCreateDevice->pCommandBuffer = NULL;
+    pCreateDevice->CommandBufferSize = 0;
+    pCreateDevice->pAllocationList = NULL;
+    pCreateDevice->AllocationListSize = 0;
+    pCreateDevice->pPatchLocationList = NULL;
+    pCreateDevice->PatchLocationListSize = 0;
 
-    desc->hDevice = device->handle;
-    return STATUS_SUCCESS;
+    // Configurar flags para modo Legacy, VSync, etc. (Simulação no XP)
+    if (pCreateDevice->Flags.LegacyMode) {
+        DbgPrint("Modo Legacy ativado\n");
+    }
+    if (pCreateDevice->Flags.RequestVSync) {
+        DbgPrint("VSync solicitado (não suportado no XP via DdCreateDirectDrawObject)\n");
+    }
+    if (pCreateDevice->Flags.DisableGpuTimeout) {
+        DbgPrint("Timeout da GPU desativado (sem efeito no XP)\n");
+    }
+
+    DbgPrint("Dispositivo criado com sucesso! Handle: %p\n", pCreateDevice->hDevice);
+
+    // Liberar recursos
+    ReleaseDC(NULL, hdcScreen);
+ 
+    return STATUS_SUCCESS; // STATUS_SUCCESS
 }
+
 
 /******************************************************************************
  *		D3DKMTSetVidPnSourceOwner [GDI32.@]
@@ -630,71 +900,59 @@ NTSTATUS WINAPI D3DKMTCheckVidPnExclusiveOwnership( const D3DKMT_CHECKVIDPNEXCLU
     return get_display_driver()->pD3DKMTCheckVidPnExclusiveOwnership( desc );
 }
 
+const WCHAR displayName[32] = L"\\\\.\\DISPLAY1\0";
+
 /******************************************************************************
  *           NtGdiDdDDIOpenAdapterFromLuid    (win32u.@)
  */
 NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( D3DKMT_OPENADAPTERFROMLUID *desc )
 {
-	DEVMODEW devMode;
-	WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH] = {0};
-	LUID luid = desc->AdapterLuid;
-	HRESULT hr;
+	// DEVMODEW devMode;
+	// WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH] = {0};
+	// LUID luid = desc->AdapterLuid;
+	// HRESULT hr;
 	
-	if (!desc) {
-	return STATUS_INVALID_PARAMETER;
-	}
+	// if (!desc) {
+	// return STATUS_INVALID_PARAMETER;
+	// }
 
-	hr = StringCchPrintfW(
-				gdiDisplayName,
-				D3DKMT_MAX_ADAPTER_NAME_LENGTH,
-				L"\\\\.\\DISPLAY%08X%08X",
-				luid.HighPart,
-				luid.LowPart
-				);
+	// hr = StringCchDbgPrintW(
+				// gdiDisplayName,
+				// D3DKMT_MAX_ADAPTER_NAME_LENGTH,
+				// L"\\\\.\\DISPLAY%08X%08X",
+				// luid.HighPart,
+				// luid.LowPart
+				// );
 
-	if (FAILED(hr)) {
-		return STATUS_INVALID_PARAMETER;
-	}
-	
-	ZeroMemory(&devMode, sizeof(DEVMODEW));
-	devMode.dmSize = sizeof(DEVMODEW);
-
-	if (!EnumDisplaySettingsW(gdiDisplayName, ENUM_CURRENT_SETTINGS, &devMode)) {
-		return STATUS_NOT_FOUND;
-	}
-
-
-	desc->hAdapter = (D3DKMT_HANDLE)1;
-
-	return STATUS_SUCCESS;	
-    // WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH];
-    // D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME usGdiDisplayName;
-    // LUID luid = desc->AdapterLuid;
-    // NTSTATUS status;
-	
-
-    // // Convert the LUID to a GDI display name
-    // status = RtlStringCchPrintfW(gdiDisplayName, D3DKMT_MAX_ADAPTER_NAME_LENGTH,
-                                 // L"\\\\.\\DISPLAYV%d_%08X_%08X",
-                                 // luid.HighPart, luid.LowPart);
-    // if (!NT_SUCCESS(status))
-    // {
-        // return status;
-    // }
-	
-	// wcscpy(usGdiDisplayName.DeviceName,gdiDisplayName);
-
-    // //RtlInitUnicodeString(&usGdiDisplayName, gdiDisplayName);
-
-    // // Open the adapter from the GDI display name
-    // status = D3DKMTOpenAdapterFromGdiDisplayName(&usGdiDisplayName);
-	
-	// if(NT_SUCCESS(status)){
-		// desc->hAdapter = usGdiDisplayName.hAdapter;
-		// return STATUS_SUCCESS;
+	// if (FAILED(hr)) {
+		// return STATUS_INVALID_PARAMETER;
 	// }
 	
-	// return STATUS_NOT_IMPLEMENTED;
+	// ZeroMemory(&devMode, sizeof(DEVMODEW));
+	// devMode.dmSize = sizeof(DEVMODEW);
+
+	// if (!EnumDisplaySettingsW(gdiDisplayName, ENUM_CURRENT_SETTINGS, &devMode)) {
+		// return STATUS_NOT_FOUND;
+	// }
+
+
+	// desc->hAdapter = (D3DKMT_HANDLE)1;
+
+	// return STATUS_SUCCESS;	
+	
+    NTSTATUS Status;
+    D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME adapter;
+    if (!desc)
+        return STATUS_INVALID_PARAMETER;
+    ZeroMemory(&adapter, sizeof(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME));
+    wcscpy(adapter.DeviceName, displayName);
+
+    // Dynamically load d3dkmt.dll, then call D3DKMTOpenAdapterFromGdiDisplayName. TODO: figure out how
+    Status = D3DKMTOpenAdapterFromGdiDisplayName(&adapter);
+    if (FAILED(Status))
+        return Status;
+    desc->hAdapter = adapter.hAdapter;
+    return Status;
 }
 
 NTSTATUS
