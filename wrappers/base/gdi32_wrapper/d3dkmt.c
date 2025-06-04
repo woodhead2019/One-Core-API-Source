@@ -1,21 +1,22 @@
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
+/*++
+
+Copyright (c) 2025 Shorthorn Project
+
+Module Name:
+
+    d3dkmt.c
+
+Abstract:
+
+    Implement Direct3D Kernel Mode Transfer Emulation functions
+
+Author:
+
+    Skulltrail 11-May-2025
+
+Revision History:
+
+--*/
 
 #include <main.h>
 #include <ntstrsafe.h>
@@ -35,17 +36,6 @@
 #endif /* MAKEFOURCC */
 
 #define D3DKMT_MAX_ADAPTER_NAME_LENGTH 32
-
-typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
-  D3DKMT_HANDLE hResource;
-  UINT          ClientPid;
-} D3DKMT_CHECKSHAREDRESOURCEACCESS;
-
-typedef BOOL (WINAPI *pD3DKMTCreateDCFromMemory)(
-    D3DKMT_CREATEDCFROMMEMORY*);
-	
-typedef BOOL (WINAPI *pD3DKMTDestroyDCFromMemory)(
-    D3DKMT_DESTROYDCFROMMEMORY*);	
 
 /*Hack, i don't know how require these funcions really*/
 DWORD
@@ -114,90 +104,6 @@ struct d3dkmt_device
 static struct graphics_driver *display_driver;
 
 #define WINE_GDI_DRIVER_VERSION 48
-
-/**********************************************************************
- *	     create_driver
- *
- * Allocate and fill the driver structure for a given module.
- */
-static struct graphics_driver *create_driver( HMODULE module )
-{
-    static const struct gdi_dc_funcs empty_funcs;
-    const struct gdi_dc_funcs *funcs = NULL;
-    struct graphics_driver *driver;
-
-    if (!(driver = HeapAlloc( GetProcessHeap(), 0, sizeof(*driver)))) return NULL;
-    driver->module = module;
-
-    if (module)
-    {
-        const struct gdi_dc_funcs * (CDECL *wine_get_gdi_driver)( unsigned int version );
-
-        if ((wine_get_gdi_driver = (void *)GetProcAddress( module, "wine_get_gdi_driver" )))
-            funcs = wine_get_gdi_driver( WINE_GDI_DRIVER_VERSION );
-    }
-    if (!funcs) funcs = &empty_funcs;
-    driver->funcs = funcs;
-    return driver;
-}
-
-
-/***********************************************************************
- *           __wine_set_display_driver    (GDI32.@)
- */
-void CDECL __wine_set_display_driver( HMODULE module )
-{
-    struct graphics_driver *driver;
-    HMODULE user32;
-
-    if (!(driver = create_driver( module )))
-    {
-        ERR( "Could not create graphics driver\n" );
-        ExitProcess(1);
-    }
-    if (InterlockedCompareExchangePointer( (void **)&display_driver, driver, NULL ))
-        HeapFree( GetProcessHeap(), 0, driver );
-
-    user32 = LoadLibraryA( "user32.dll" );
-    pGetSystemMetrics = (void *)GetProcAddress( user32, "GetSystemMetrics" );
-    //pSetThreadDpiAwarenessContext = (void *)GetProcAddress( user32, "SetThreadDpiAwarenessContext" );
-}
-
-/**********************************************************************
- *	     get_display_driver
- *
- * Special case for loading the display driver: get the name from the config file
- */
-static const struct gdi_dc_funcs *get_display_driver(void)
-{
-    if (!display_driver)
-    {
-        HMODULE user32 = LoadLibraryA( "user32.dll" );
-        pGetDesktopWindow = (void *)GetProcAddress( user32, "GetDesktopWindow" );
-
-        if (!pGetDesktopWindow() || !display_driver)
-        {
-            WARN( "failed to load the display driver, falling back to null driver\n" );
-            __wine_set_display_driver( 0 );
-        }
-    }
-    return display_driver->funcs;
-}
-
-static HANDLE get_display_device_init_mutex( void )
-{
-    static const WCHAR init_mutex[] = {'d','i','s','p','l','a','y','_','d','e','v','i','c','e','_','i','n','i','t',0};
-    HANDLE mutex = CreateMutexW( NULL, FALSE, init_mutex );
-
-    WaitForSingleObject( mutex, INFINITE );
-    return mutex;
-}
-
-static void release_display_device_init_mutex( HANDLE mutex )
-{
-    ReleaseMutex( mutex );
-    CloseHandle( mutex );
-}
 
 /******************************************************************************
  *		D3DKMTCloseAdapter [GDI32.@]
@@ -332,11 +238,10 @@ const RGBQUAD *get_default_color_table( int bpp )
     }
 }
 
-
 /***********************************************************************
  *           D3DKMTCreateDCFromMemory    (GDI32.@)
  */
-NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
+NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *pData )
 {
 	pD3DKMTCreateDCFromMemory pD3dCreateDC;
 	
@@ -345,7 +250,7 @@ NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
                             "D3DKMTCreateDCFromMemory");	
 
 	if(pD3dCreateDC){
-		return pD3dCreateDC(desc);
+		return pD3dCreateDC(pData);
 	}else{
 		// const struct d3dddi_format_info
 		// {
@@ -444,112 +349,75 @@ NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
 
 		// DeleteDC( dc );
 		// return STATUS_INVALID_PARAMETER;	
-    const struct d3dddi_format_info
-    {
-        D3DDDIFORMAT format;
-        unsigned int bit_count;
-        DWORD compression;
-        unsigned int palette_size;
-        DWORD mask_r, mask_g, mask_b;
-    } *format = NULL;
-    BITMAPOBJ *bmp = NULL;
-    HBITMAP bitmap;
-    unsigned int i;
-    HDC dc;
+		BITMAPINFO *pbmi = NULL;
+		HDC hdc;
+		HBITMAP hBitmap;
+		int bitCount = 0;
+		int paletteSize = 0;
+		int i;
 
-    static const struct d3dddi_format_info format_info[] =
-    {
-        { D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
-        { D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-        { D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-        { D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-        { D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-        { D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
-    };
+		if (!pData || !pData->Width || !pData->Height)
+			return -1; // STATUS_INVALID_PARAMETER
 
-    if (!desc) return STATUS_INVALID_PARAMETER;
+		// Determinar formato e configurações
+		switch (pData->Format) {
+			case D3DDDIFMT_A8R8G8B8:
+			case D3DDDIFMT_X8R8G8B8:
+				bitCount = 32;
+				paletteSize = 0;
+				break;
+			case D3DDDIFMT_R5G6B5:
+				bitCount = 16;
+				paletteSize = 0;
+				break;
+			case D3DDDIFMT_P8:
+				bitCount = 8;
+				paletteSize = 256;
+				break;
+			default:
+				return -2; // STATUS_NOT_SUPPORTED
+		}
 
-    TRACE("memory %p, format %#x, width %u, height %u, pitch %u, device dc %p, color table %p.\n",
-          desc->pMemory, desc->Format, desc->Width, desc->Height,
-          desc->Pitch, desc->hDeviceDc, desc->pColorTable);
+		// Alocar BITMAPINFO com espaço para paleta, se necessário
+		pbmi = (BITMAPINFO *)GlobalAlloc(GPTR, sizeof(BITMAPINFOHEADER) + paletteSize * sizeof(RGBQUAD));
+		if (!pbmi) return -3;
 
-    if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
+		pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		pbmi->bmiHeader.biWidth = pData->Width;
+		pbmi->bmiHeader.biHeight = -((int)pData->Height); // Top-down DIB
+		pbmi->bmiHeader.biPlanes = 1;
+		pbmi->bmiHeader.biBitCount = (WORD)bitCount;
+		pbmi->bmiHeader.biCompression = BI_RGB;
 
-    for (i = 0; i < ARRAY_SIZE( format_info ); ++i)
-    {
-        if (format_info[i].format == desc->Format)
-        {
-            format = &format_info[i];
-            break;
-        }
-    }
-    if (!format) return STATUS_INVALID_PARAMETER;
+		// Copiar paleta se aplicável
+		if (paletteSize > 0 && pData->pColorTable) {
+			for (i = 0; i < paletteSize; i++) {
+				pbmi->bmiColors[i].rgbRed   = pData->pColorTable[i].peRed;
+				pbmi->bmiColors[i].rgbGreen = pData->pColorTable[i].peGreen;
+				pbmi->bmiColors[i].rgbBlue  = pData->pColorTable[i].peBlue;
+				pbmi->bmiColors[i].rgbReserved = 0;
+			}
+		}
 
-    if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
-        !desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
-        !desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
+		// Criar DC
+		hdc = pData->hDeviceDc ? pData->hDeviceDc : GetDC(NULL);
+		pData->hDc = CreateCompatibleDC(hdc);
 
-    if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
-        return STATUS_INVALID_PARAMETER;
+		// Criar DIBSection
+		hBitmap = CreateDIBSection(pData->hDc, pbmi, DIB_RGB_COLORS, &pData->pMemory, NULL, 0);
+		if (!hBitmap) {
+			DeleteDC(pData->hDc);
+			if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
+			GlobalFree(pbmi);
+			return -4;
+		}
 
-    if (!(bmp = calloc( 1, sizeof(*bmp) ))) goto error;
+		SelectObject(pData->hDc, hBitmap);
+		pData->hBitmap = hBitmap;
 
-    bmp->dib.dsBm.bmWidth      = desc->Width;
-    bmp->dib.dsBm.bmHeight     = desc->Height;
-    bmp->dib.dsBm.bmWidthBytes = desc->Pitch;
-    bmp->dib.dsBm.bmPlanes     = 1;
-    bmp->dib.dsBm.bmBitsPixel  = format->bit_count;
-    bmp->dib.dsBm.bmBits       = desc->pMemory;
-
-    bmp->dib.dsBmih.biSize         = sizeof(bmp->dib.dsBmih);
-    bmp->dib.dsBmih.biWidth        = desc->Width;
-    bmp->dib.dsBmih.biHeight       = -(LONG)desc->Height;
-    bmp->dib.dsBmih.biPlanes       = 1;
-    bmp->dib.dsBmih.biBitCount     = format->bit_count;
-    bmp->dib.dsBmih.biCompression  = format->compression;
-    bmp->dib.dsBmih.biClrUsed      = format->palette_size;
-    bmp->dib.dsBmih.biClrImportant = format->palette_size;
-
-    bmp->dib.dsBitfields[0] = format->mask_r;
-    bmp->dib.dsBitfields[1] = format->mask_g;
-    bmp->dib.dsBitfields[2] = format->mask_b;
-
-    if (format->palette_size)
-    {
-        if (!(bmp->color_table = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, format->palette_size * sizeof(*bmp->color_table) )))
-            goto error;
-        if (desc->pColorTable)
-        {
-            for (i = 0; i < format->palette_size; ++i)
-            {
-                bmp->color_table[i].rgbRed      = desc->pColorTable[i].peRed;
-                bmp->color_table[i].rgbGreen    = desc->pColorTable[i].peGreen;
-                bmp->color_table[i].rgbBlue     = desc->pColorTable[i].peBlue;
-                bmp->color_table[i].rgbReserved = 0;
-            }
-        }
-        else
-        {
-            memcpy( bmp->color_table, get_default_color_table( format->bit_count ),
-                    format->palette_size * sizeof(*bmp->color_table) );
-        }
-    }
-
-    if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
-
-    desc->hDc = dc;
-    desc->hBitmap = bitmap;
-    SelectObject( dc, bitmap );
-    return STATUS_SUCCESS;
-
-error:
-    if (bmp) HeapFree( GetProcessHeap(), 0, bmp->color_table );
-    HeapFree( GetProcessHeap(), 0, bmp );	
-    DeleteDC( dc );
-    return STATUS_INVALID_PARAMETER;
+		if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
+		GlobalFree(pbmi);
+		return 0; // STATUS_SUCCESS	
 		
 	}
 }
@@ -818,19 +686,7 @@ D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *pCreateDevice) {
  */
 NTSTATUS WINAPI D3DKMTSetVidPnSourceOwner( const D3DKMT_SETVIDPNSOURCEOWNER *desc )
 {
-    TRACE("(%p)\n", desc);
-
-    if (!get_display_driver()->pD3DKMTSetVidPnSourceOwner)
-        return STATUS_PROCEDURE_NOT_FOUND;
-
-    if (!desc || !desc->hDevice || (desc->VidPnSourceCount && (!desc->pType || !desc->pVidPnSourceId)))
-        return STATUS_INVALID_PARAMETER;
-
-    /* Store the VidPN source ownership info in the graphics driver because
-     * the graphics driver needs to change ownership sometimes. For example,
-     * when a new window is moved to a VidPN source with an exclusive owner,
-     * such an exclusive owner will be released before showing the new window */
-    return get_display_driver()->pD3DKMTSetVidPnSourceOwner( desc );
+    return STATUS_NO_MEMORY;
 }
 
 /******************************************************************************
@@ -838,32 +694,7 @@ NTSTATUS WINAPI D3DKMTSetVidPnSourceOwner( const D3DKMT_SETVIDPNSOURCEOWNER *des
  */
 NTSTATUS WINAPI D3DKMTDestroyDevice( const D3DKMT_DESTROYDEVICE *desc )
 {
-    NTSTATUS status = STATUS_INVALID_PARAMETER;
-    D3DKMT_SETVIDPNSOURCEOWNER set_owner_desc;
-    struct d3dkmt_device *device;
-
-    TRACE("(%p)\n", desc);
-
-    if (!desc || !desc->hDevice)
-        return STATUS_INVALID_PARAMETER;
-
-    EnterCriticalSection( &driver_section );
-    LIST_FOR_EACH_ENTRY( device, &d3dkmt_devices, struct d3dkmt_device, entry )
-    {
-        if (device->handle == desc->hDevice)
-        {
-            memset( &set_owner_desc, 0, sizeof(set_owner_desc) );
-            set_owner_desc.hDevice = desc->hDevice;
-            D3DKMTSetVidPnSourceOwner( &set_owner_desc );
-            list_remove( &device->entry );
-            heap_free( device );
-            status = STATUS_SUCCESS;
-            break;
-        }
-    }
-    LeaveCriticalSection( &driver_section );
-
-    return status;
+    return STATUS_NO_MEMORY;
 }
 
 /******************************************************************************
@@ -871,7 +702,7 @@ NTSTATUS WINAPI D3DKMTDestroyDevice( const D3DKMT_DESTROYDEVICE *desc )
  */
 NTSTATUS WINAPI D3DKMTQueryStatistics(D3DKMT_QUERYSTATISTICS *stats)
 {
-    FIXME("(%p): stub\n", stats);
+    FIXME("D3DKMTQueryStatistics: (%p): stub\n", stats);
     return STATUS_SUCCESS;
 }
 
@@ -880,7 +711,7 @@ NTSTATUS WINAPI D3DKMTQueryStatistics(D3DKMT_QUERYSTATISTICS *stats)
  */
 NTSTATUS WINAPI D3DKMTSetQueuedLimit( D3DKMT_SETQUEUEDLIMIT *desc )
 {
-    FIXME( "(%p): stub\n", desc );
+    FIXME( "D3DKMTSetQueuedLimit: (%p): stub\n", desc );
     return STATUS_NOT_IMPLEMENTED;
 }
 
@@ -889,15 +720,7 @@ NTSTATUS WINAPI D3DKMTSetQueuedLimit( D3DKMT_SETQUEUEDLIMIT *desc )
  */
 NTSTATUS WINAPI D3DKMTCheckVidPnExclusiveOwnership( const D3DKMT_CHECKVIDPNEXCLUSIVEOWNERSHIP *desc )
 {
-    TRACE("(%p)\n", desc);
-
-    if (!get_display_driver()->pD3DKMTCheckVidPnExclusiveOwnership)
-        return STATUS_PROCEDURE_NOT_FOUND;
-
-    if (!desc || !desc->hAdapter)
-        return STATUS_INVALID_PARAMETER;
-
-    return get_display_driver()->pD3DKMTCheckVidPnExclusiveOwnership( desc );
+    return STATUS_NO_MEMORY;
 }
 
 const WCHAR displayName[32] = L"\\\\.\\DISPLAY1\0";
@@ -1026,9 +849,6 @@ D3DKMTCheckExclusiveOwnership() {
 
     // Chama a função NtGdiDdGetDriverState - DdEntry6
     result = DdEntry6(&stateData);
-
-    // Libera a biblioteca
-    //FreeLibrary(hGdi32);
 
     // Verifica o resultado
     if (result != DD_OK) {

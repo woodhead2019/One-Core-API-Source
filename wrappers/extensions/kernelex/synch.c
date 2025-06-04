@@ -628,7 +628,7 @@ BOOL WINAPI GetQueuedCompletionStatusEx(
 	
         if (bAlertable)
         {
-            kMaxSleepTime = 10;
+            kMaxSleepTime = 6;
             // 使用 SleepEx 进行等待触发 APC
             if (dwMilliseconds == INFINITE)
             {

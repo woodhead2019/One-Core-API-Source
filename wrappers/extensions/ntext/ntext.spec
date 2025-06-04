@@ -1676,6 +1676,7 @@
 
 #Win7 functions
 @ stdcall EtwEventWriteNoRegistration(ptr ptr long ptr)
+@ stdcall EvtIntReportEventAndSourceAsync(ptr ptr long ptr ptr ptr ptr ptr ptr ptr ptr) wevtapi.EvtIntReportEventAndSourceAsync
 @ stdcall LdrQueryModuleServiceTags(ptr ptr long)
 @ stdcall NtOpenKeyEx(ptr long ptr long)
 @ stdcall RtlCopyContext(ptr long ptr)

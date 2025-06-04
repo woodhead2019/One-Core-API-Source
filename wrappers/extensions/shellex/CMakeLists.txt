@@ -33,6 +33,7 @@ list(APPEND SOURCE
 	#shlview.c
 	shlview_cmenu.c
 	unimplemented.c
+	utils.c
 	precomp.h
 	version.rc
 	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_i.c

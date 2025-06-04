@@ -43,7 +43,7 @@ LONG WINAPI DisplayConfigSetDeviceInfo(
   */
 LONG WINAPI GetDisplayConfigBufferSizes(UINT32 flags, UINT32 *num_path_info, UINT32 *num_mode_info)
 {
-     DbgPrint("(0x%x %p %p): stub\n", flags, num_path_info, num_mode_info);
+     //DbgPrint("GetDisplayConfigBufferSizes: (0x%x %p %p): stub\n", flags, num_path_info, num_mode_info);
  
      if (!num_path_info || !num_mode_info)
          return ERROR_INVALID_PARAMETER;
@@ -85,7 +85,7 @@ BOOL WINAPI GetWindowDisplayAffinity(
   _Out_  DWORD *dwAffinity
 )
 {
-    DbgPrint("(%p, %p): stub\n", hWnd, dwAffinity);
+    DbgPrint("GetWindowDisplayAffinity: (%p, %p): stub\n", hWnd, dwAffinity);
     
     if (!hWnd || !dwAffinity) {
         SetLastError(hWnd ? ERROR_NOACCESS : ERROR_INVALID_WINDOW_HANDLE);
@@ -101,7 +101,7 @@ BOOL WINAPI SetWindowDisplayAffinity(
   _In_  DWORD dwAffinity
 )
 {
-        DbgPrint("(%p, %u): stub\n", hWnd, dwAffinity);
+        DbgPrint("SetWindowDisplayAffinity: (%p, %u): stub\n", hWnd, dwAffinity);
         SetLastError(0);
         return TRUE; // Some password managers throw an error when this code fails
 }

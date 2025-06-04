@@ -42,3 +42,7 @@
 #Win8 Functions
 @ stdcall PowerRegisterSuspendResumeNotification(long ptr ptr)
 @ stdcall PowerUnregisterSuspendResumeNotification(ptr)
+
+#Win10 Functions
+@ stdcall PowerRegisterForEffectivePowerModeNotifications(long ptr ptr ptr)
+@ stdcall PowerUnregisterFromEffectivePowerModeNotifications(ptr)

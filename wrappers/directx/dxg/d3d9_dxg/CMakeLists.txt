@@ -5,6 +5,8 @@ include_directories(BEFORE ${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(d3d9_dxg.dll d3d9_dxg.spec ADD_IMPORTLIB)
 
+set(baseaddress_d3d9_dxg     0x7c520000)
+
 list(APPEND SOURCE
     adapter.c
     d3d9.c

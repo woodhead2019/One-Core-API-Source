@@ -2598,20 +2598,3 @@ void UnsubscribeFeatureStateChangeNotification(
 {
 	;
 }
-
-
-HRESULT WINAPI IStream_Copy(IStream *pstmFrom, IStream *pstmTo, DWORD cb)
-{
-  HRESULT result; // eax
-  int v4[2]; // [esp+Ch] [ebp-Ch] BYREF
-
-  result = ((int (__stdcall *)(IStream *, IStream *, DWORD, DWORD, DWORD, int *))pstmFrom->lpVtbl->CopyTo)(
-             pstmFrom,
-             pstmTo,
-             cb,
-             0,
-             0,
-             v4);
-
-  return result;
-}

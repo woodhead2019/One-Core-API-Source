@@ -891,3 +891,102 @@ BOOL _ILIsDrive(LPCITEMIDLIST pidl)
                     PT_DRIVE2 == lpPData->type ||
                     PT_DRIVE3 == lpPData->type));
 }
+
+BOOL WINAPI IDListContainerIsConsistent(PUIDLIST_RELATIVE pidl, UINT cbAlloc)
+{
+    UINT cbPidl = sizeof(pidl->mkid.cb);
+    while (cbPidl <= cbAlloc && pidl->mkid.cb >= sizeof(pidl->mkid.cb) && pidl->mkid.cb <= cbAlloc - cbPidl) {
+        cbPidl += pidl->mkid.cb;
+        pidl = ILNext(pidl);
+    }
+    return cbPidl <= cbAlloc && 0 == pidl->mkid.cb;
+}
+
+/***********************************************************************
+ *    DisplayNameOfW [SHELL32.846] (Vista+)
+ */
+// Required by IE9. An attempt to solve the final piece of the puzzle.
+// IE9 from Build 7790 show the tab frame but do not show the main UI.
+HRESULT WINAPI ILLoadFromStreamEx(IStream *pstm, LPITEMIDLIST *pidl)
+{
+  //IStream *stream;
+  HRESULT result;
+  ITEMIDLIST* ppidl;
+  unsigned short length;
+
+  *pidl = NULL;
+  result = pstm->lpVtbl->Read(pstm, &length, sizeof(unsigned short), NULL);
+  if (NT_SUCCESS(result))
+  {
+    if ( length )
+    {
+      ppidl = CoTaskMemAlloc(length);
+      if ( ppidl )
+      {
+        result = pstm->lpVtbl->Read(pstm, ppidl, length, NULL);
+        if (NT_SUCCESS(result))
+        {
+          if ( IDListContainerIsConsistent(ppidl, length) )
+          {
+            *pidl = ppidl;
+            return STATUS_SUCCESS;
+          }
+          //status = E_FAIL;
+        }
+        CoTaskMemFree(ppidl);
+      } else
+        return E_OUTOFMEMORY;
+    } else
+        return 0x80070490;
+  }
+  return result;
+}
+
+HRESULT WINAPI SHBindToFolderIDListParentEx(
+        IShellFolder *psfRoot,
+        LPCITEMIDLIST pidl,
+        IBindCtx *ppbc,
+        REFIID riid,
+        void **ppv,
+        LPCITEMIDLIST *ppidlLast)
+{
+  WORD *unk;
+  NTSTATUS status = HRESULT_FROM_WIN32(ERROR_INVALID_PARAMETER);
+  ITEMIDLIST *pidl2;
+
+  *ppv = NULL;
+  if (ppidlLast)
+    *ppidlLast = NULL;
+  if (pidl)
+  {
+    if ( !psfRoot || pidl->mkid.cb && (unk = (USHORT *)((char *)&pidl->mkid.cb + pidl->mkid.cb)) != 0 && *unk )
+    {
+      pidl2 = ILClone(pidl);
+      if (!pidl2)
+        return E_OUTOFMEMORY;
+      ILRemoveLastID(pidl2);
+      status = SHBindToObject(psfRoot, pidl2, ppbc, riid, ppv);
+      CoTaskMemFree(pidl2);
+    }
+    else
+    {
+      status = psfRoot->lpVtbl->QueryInterface(
+              psfRoot,
+              riid,
+              ppv);
+    }
+    if (NT_SUCCESS(status) && ppidlLast)
+      *ppidlLast = ILFindLastID(pidl);
+  }
+  return status;
+}
+
+HRESULT WINAPI SHBindToFolderIDListParent(
+        IShellFolder *psfRoot,
+        LPCITEMIDLIST pidl,
+        const IID *riid,
+        void **ppv,
+        LPCITEMIDLIST *ppidlLast)
+{
+  return SHBindToFolderIDListParentEx(psfRoot, pidl, NULL, riid, ppv, ppidlLast);
+}

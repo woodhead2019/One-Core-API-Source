@@ -234,21 +234,22 @@ NTSTATUS WINAPI RtlInitializeCriticalSectionEx( RTL_CRITICAL_SECTION *crit, ULON
      * so (e.g.) MakeCriticalSectionGlobal() doesn't free it using HeapFree().
      */
     if (flags & RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO)
-        crit->DebugInfo = no_debug_info_marker;
+        crit->DebugInfo = NULL;
     else
-    {
         crit->DebugInfo = RtlAllocateHeap( NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, sizeof(RTL_CRITICAL_SECTION_DEBUG ));
-        if (crit->DebugInfo)
-        {
-            crit->DebugInfo->Type = 0;
-            crit->DebugInfo->CreatorBackTraceIndex = 0;
-            crit->DebugInfo->CriticalSection = crit;
-            crit->DebugInfo->ProcessLocksList.Blink = &crit->DebugInfo->ProcessLocksList;
-            crit->DebugInfo->ProcessLocksList.Flink = &crit->DebugInfo->ProcessLocksList;
-            crit->DebugInfo->EntryCount = 0;
-            crit->DebugInfo->ContentionCount = 0;
-            //memset( crit->DebugInfo->Spare, 0, sizeof(crit->DebugInfo->Spare) );
-        }
+
+    if (crit->DebugInfo)
+    {
+        crit->DebugInfo->Type = 0;
+        crit->DebugInfo->CreatorBackTraceIndex = 0;
+        crit->DebugInfo->CriticalSection = crit;
+        crit->DebugInfo->ProcessLocksList.Blink = &(crit->DebugInfo->ProcessLocksList);
+        crit->DebugInfo->ProcessLocksList.Flink = &(crit->DebugInfo->ProcessLocksList);
+        crit->DebugInfo->EntryCount = 0;
+        crit->DebugInfo->ContentionCount = 0;
+		crit->DebugInfo->Flags = 0;
+		crit->DebugInfo->CreatorBackTraceIndexHigh = 0;
+		crit->DebugInfo->SpareWORD = 0;
     }
     crit->LockCount      = -1;
     crit->RecursionCount = 0;

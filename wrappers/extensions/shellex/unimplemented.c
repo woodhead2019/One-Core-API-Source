@@ -186,21 +186,6 @@ SHGetPropertyStoreForWindow(
     return hr;
 }
 
-static const GUID CLSID_Bind_Query = 
-{0x000214e6, 0x0000, 0x0000, {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
-
-HRESULT WINAPI SHBindToFolderIDListParent(
-  _In_opt_   IShellFolder *psfRoot,
-  _In_       PCUIDLIST_RELATIVE pidl,
-  _In_       REFIID riid,
-  _Out_      void **ppv,
-  _Out_opt_  PCUITEMID_CHILD *ppidlLast
-)
-{
-	 ppv = NULL;
-	 return E_FAIL;
-}
-
 EXTERN_C HANDLE WINAPI IsEnabled()
 {
 	return NULL;
@@ -253,16 +238,6 @@ HRESULT WINAPI SHGetLocalizedName(LPCWSTR path, LPWSTR module, UINT size, INT *r
 {
     FIXME("%s %p %u %p: stub\n", debugstr_w(path), module, size, res);
     return E_NOTIMPL;
-}
-
-HRESULT 
-WINAPI 
-ILLoadFromStreamEx(
-  _In_   IStream *pstm,
-  _Out_  PITEMID_CHILD *ppidl
-)
-{
-	return E_FAIL;
 }
 
 /***********************************************************************
@@ -327,7 +302,7 @@ HRESULT WINAPI SHAddDefaultPropertiesByExt(
  */
 HRESULT WINAPI SHRemoveLocalizedName(const WCHAR *path)
 {
-    FIXME("%s stub\n", debugstr_w(path));
+    FIXME("SHRemoveLocalizedName: %s stub\n", debugstr_w(path));
     return S_OK;
 }
 
@@ -371,7 +346,7 @@ WPC_InstallState(
  */
 HRESULT WINAPI Shell_NotifyIconGetRect(const NOTIFYICONIDENTIFIER* identifier, RECT* icon_location)
 {
-    FIXME("stub (%p) (%p)\n", identifier, icon_location);
+    FIXME("Shell_NotifyIconGetRect: stub (%p) (%p)\n", identifier, icon_location);
     return E_NOTIMPL;
 }
 
@@ -417,13 +392,13 @@ StampIconForElevation(HICON icon, int x, int y){
 
 HRESULT WINAPI SetCurrentProcessExplicitAppUserModelID(const WCHAR *appid)
 {
-    FIXME("%s: stub\n", debugstr_w(appid));
+    FIXME("SetCurrentProcessExplicitAppUserModelID: %s: stub\n", debugstr_w(appid));
     return S_OK;
 }
 
 HRESULT WINAPI GetCurrentProcessExplicitAppUserModelID(const WCHAR **appid)
 {
-    FIXME("%p: stub\n", appid);
+    FIXME("GetCurrentProcessExplicitAppUserModelID: %p: stub\n", appid);
     *appid = NULL;
     return E_NOTIMPL;
 }

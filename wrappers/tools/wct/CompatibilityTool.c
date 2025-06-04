@@ -2,7 +2,7 @@
 #include <commctrl.h>
 #include <tchar.h>
 #include <winreg.h>
-#include <stdbool.h>
+#include <stdBOOL.h>
 #include <stdio.h>
 
 // IDs dos controles
@@ -44,8 +44,8 @@ const TCHAR* versionValues[] = {
 
 // Prototipo das funções
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void WriteToRegistry(const TCHAR*, bool);
-void DeleteRegistryKey(bool);
+void WriteToRegistry(const TCHAR*, BOOL);
+void DeleteRegistryKey(BOOL);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     LPTSTR cmdLine = GetCommandLine(); // Gets the full command line
@@ -167,7 +167,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 // Function to enable or disable the window and its controls
-void HandleWindow(bool enable, HWND hComboBox, HWND hApplyButton, HWND hDeleteButton, HWND hCancelButton, HWND hwnd)
+void HandleWindow(BOOL enable, HWND hComboBox, HWND hApplyButton, HWND hDeleteButton, HWND hCancelButton, HWND hwnd)
 {
     EnableWindow(hwnd, enable);
     EnableWindow(hComboBox, enable);
@@ -300,7 +300,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
-void WriteToRegistry(const TCHAR* value, bool useMessageBox) {
+void WriteToRegistry(const TCHAR* value, BOOL useMessageBox) {
     HKEY hKey;
     int msgboxID;
     LONG result;
@@ -356,7 +356,7 @@ void WriteToRegistry(const TCHAR* value, bool useMessageBox) {
     }
 }
 
-void DeleteRegistryKey(bool useMessageBox) {
+void DeleteRegistryKey(BOOL useMessageBox) {
     HKEY hKey;
 	LONG result;
 	int msgboxID;

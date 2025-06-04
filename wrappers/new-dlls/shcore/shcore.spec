@@ -17,11 +17,11 @@
 @ stdcall GetScaleFactorForMonitor(long ptr)
 @ stdcall IStream_Copy(ptr ptr long)
 @ stdcall IStream_Read(ptr ptr long) _IStream_Read
-# @ stub IStream_ReadStr
+@ stdcall IStream_ReadStr(ptr wstr)
 @ stdcall IStream_Reset(ptr)
 @ stdcall IStream_Size(ptr ptr)
 @ stdcall IStream_Write(ptr ptr long) _IStream_Write
-# @ stub IStream_WriteStr
+@ stdcall IStream_WriteStr(ptr wstr)
 @ stdcall IUnknown_AtomicRelease(ptr)
 @ stdcall IUnknown_GetSite(ptr ptr ptr)
 @ stdcall IUnknown_QueryService(ptr ptr ptr ptr)

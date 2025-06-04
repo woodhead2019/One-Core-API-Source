@@ -410,6 +410,11 @@ typedef struct _REALIZATION_INFO
     DWORD  iFontFileId;
 } REALIZATION_INFO, *PREALIZATION_INFO;
 
+typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
+  D3DKMT_HANDLE hResource;
+  UINT          ClientPid;
+} D3DKMT_CHECKSHAREDRESOURCEACCESS;
+
 void *get_any_obj_ptr( HGDIOBJ handle, WORD *type );
 
 DC *get_dc_ptr( HDC hdc );
@@ -455,3 +460,12 @@ GdiRealizationInfo(
 	HDC hdc,
     PREALIZATION_INFO pri
 );
+
+typedef BOOL (WINAPI *pD3DKMTCreateDCFromMemory)(
+    D3DKMT_CREATEDCFROMMEMORY*);
+	
+typedef BOOL (WINAPI *pD3DKMTDestroyDCFromMemory)(
+    D3DKMT_DESTROYDCFROMMEMORY*);	
+	
+typedef HBITMAP (WINAPI *pCreateBitmapFromDxSurface)(
+    HDC, UINT32, UINT32, ULONG, HANDLE);	

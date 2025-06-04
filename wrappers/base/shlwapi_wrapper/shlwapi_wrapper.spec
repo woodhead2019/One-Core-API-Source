@@ -181,7 +181,6 @@
 181 stdcall -noname SHEnableMenuItem(long long long)
 182 stdcall -noname SHCheckMenuItem(long long long)
 183 stdcall -noname SHRegisterClassA(ptr)
-184 stdcall IStream_Read(ptr ptr long) 
 185 stdcall -noname SHMessageBoxCheckA(ptr str str long long str)
 186 stdcall -noname SHSimulateDrop(ptr ptr long ptr ptr)
 187 stdcall -noname SHLoadFromPropertyBag(ptr ptr)
@@ -209,7 +208,6 @@
 209 stdcall -noname FDSA_Destroy(ptr)
 210 stdcall -noname FDSA_InsertItem(ptr long ptr)
 211 stdcall -noname FDSA_DeleteItem(ptr long)
-212 stdcall -noname IStream_Write(ptr ptr long) 
 213 stdcall -noname IStream_Reset(ptr)
 214 stdcall -noname IStream_Size(ptr ptr)
 215 stdcall -noname SHAnsiToUnicode(str ptr long)
@@ -504,8 +502,6 @@
 509 stdcall -noname IUnknown_OnFocusChangeIS(ptr ptr long)
 510 stdcall -noname SHLockSharedEx(ptr long long)
 511 stdcall -noname PathFileExistsDefExtAndAttributesW(wstr ptr ptr)
-512 stdcall IStream_ReadPidl(ptr ptr)
-513 stdcall -noname -ordinal IStream_WritePidl(ptr ptr)
 514 stdcall -noname IUnknown_ProfferService(ptr ptr ptr ptr)
 515 stdcall -ordinal SHGetViewStatePropertyBag(ptr wstr long ptr ptr)
 516 stdcall -noname SKGetValueW(long wstr wstr ptr ptr ptr)
@@ -1161,6 +1157,13 @@
 743 stdcall -i386 SHRegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
 
 #Windows Vista Functions
+@ stdcall IStream_Copy(ptr ptr long)
+184 stdcall IStream_Read(ptr ptr long) ;Implemented on XP/2003, however, not exported by name 
+212 stdcall IStream_Write(ptr ptr long) ;Implemented on XP/2003, however, not exported by name
+512 stdcall IStream_ReadPidl(ptr ptr) ;Implemented on XP/2003, however, not exported by name
+@ stdcall IStream_ReadStr(ptr wstr)
+513 stdcall IStream_WritePidl(ptr ptr) ;Implemented on XP/2003, however, not exported by name
+@ stdcall IStream_WriteStr(ptr wstr)
 @ stdcall PathMatchSpecExA(str str long)
 @ stdcall PathMatchSpecExW(wstr wstr long)
 @ stdcall PathCreateFromUrlAlloc(wstr wstr long)

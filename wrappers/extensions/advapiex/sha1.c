@@ -96,110 +96,552 @@ static void SHA1Transform(ULONG State[5], UCHAR Buffer[64])
    a = b = c = d = e = 0;
 }
 
+// /******************************************************************************
+ // * A_SHAInit (ntdll.@)
+ // *
+ // * Initialize a SHA context structure.
+ // *
+ // * PARAMS
+ // *  Context [O] SHA context
+ // *
+ // * RETURNS
+ // *  Nothing
+ // */
+// void WINAPI A_SHAInit(PSHA_CTX Context)
+// {
+   // /* SHA1 initialization constants */
+   // Context->State[0] = 0x67452301;
+   // Context->State[1] = 0xEFCDAB89;
+   // Context->State[2] = 0x98BADCFE;
+   // Context->State[3] = 0x10325476;
+   // Context->State[4] = 0xC3D2E1F0;
+   // Context->Count[0] =
+   // Context->Count[1] = 0;
+// }
 
-/******************************************************************************
- * A_SHAInit (ntdll.@)
- *
- * Initialize a SHA context structure.
- *
- * PARAMS
- *  Context [O] SHA context
- *
- * RETURNS
- *  Nothing
- */
-void WINAPI V_SHAInit(PSHA_CTX Context)
-{
-   /* SHA1 initialization constants */
-   Context->State[0] = 0x67452301;
-   Context->State[1] = 0xEFCDAB89;
-   Context->State[2] = 0x98BADCFE;
-   Context->State[3] = 0x10325476;
-   Context->State[4] = 0xC3D2E1F0;
-   Context->Count[0] =
-   Context->Count[1] = 0;
+// /******************************************************************************
+ // * A_SHAUpdate (ntdll.@)
+ // *
+ // * Update a SHA context with a hashed data from supplied buffer.
+ // *
+ // * PARAMS
+ // *  Context    [O] SHA context
+ // *  Buffer     [I] hashed data
+ // *  BufferSize [I] hashed data size
+ // *
+ // * RETURNS
+ // *  Nothing
+ // */
+// void WINAPI A_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, UINT BufferSize)
+// {
+   // ULONG BufferContentSize;
+
+   // BufferContentSize = Context->Count[1] & 63;
+   // Context->Count[1] += BufferSize;
+   // if (Context->Count[1] < BufferSize)
+      // Context->Count[0]++;
+   // Context->Count[0] += (BufferSize >> 29);
+
+   // if (BufferContentSize + BufferSize < 64)
+   // {
+      // memcpy(&Context->Buffer[BufferContentSize], Buffer,
+                    // BufferSize);
+   // }
+   // else
+   // {
+      // while (BufferContentSize + BufferSize >= 64)
+      // {
+         // memcpy(Context->Buffer + BufferContentSize, Buffer,
+                       // 64 - BufferContentSize);
+         // Buffer += 64 - BufferContentSize;
+         // BufferSize -= 64 - BufferContentSize;
+         // SHA1Transform(Context->State, Context->Buffer);
+         // BufferContentSize = 0;
+      // }
+      // memcpy(Context->Buffer + BufferContentSize, Buffer, BufferSize);
+   // }
+// }
+
+// /******************************************************************************
+ // * A_SHAFinal (ntdll.@)
+ // *
+ // * Finalize SHA context and return the resulting hash.
+ // *
+ // * PARAMS
+ // *  Context [I/O] SHA context
+ // *  Result  [O] resulting hash
+ // *
+ // * RETURNS
+ // *  Nothing
+ // */
+// void WINAPI A_SHAFinal(PSHA_CTX Context, PULONG Result)
+// {
+   // INT Pad, Index;
+   // UCHAR Buffer[72];
+   // ULONG *Count;
+   // ULONG BufferContentSize, LengthHi, LengthLo;
+
+   // BufferContentSize = Context->Count[1] & 63;
+   // if (BufferContentSize >= 56)
+      // Pad = 56 + 64 - BufferContentSize;
+   // else
+      // Pad = 56 - BufferContentSize;
+
+   // LengthHi = (Context->Count[0] << 3) | (Context->Count[1] >> (32 - 3));
+   // LengthLo = (Context->Count[1] << 3);
+
+   // memset(Buffer + 1, 0, Pad - 1);
+   // Buffer[0] = 0x80;
+   // Count = (ULONG*)(Buffer + Pad);
+   // Count[0] = DWORD2BE(LengthHi);
+   // Count[1] = DWORD2BE(LengthLo);
+   // A_SHAUpdate(Context, Buffer, Pad + 8);
+
+   // for (Index = 0; Index < 5; Index++)
+      // Result[Index] = DWORD2BE(Context->State[Index]);
+
+   // memset(Context->Buffer, 0, sizeof(Context->Buffer));
+   // A_SHAInit(Context);
+// }
+
+/* UNRAVEL should be fastest & biggest */
+/* UNROLL_LOOPS should be just as big, but slightly slower */
+/* both undefined should be smallest and slowest */
+
+/* Useful defines & typedefs */
+typedef unsigned char SHA_BYTE; /* 8-bit quantity */
+
+// SHA_LONG already defined in openssl/sha.h
+typedef unsigned int SHA_LONG; /* 32-or-more-bit quantity */
+#define SHA_BYTE_ORDER 1234
+#define SHA_VERSION 1
+
+#define SHA_BLOCKSIZE 64
+#define SHA_DIGESTSIZE 20
+
+typedef struct {
+  SHA_LONG digest[5];           /* message digest */
+  SHA_LONG count_lo, count_hi;  /* 64-bit bit count */
+  SHA_BYTE data[SHA_BLOCKSIZE]; /* SHA data buffer */
+  int local;                    /* unprocessed amount in data */
+} SHA_INFO;
+
+#define UNRAVEL
+/* #define UNROLL_LOOPS */
+
+/* SHA f()-functions */
+
+#define f1(x, y, z) ((x & y) | (~x & z))
+#define f2(x, y, z) (x ^ y ^ z)
+#define f3(x, y, z) ((x & y) | (x & z) | (y & z))
+#define f4(x, y, z) (x ^ y ^ z)
+
+/* SHA constants */
+
+#define CONST1 0x5a827999L
+#define CONST2 0x6ed9eba1L
+#define CONST3 0x8f1bbcdcL
+#define CONST4 0xca62c1d6L
+
+/* truncate to 32 bits -- should be a null op on 32-bit machines */
+
+#define T32(x) ((x)&0xffffffffL)
+
+/* 32-bit rotate */
+
+#define R32(x, n) T32(((x << n) | (x >> (32 - n))))
+
+/* the generic case, for when the overall rotation is not unraveled */
+
+#define FG(n)                                                \
+  T = T32(R32(A, 5) + f##n(B, C, D) + E + *WP++ + CONST##n); \
+  E = D;                                                     \
+  D = C;                                                     \
+  C = R32(B, 30);                                            \
+  B = A;                                                     \
+  A = T
+
+/* specific cases, for when the overall rotation is unraveled */
+
+#define FA(n)                                                \
+  T = T32(R32(A, 5) + f##n(B, C, D) + E + *WP++ + CONST##n); \
+  B = R32(B, 30)
+
+#define FB(n)                                                \
+  E = T32(R32(T, 5) + f##n(A, B, C) + D + *WP++ + CONST##n); \
+  A = R32(A, 30)
+
+#define FC(n)                                                \
+  D = T32(R32(E, 5) + f##n(T, A, B) + C + *WP++ + CONST##n); \
+  T = R32(T, 30)
+
+#define FD(n)                                                \
+  C = T32(R32(D, 5) + f##n(E, T, A) + B + *WP++ + CONST##n); \
+  E = R32(E, 30)
+
+#define FE(n)                                                \
+  B = T32(R32(C, 5) + f##n(D, E, T) + A + *WP++ + CONST##n); \
+  D = R32(D, 30)
+
+#define FT(n)                                                \
+  A = T32(R32(B, 5) + f##n(C, D, E) + T + *WP++ + CONST##n); \
+  C = R32(C, 30)
+
+/* do SHA transformation */
+
+static void ShaTransform(SHA_INFO *sha_info) {
+  int i;
+  SHA_BYTE *dp;
+  SHA_LONG T, A, B, C, D, E, W[80], *WP;
+
+  dp = sha_info->data;
+
+/*
+the following makes sure that at least one code block below is
+traversed or an error is reported, without the necessity for nested
+preprocessor if/else/endif blocks, which are a great pain in the
+nether regions of the anatomy...
+*/
+#undef SWAP_DONE
+
+#if (SHA_BYTE_ORDER == 1234)
+#define SWAP_DONE
+  for (i = 0; i < 16; ++i) {
+    T = *((SHA_LONG *)dp);
+    dp += 4;
+    W[i] = ((T << 24) & 0xff000000) | ((T << 8) & 0x00ff0000) |
+           ((T >> 8) & 0x0000ff00) | ((T >> 24) & 0x000000ff);
+  }
+#endif /* SHA_BYTE_ORDER == 1234 */
+
+#if (SHA_BYTE_ORDER == 4321)
+#define SWAP_DONE
+  for (i = 0; i < 16; ++i) {
+    T = *((SHA_LONG *)dp);
+    dp += 4;
+    W[i] = T32(T);
+  }
+#endif /* SHA_BYTE_ORDER == 4321 */
+
+#if (SHA_BYTE_ORDER == 12345678)
+#define SWAP_DONE
+  for (i = 0; i < 16; i += 2) {
+    T = *((SHA_LONG *)dp);
+    dp += 8;
+    W[i] = ((T << 24) & 0xff000000) | ((T << 8) & 0x00ff0000) |
+           ((T >> 8) & 0x0000ff00) | ((T >> 24) & 0x000000ff);
+    T >>= 32;
+    W[i + 1] = ((T << 24) & 0xff000000) | ((T << 8) & 0x00ff0000) |
+               ((T >> 8) & 0x0000ff00) | ((T >> 24) & 0x000000ff);
+  }
+#endif /* SHA_BYTE_ORDER == 12345678 */
+
+#if (SHA_BYTE_ORDER == 87654321)
+#define SWAP_DONE
+  for (i = 0; i < 16; i += 2) {
+    T = *((SHA_LONG *)dp);
+    dp += 8;
+    W[i] = T32(T >> 32);
+    W[i + 1] = T32(T);
+  }
+#endif /* SHA_BYTE_ORDER == 87654321 */
+
+#ifndef SWAP_DONE
+#error Unknown byte order -- you need to add code here
+#endif /* SWAP_DONE */
+
+  for (i = 16; i < 80; ++i) {
+    W[i] = W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16];
+#if (SHA_VERSION == 1)
+    W[i] = R32(W[i], 1);
+#endif /* SHA_VERSION */
+  }
+  A = sha_info->digest[0];
+  B = sha_info->digest[1];
+  C = sha_info->digest[2];
+  D = sha_info->digest[3];
+  E = sha_info->digest[4];
+  WP = W;
+#ifdef UNRAVEL
+  FA(1);
+  FB(1);
+  FC(1);
+  FD(1);
+  FE(1);
+  FT(1);
+  FA(1);
+  FB(1);
+  FC(1);
+  FD(1);
+  FE(1);
+  FT(1);
+  FA(1);
+  FB(1);
+  FC(1);
+  FD(1);
+  FE(1);
+  FT(1);
+  FA(1);
+  FB(1);
+  FC(2);
+  FD(2);
+  FE(2);
+  FT(2);
+  FA(2);
+  FB(2);
+  FC(2);
+  FD(2);
+  FE(2);
+  FT(2);
+  FA(2);
+  FB(2);
+  FC(2);
+  FD(2);
+  FE(2);
+  FT(2);
+  FA(2);
+  FB(2);
+  FC(2);
+  FD(2);
+  FE(3);
+  FT(3);
+  FA(3);
+  FB(3);
+  FC(3);
+  FD(3);
+  FE(3);
+  FT(3);
+  FA(3);
+  FB(3);
+  FC(3);
+  FD(3);
+  FE(3);
+  FT(3);
+  FA(3);
+  FB(3);
+  FC(3);
+  FD(3);
+  FE(3);
+  FT(3);
+  FA(4);
+  FB(4);
+  FC(4);
+  FD(4);
+  FE(4);
+  FT(4);
+  FA(4);
+  FB(4);
+  FC(4);
+  FD(4);
+  FE(4);
+  FT(4);
+  FA(4);
+  FB(4);
+  FC(4);
+  FD(4);
+  FE(4);
+  FT(4);
+  FA(4);
+  FB(4);
+  sha_info->digest[0] = T32(sha_info->digest[0] + E);
+  sha_info->digest[1] = T32(sha_info->digest[1] + T);
+  sha_info->digest[2] = T32(sha_info->digest[2] + A);
+  sha_info->digest[3] = T32(sha_info->digest[3] + B);
+  sha_info->digest[4] = T32(sha_info->digest[4] + C);
+#else /* !UNRAVEL */
+#ifdef UNROLL_LOOPS
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(1);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(2);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(3);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+  FG(4);
+#else  /* !UNROLL_LOOPS */
+  for (i = 0; i < 20; ++i) {
+    FG(1);
+  }
+  for (i = 20; i < 40; ++i) {
+    FG(2);
+  }
+  for (i = 40; i < 60; ++i) {
+    FG(3);
+  }
+  for (i = 60; i < 80; ++i) {
+    FG(4);
+  }
+#endif /* !UNROLL_LOOPS */
+  sha_info->digest[0] = T32(sha_info->digest[0] + A);
+  sha_info->digest[1] = T32(sha_info->digest[1] + B);
+  sha_info->digest[2] = T32(sha_info->digest[2] + C);
+  sha_info->digest[3] = T32(sha_info->digest[3] + D);
+  sha_info->digest[4] = T32(sha_info->digest[4] + E);
+#endif /* !UNRAVEL */
 }
 
-/******************************************************************************
- * A_SHAUpdate (ntdll.@)
- *
- * Update a SHA context with a hashed data from supplied buffer.
- *
- * PARAMS
- *  Context    [O] SHA context
- *  Buffer     [I] hashed data
- *  BufferSize [I] hashed data size
- *
- * RETURNS
- *  Nothing
- */
-void WINAPI V_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, UINT BufferSize)
-{
-   ULONG BufferContentSize;
-
-   BufferContentSize = Context->Count[1] & 63;
-   Context->Count[1] += BufferSize;
-   if (Context->Count[1] < BufferSize)
-      Context->Count[0]++;
-   Context->Count[0] += (BufferSize >> 29);
-
-   if (BufferContentSize + BufferSize < 64)
-   {
-      RtlCopyMemory(&Context->Buffer[BufferContentSize], Buffer,
-                    BufferSize);
-   }
-   else
-   {
-      while (BufferContentSize + BufferSize >= 64)
-      {
-         RtlCopyMemory(Context->Buffer + BufferContentSize, Buffer,
-                       64 - BufferContentSize);
-         Buffer += 64 - BufferContentSize;
-         BufferSize -= 64 - BufferContentSize;
-         SHA1Transform(Context->State, Context->Buffer);
-         BufferContentSize = 0;
-      }
-      RtlCopyMemory(Context->Buffer + BufferContentSize, Buffer, BufferSize);
-   }
+void A_SHAInit(SHA_INFO *sha_info) {
+  sha_info->digest[0] = 0x67452301L;
+  sha_info->digest[1] = 0xefcdab89L;
+  sha_info->digest[2] = 0x98badcfeL;
+  sha_info->digest[3] = 0x10325476L;
+  sha_info->digest[4] = 0xc3d2e1f0L;
+  sha_info->count_lo = 0L;
+  sha_info->count_hi = 0L;
+  sha_info->local = 0;
 }
 
-/******************************************************************************
- * A_SHAFinal (ntdll.@)
- *
- * Finalize SHA context and return the resulting hash.
- *
- * PARAMS
- *  Context [I/O] SHA context
- *  Result  [O] resulting hash
- *
- * RETURNS
- *  Nothing
- */
-void WINAPI V_SHAFinal(PSHA_CTX Context, PULONG Result)
-{
-   INT Pad, Index;
-   UCHAR Buffer[72];
-   ULONG *Count;
-   ULONG BufferContentSize, LengthHi, LengthLo;
+/* update the SHA digest */
+void A_SHAUpdate(SHA_INFO *sha_info, SHA_BYTE *buffer, int count) {
+  int i;
+  SHA_LONG clo;
 
-   BufferContentSize = Context->Count[1] & 63;
-   if (BufferContentSize >= 56)
-      Pad = 56 + 64 - BufferContentSize;
-   else
-      Pad = 56 - BufferContentSize;
+  clo = T32(sha_info->count_lo + ((SHA_LONG)count << 3));
+  if (clo < sha_info->count_lo) {
+    ++sha_info->count_hi;
+  }
+  sha_info->count_lo = clo;
+  sha_info->count_hi += (SHA_LONG)count >> 29;
+  if (sha_info->local) {
+    i = SHA_BLOCKSIZE - sha_info->local;
+    if (i > count) {
+      i = count;
+    }
+    memcpy(((SHA_BYTE *)sha_info->data) + sha_info->local, buffer, i);
+    count -= i;
+    buffer += i;
+    sha_info->local += i;
+    if (sha_info->local == SHA_BLOCKSIZE) {
+      ShaTransform(sha_info);
+    } else {
+      return;
+    }
+  }
+  while (count >= SHA_BLOCKSIZE) {
+    memcpy(sha_info->data, buffer, SHA_BLOCKSIZE);
+    buffer += SHA_BLOCKSIZE;
+    count -= SHA_BLOCKSIZE;
+    ShaTransform(sha_info);
+  }
+  memcpy(sha_info->data, buffer, count);
+  sha_info->local = count;
+}
 
-   LengthHi = (Context->Count[0] << 3) | (Context->Count[1] >> (32 - 3));
-   LengthLo = (Context->Count[1] << 3);
+/* finish computing the SHA digest */
+void A_SHAFinal(unsigned char digest[20], SHA_INFO *sha_info) {
+  int count;
+  SHA_LONG lo_bit_count, hi_bit_count;
 
-   RtlZeroMemory(Buffer + 1, Pad - 1);
-   Buffer[0] = 0x80;
-   Count = (ULONG*)(Buffer + Pad);
-   Count[0] = DWORD2BE(LengthHi);
-   Count[1] = DWORD2BE(LengthLo);
-   V_SHAUpdate(Context, Buffer, Pad + 8);
-
-   for (Index = 0; Index < 5; Index++)
-      Result[Index] = DWORD2BE(Context->State[Index]);
-
-   V_SHAInit(Context);
+  lo_bit_count = sha_info->count_lo;
+  hi_bit_count = sha_info->count_hi;
+  count = (int)((lo_bit_count >> 3) & 0x3f);
+  ((SHA_BYTE *)sha_info->data)[count++] = 0x80;
+  if (count > SHA_BLOCKSIZE - 8) {
+    memset(((SHA_BYTE *)sha_info->data) + count, 0, SHA_BLOCKSIZE - count);
+    ShaTransform(sha_info);
+    memset((SHA_BYTE *)sha_info->data, 0, SHA_BLOCKSIZE - 8);
+  } else {
+    memset(((SHA_BYTE *)sha_info->data) + count, 0, SHA_BLOCKSIZE - 8 - count);
+  }
+  sha_info->data[56] = (unsigned char)((hi_bit_count >> 24) & 0xff);
+  sha_info->data[57] = (unsigned char)((hi_bit_count >> 16) & 0xff);
+  sha_info->data[58] = (unsigned char)((hi_bit_count >> 8) & 0xff);
+  sha_info->data[59] = (unsigned char)((hi_bit_count >> 0) & 0xff);
+  sha_info->data[60] = (unsigned char)((lo_bit_count >> 24) & 0xff);
+  sha_info->data[61] = (unsigned char)((lo_bit_count >> 16) & 0xff);
+  sha_info->data[62] = (unsigned char)((lo_bit_count >> 8) & 0xff);
+  sha_info->data[63] = (unsigned char)((lo_bit_count >> 0) & 0xff);
+  ShaTransform(sha_info);
+  digest[0] = (unsigned char)((sha_info->digest[0] >> 24) & 0xff);
+  digest[1] = (unsigned char)((sha_info->digest[0] >> 16) & 0xff);
+  digest[2] = (unsigned char)((sha_info->digest[0] >> 8) & 0xff);
+  digest[3] = (unsigned char)((sha_info->digest[0]) & 0xff);
+  digest[4] = (unsigned char)((sha_info->digest[1] >> 24) & 0xff);
+  digest[5] = (unsigned char)((sha_info->digest[1] >> 16) & 0xff);
+  digest[6] = (unsigned char)((sha_info->digest[1] >> 8) & 0xff);
+  digest[7] = (unsigned char)((sha_info->digest[1]) & 0xff);
+  digest[8] = (unsigned char)((sha_info->digest[2] >> 24) & 0xff);
+  digest[9] = (unsigned char)((sha_info->digest[2] >> 16) & 0xff);
+  digest[10] = (unsigned char)((sha_info->digest[2] >> 8) & 0xff);
+  digest[11] = (unsigned char)((sha_info->digest[2]) & 0xff);
+  digest[12] = (unsigned char)((sha_info->digest[3] >> 24) & 0xff);
+  digest[13] = (unsigned char)((sha_info->digest[3] >> 16) & 0xff);
+  digest[14] = (unsigned char)((sha_info->digest[3] >> 8) & 0xff);
+  digest[15] = (unsigned char)((sha_info->digest[3]) & 0xff);
+  digest[16] = (unsigned char)((sha_info->digest[4] >> 24) & 0xff);
+  digest[17] = (unsigned char)((sha_info->digest[4] >> 16) & 0xff);
+  digest[18] = (unsigned char)((sha_info->digest[4] >> 8) & 0xff);
+  digest[19] = (unsigned char)((sha_info->digest[4]) & 0xff);
 }

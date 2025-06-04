@@ -56,6 +56,9 @@ DNS_QUERY_COMPLETION_ROUTINE(
 
 typedef DNS_QUERY_COMPLETION_ROUTINE *PDNS_QUERY_COMPLETION_ROUTINE;
 
+typedef void WINAPI DNS_SERVICE_BROWSE_CALLBACK(DWORD, void *, PDNS_RECORD);
+typedef DNS_SERVICE_BROWSE_CALLBACK *PDNS_SERVICE_BROWSE_CALLBACK;
+
 typedef struct _DNS_QUERY_REQUEST {
   ULONG                         Version;
   PCWSTR                        QueryName;
@@ -67,7 +70,22 @@ typedef struct _DNS_QUERY_REQUEST {
   PVOID                         pQueryContext;
 } DNS_QUERY_REQUEST, *PDNS_QUERY_REQUEST;
 
-
 typedef struct _DNS_QUERY_CANCEL {
   CHAR Reserved[32];
 } DNS_QUERY_CANCEL, *PDNS_QUERY_CANCEL;
+
+typedef struct _DNS_SERVICE_BROWSE_REQUEST {
+  ULONG  Version;
+  ULONG  InterfaceIndex;
+  PCWSTR QueryName;
+  union {
+    PDNS_SERVICE_BROWSE_CALLBACK pBrowseCallback;
+    DNS_QUERY_COMPLETION_ROUTINE *pBrowseCallbackV2;
+  };
+  PVOID  pQueryContext;
+} DNS_SERVICE_BROWSE_REQUEST, *PDNS_SERVICE_BROWSE_REQUEST;
+
+typedef struct _DNS_SERVICE_CANCEL
+{
+    void *reserved;
+} DNS_SERVICE_CANCEL, *PDNS_SERVICE_CANCEL;

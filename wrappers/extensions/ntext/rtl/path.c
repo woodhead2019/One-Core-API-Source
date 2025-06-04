@@ -910,7 +910,7 @@ RtlpDosPathNameToRelativeNtPathName_Ustr(
     if ((NameInvalid) || !(PathLength) || (PathLength > (MAX_PATH * sizeof(WCHAR))))
     {
         /* Invalid name, fail */
-        DbgPrint("Invalid name: %lx Path Length: %lx\n", NameInvalid, PathLength);
+        DbgPrint("RtlpDosPathNameToRelativeNtPathName_Ustr:: Invalid name: %lx Path Length: %lx\n", NameInvalid, PathLength);
         RtlFreeHeap(RtlGetProcessHeap(), 0, NewBuffer);
         RtlReleasePebLock();
         return STATUS_OBJECT_NAME_INVALID;

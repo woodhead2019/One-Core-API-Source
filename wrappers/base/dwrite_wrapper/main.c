@@ -2069,68 +2069,101 @@ typedef HRESULT (WINAPI *LPFN_DWRITE_FACTORY)(
     REFIID,
 	IUnknown**);
 
-HRESULT WINAPI DWriteCreateFactory(DWRITE_FACTORY_TYPE type, REFIID riid, IUnknown **ret)
-{
-	HRESULT hr = S_OK;
-	LPFN_DWRITE_FACTORY dwriteCreateFactory;
-	HMODULE dwriteModule;
+// HRESULT WINAPI DWriteCreateFactory(DWRITE_FACTORY_TYPE type, REFIID riid, IUnknown **ret)
+// {
+	// HRESULT hr = S_OK;
+	// LPFN_DWRITE_FACTORY dwriteCreateFactory;
+	// HMODULE dwriteModule;
 	
-	if (//IsEqualIID(riid, &IID_IDWriteFactory7) ||
-        //IsEqualIID(riid, &IID_IDWriteFactory6) ||
-        // IsEqualIID(riid, &IID_IDWriteFactory5) ||
-        // IsEqualIID(riid, &IID_IDWriteFactory4) ||
-        // IsEqualIID(riid, &IID_IDWriteFactory3) ||
-        // IsEqualIID(riid, &IID_IDWriteFactory2) ||
-        // IsEqualIID(riid, &IID_IDWriteFactory1) ||
-        IsEqualIID(riid, &IID_IDWriteFactory)) //||
-        //IsEqualIID(riid, &IID_IUnknown))
-   {	
-	    dwriteModule = LoadLibraryW(L"dwrnew");
+	// if (//IsEqualIID(riid, &IID_IDWriteFactory7) ||
+        // //IsEqualIID(riid, &IID_IDWriteFactory6) ||
+        // // IsEqualIID(riid, &IID_IDWriteFactory5) ||
+        // // IsEqualIID(riid, &IID_IDWriteFactory4) ||
+        // // IsEqualIID(riid, &IID_IDWriteFactory3) ||
+        // // IsEqualIID(riid, &IID_IDWriteFactory2) ||
+        // // IsEqualIID(riid, &IID_IDWriteFactory1) ||
+        // IsEqualIID(riid, &IID_IDWriteFactory)) //||
+        // //IsEqualIID(riid, &IID_IUnknown))
+   // {	
+	    // dwriteModule = LoadLibraryW(L"dwrnew");
 	
-		dwriteCreateFactory = (LPFN_DWRITE_FACTORY) GetProcAddress(
-								dwriteModule,
-								"DWriteCreateFactory");
-		if (dwriteCreateFactory) 
-		{
-			return (HRESULT)dwriteCreateFactory(type, riid, ret);
-		}	
-    }else{
-	    dwriteModule = LoadLibraryW(L"dwrold");
+		// dwriteCreateFactory = (LPFN_DWRITE_FACTORY) GetProcAddress(
+								// dwriteModule,
+								// "DWriteCreateFactory");
+		// if (dwriteCreateFactory) 
+		// {
+			// return (HRESULT)dwriteCreateFactory(type, riid, ret);
+		// }	
+    // }else{
+	    // dwriteModule = LoadLibraryW(L"dwrold");
 	
-		dwriteCreateFactory = (LPFN_DWRITE_FACTORY) GetProcAddress(
-								dwriteModule,
-								"DWriteCreateFactory");
-		if (dwriteCreateFactory) 
-		{
-			return (HRESULT)dwriteCreateFactory(type, riid, ret);
-		}
-        // *obj = iface;
-        // IDWriteFactory7_AddRef(iface);
-        return E_OUTOFMEMORY;		
+		// dwriteCreateFactory = (LPFN_DWRITE_FACTORY) GetProcAddress(
+								// dwriteModule,
+								// "DWriteCreateFactory");
+		// if (dwriteCreateFactory) 
+		// {
+			// return (HRESULT)dwriteCreateFactory(type, riid, ret);
+		// }
+        // // *obj = iface;
+        // // IDWriteFactory7_AddRef(iface);
+        // return E_OUTOFMEMORY;		
+	// }
+    // // struct dwritefactory *factory;
+    // // HRESULT hr;
+
+    // // TRACE("%d, %s, %p.\n", type, debugstr_guid(riid), ret);
+
+    // // *ret = NULL;
+
+    // // if (type == DWRITE_FACTORY_TYPE_SHARED && shared_factory)
+        // // return IDWriteFactory7_QueryInterface(shared_factory, riid, (void**)ret);
+
+    // // factory = heap_alloc(sizeof(struct dwritefactory));
+    // // if (!factory) return E_OUTOFMEMORY;
+
+    // // init_dwritefactory(factory, type);
+
+    // // if (type == DWRITE_FACTORY_TYPE_SHARED)
+        // // if (InterlockedCompareExchangePointer((void **)&shared_factory, &factory->IDWriteFactory7_iface, NULL))
+        // // {
+            // // release_shared_factory(&factory->IDWriteFactory7_iface);
+            // // return IDWriteFactory7_QueryInterface(shared_factory, riid, (void**)ret);
+        // // }
+
+    // // hr = IDWriteFactory7_QueryInterface(&factory->IDWriteFactory7_iface, riid, (void**)ret);
+    // // IDWriteFactory7_Release(&factory->IDWriteFactory7_iface);
+    // return hr;
+// }
+
+typedef HRESULT (WINAPI *DirectWriteCreation)(DWRITE_FACTORY_TYPE, REFIID, IUnknown**);
+
+HRESULT 
+WINAPI 
+DWriteCreateFactory(DWRITE_FACTORY_TYPE factoryType, REFIID iid, IUnknown **factory) {
+	LPCWSTR dllName;
+	HANDLE hnd;
+	DirectWriteCreation api;
+
+	if ( GetModuleHandleW(L"PaintDotNet.exe") || GetModuleHandleW(L"SetupFrontEnd.exe") || GetModuleHandleW(L"SetupShim.exe")){// || // Paint.Net blacklist
+		//!IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE)) { // Detect no-SSE2 support
+		// Load dwrite_d2d.dll, which is used as fallback for Athlon XP and Paint.Net.
+		dllName = L"dwritefb.dll";
+	} {
+		// Load dwritecore.dll, which will be used everywhere else.
+		dllName = L"dwritecore.dll";
 	}
-    // struct dwritefactory *factory;
-    // HRESULT hr;
+	// Try load the DLL.
+	hnd = LoadLibraryW(dllName);
+	if (!hnd) 
+		return HRESULT_FROM_WIN32(GetLastError());
 
-    // TRACE("%d, %s, %p.\n", type, debugstr_guid(riid), ret);
+	api = (DirectWriteCreation) GetProcAddress(hnd, "DWriteCreateFactory");
+	if (!api)
+		api = (DirectWriteCreation) GetProcAddress(hnd, "DWriteCoreCreateFactory"); // Try DWriteCore instead.
 
-    // *ret = NULL;
-
-    // if (type == DWRITE_FACTORY_TYPE_SHARED && shared_factory)
-        // return IDWriteFactory7_QueryInterface(shared_factory, riid, (void**)ret);
-
-    // factory = heap_alloc(sizeof(struct dwritefactory));
-    // if (!factory) return E_OUTOFMEMORY;
-
-    // init_dwritefactory(factory, type);
-
-    // if (type == DWRITE_FACTORY_TYPE_SHARED)
-        // if (InterlockedCompareExchangePointer((void **)&shared_factory, &factory->IDWriteFactory7_iface, NULL))
-        // {
-            // release_shared_factory(&factory->IDWriteFactory7_iface);
-            // return IDWriteFactory7_QueryInterface(shared_factory, riid, (void**)ret);
-        // }
-
-    // hr = IDWriteFactory7_QueryInterface(&factory->IDWriteFactory7_iface, riid, (void**)ret);
-    // IDWriteFactory7_Release(&factory->IDWriteFactory7_iface);
-    return hr;
+	if (!api) {
+		FreeLibrary(hnd);
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+	return api(factoryType, iid, factory);
 }

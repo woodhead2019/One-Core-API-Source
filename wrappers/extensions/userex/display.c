@@ -43,7 +43,7 @@ LONG WINAPI DisplayConfigSetDeviceInfo(
   */
 LONG WINAPI GetDisplayConfigBufferSizes(UINT32 flags, UINT32 *num_path_info, UINT32 *num_mode_info)
 {
-     DbgPrint("(0x%x %p %p): stub\n", flags, num_path_info, num_mode_info);
+     DbgPrint("GetDisplayConfigBufferSizes: (0x%x %p %p): stub\n", flags, num_path_info, num_mode_info);
  
      if (!num_path_info || !num_mode_info)
          return ERROR_INVALID_PARAMETER;

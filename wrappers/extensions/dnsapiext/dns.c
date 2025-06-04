@@ -78,3 +78,20 @@ DNS_STATUS WINAPI DnsQueryEx(
 
 	return DnsStatus;
 }
+
+/******************************************************************************
+ * DnsServiceBrowse                        [DNSAPI.@]
+ *
+ */
+DNS_STATUS WINAPI DnsServiceBrowse( PDNS_SERVICE_BROWSE_REQUEST request, PDNS_SERVICE_CANCEL cancel)
+{
+    FIXME( "(%p, %p) stub\n", request, cancel );
+    return ERROR_SUCCESS;
+}
+
+DNS_STATUS WINAPI DnsServiceBrowseCancel(
+  PDNS_SERVICE_CANCEL pCancelHandle
+)
+{
+    return ERROR_SUCCESS;	
+}

@@ -4450,7 +4450,7 @@ BOOL WINAPI UrlIsA(const char *url, URLIS Urlis)
     case URLIS_APPLIABLE:
     case URLIS_HASQUERY:
     default:
-        FIXME("(%s %d): stub\n", debugstr_a(url), Urlis);
+        FIXME("UrlIsA: (%s %d): stub\n", debugstr_a(url), Urlis);
     }
 
     return FALSE;

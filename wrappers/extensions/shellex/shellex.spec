@@ -423,11 +423,6 @@
 @ stdcall ShellExec_RunDLL(ptr ptr wstr long)
 @ stdcall ShellExec_RunDLLA(ptr ptr str long)
 @ stdcall ShellExec_RunDLLW(ptr ptr wstr long)
-@ stdcall ShellExecuteA(long str str str str long)
-@ stdcall ShellExecuteEx(long) 
-@ stdcall ShellExecuteExA(long)
-@ stdcall ShellExecuteExW(long)
-@ stdcall ShellExecuteW(long wstr wstr wstr wstr long)
 @ stdcall ShellHookProc(long ptr ptr)
 @ stdcall StrChrA(str long) 
 @ stdcall StrChrIA(str long) 
@@ -460,7 +455,7 @@
 @ stdcall WOWShellExecute(ptr str str str str long ptr)
 
 #Missing on Windows XP SP1
-;727 stdcall -noname SHGetImageList(long ptr ptr)
+727 stdcall -noname SHGetImageList(long ptr ptr)
 
 #Functions exported by Longhorn shell32.dll
 @ stdcall SHInitializeNamespace() ;version 3718
@@ -468,19 +463,20 @@
 @ stdcall SHEvaluateSystemCommandTemplate(wstr wstr wstr wstr)  ;Redirected to Longhorn shell
 @ stdcall SHFormatForDisplay(ptr ptr long wstr long) 
 @ stdcall WaitForExplorerRestartW(long long wstr long)
-758 stdcall -noname SHCreateThreadUndoManager(ptr ptr) ;Redirected to Longhorn shell
-759 stdcall -noname SHGetThreadUndoManager(ptr ptr) ;Redirected to Longhorn shell
-761 stdcall -noname SHChangeNotifyDeregisterWindow(ptr) ;Redirected to Longhorn shell
-787 stdcall -noname SHMapIDListToSystemImageListIndexAsync(long ptr ptr ptr ptr ptr long ptr)
-810 stdcall -noname SHGetUserPicturePathEx(wstr long wstr wstr long wstr long)
-813 stdcall -noname SHUserSetPasswordHint(wstr wstr)
+757 stdcall DisplayNameOfW(ptr ptr long ) ;Redirected to Longhorn shell
+758 stdcall SHCreateThreadUndoManager(ptr ptr) ;Redirected to Longhorn shell
+759 stdcall SHGetThreadUndoManager(ptr ptr) ;Redirected to Longhorn shell
+761 stdcall SHChangeNotifyDeregisterWindow(ptr) ;Redirected to Longhorn shell
+787 stdcall SHMapIDListToSystemImageListIndexAsync(long ptr ptr ptr ptr ptr long ptr)
+810 stdcall SHGetUserPicturePathEx(wstr long wstr wstr long wstr long)
+813 stdcall SHUserSetPasswordHint(wstr wstr)
 846 stdcall ILLoadFromStreamEx(ptr ptr) ;Redirected to Longhorn shell
-850 stdcall -noname PathComparePaths(wstr wstr) ;Redirected to Longhorn shell
-859 stdcall -noname WPC_InstallState(ptr)
-864 stdcall -noname StampIconForElevation(ptr long long)
-865 stdcall -noname IsElevationRequired(wstr)
-881 stdcall -noname SHEnumClassesOfCategories(long long long long long)
-882 stdcall -noname SHWriteClassesOfCategories(long long long long long long long)
+850 stdcall PathComparePaths(wstr wstr) ;Redirected to Longhorn shell
+859 stdcall WPC_InstallState(ptr)
+864 stdcall StampIconForElevation(ptr long long)
+865 stdcall IsElevationRequired(wstr)
+881 stdcall SHEnumClassesOfCategories(long long long long long)
+882 stdcall SHWriteClassesOfCategories(long long long long long long long)
 
 # Functions exported by the WinVista shell32.dll
 @ stdcall Shell_GetCachedImageIndexA(ptr ptr long)  ;Redirected to Longhorn shell
@@ -530,9 +526,14 @@
 #Hooks
 @ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
 @ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectInternal
-;@ stdcall Shell_NotifyIcon(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
-;@ stdcall Shell_NotifyIconA(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
-@ stdcall Shell_NotifyIconW(long ptr) Shell_NotifyIconWInternal ;Redirected to Longhorn shell
+@ stdcall ShellExecuteA(long str str str str long) ;ShellExecuteAInternal
+@ stdcall ShellExecuteEx(long) ShellExecuteExAInternal
+@ stdcall ShellExecuteExA(long) ShellExecuteExAInternal
+@ stdcall ShellExecuteExW(long) ShellExecuteExWInternal
+@ stdcall ShellExecuteW(long wstr wstr wstr wstr long) ;ShellExecuteWInternal
+@ stdcall Shell_NotifyIcon(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
+@ stdcall Shell_NotifyIconA(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
+@ stdcall Shell_NotifyIconW(long ptr) ;Shell_NotifyIconWInternal ;Redirected to Longhorn shell
 
 #Win7
 @ stdcall GetCurrentProcessExplicitAppUserModelID(ptr)

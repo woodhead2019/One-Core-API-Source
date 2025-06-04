@@ -77,7 +77,6 @@
 @ stdcall WSAHtons(long long ptr)
 @ stdcall WSAInstallServiceClassA(ptr)
 @ stdcall WSAInstallServiceClassW(ptr)
-@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr)
 @ stdcall WSAJoinLeaf(long ptr long ptr ptr ptr ptr long)
 @ stdcall WSALookupServiceBeginA(ptr long ptr)
 @ stdcall WSALookupServiceBeginW(ptr long ptr)
@@ -143,11 +142,19 @@
 @ stdcall inet_pton(long str ptr) WS_inet_pton
 @ stdcall InetNtopW(long ptr wstr long)
 @ stdcall InetPtonW(long wstr ptr)
+@ stdcall WSAConnectByNameA(long str str ptr ptr ptr ptr ptr ptr)
+@ stdcall WSAConnectByNameW(long str str ptr ptr ptr ptr ptr ptr)
 @ stdcall WSAPoll(ptr long long)
 @ stdcall WSASendMsg(long ptr long ptr ptr ptr)
 @ stdcall WSCInstallProviderAndChains(ptr wstr wstr long ptr long ptr ptr)
 @ stdcall WSCGetProviderInfo(ptr long ptr ptr long ptr)
 @ stdcall WSCSetProviderInfo(ptr long ptr long long ptr)
 
-;Win8.1 functions
+#Win8.1 functions
 @ stdcall GetHostNameW(wstr long)
+
+#Hooks
+@ stdcall setsockopt(long long long ptr long) setsockoptInternal
+@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
+@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
+@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr) ;WSAIoctlInternal

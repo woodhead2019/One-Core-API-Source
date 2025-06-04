@@ -121,6 +121,11 @@
 #define ASK_CANT_TRASH_ITEM      10
 #define ASK_OVERWRITE_FOLDER     11
 
+#define ILSkip(pidl, cb) ((PUIDLIST_RELATIVE)VOID_OFFSET((pidl), (cb)))
+#define ILNext(pidl) ILSkip(pidl, (pidl)->mkid.cb) 
+
+#define VOID_OFFSET(pv, cb) ((void*)(((BYTE*)(pv))+(cb)))
+
 typedef BYTE PIDLTYPE;
 
 HINSTANCE shell32_hInstance;

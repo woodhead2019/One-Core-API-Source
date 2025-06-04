@@ -12,7 +12,7 @@ elseif(ARCH STREQUAL "i386")
 endif()
 
 list(APPEND SOURCE
-	dc.c
+	dx.c
     font.c
 	main.c
 	d3dkmt.c

@@ -2380,7 +2380,7 @@ static HRESULT WINAPI file_operation_ApplyPropertiesToItems(IFileOperation *ifac
 static HRESULT WINAPI file_operation_RenameItem(IFileOperation *iface, IShellItem *item, LPCWSTR name,
         IFileOperationProgressSink *sink)
 {
-    FIXME("(%p, %p, %s, %p): stub.\n", iface, item, debugstr_w(name), sink);
+    //FIXME("(%p, %p, %s, %p): stub.\n", iface, item, debugstr_w(name), sink);
 
     return E_NOTIMPL;
 }

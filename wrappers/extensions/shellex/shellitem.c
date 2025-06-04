@@ -1358,7 +1358,7 @@ static HRESULT WINAPI CustomDestinationList_BeginList(ICustomDestinationList *if
 {
     CustomDestinationList *This = impl_from_ICustomDestinationList(iface);
 
-    FIXME("%p (%p %s %p): stub\n", This, min_slots, debugstr_guid(riid), obj);
+    FIXME("CustomDestinationList_BeginList: %p (%p %s %p): stub\n", This, min_slots, debugstr_guid(riid), obj);
 
     return E_NOTIMPL;
 }

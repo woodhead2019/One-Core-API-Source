@@ -94,6 +94,17 @@ typedef enum _POWER_DATA_ACCESSOR {
     ACCESS_ACTIVE_OVERLAY_SCHEME,
 } POWER_DATA_ACCESSOR, *PPOWER_DATA_ACCESSOR;
 
+typedef enum EFFECTIVE_POWER_MODE
+ {
+     EffectivePowerModeBatterySaver,
+     EffectivePowerModeBetterBattery,
+     EffectivePowerModeBalanced,
+     EffectivePowerModeHighPerformance,
+     EffectivePowerModeMaxPerformance,
+     EffectivePowerModeGameMode,
+     EffectivePowerModeMixedReality,
+ } EFFECTIVE_POWER_MODE;
+
 UINT g_LastID = (UINT)-1;
 
 DWORD WINAPI
@@ -254,4 +265,14 @@ PowerReadDCValueIndex(
 {
    DbgPrint("(%p,%s,%s,%s,0x%08lx) stub!\n", RootPowerKey, (SchemeGuid), (SubGroupOfPowerSettingsGuid), (PowerSettingGuid), DcValueIndex);
    return ERROR_CALL_NOT_IMPLEMENTED;
+}
+
+// Win 2019 LTSC APIs - required by new Edge on 1809+ modes
+HRESULT WINAPI PowerRegisterForEffectivePowerModeNotifications(ULONG version, PVOID callback, void *context, void **handle)
+ {
+     return S_OK;
+ }
+
+HRESULT WINAPI PowerUnregisterFromEffectivePowerModeNotifications(PVOID RegistrationHandle) {
+    return S_OK;
 }

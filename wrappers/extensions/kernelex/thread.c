@@ -825,7 +825,7 @@ CreateThreadpool(
     TP_POOL *pool;
     NTSTATUS status;
 
-    TRACE( "%p\n", reserved );
+    //TRACE( "%p\n", reserved );
 
     status = TpAllocPool( &pool, reserved );
     if (status)
@@ -1160,7 +1160,7 @@ BOOL WINAPI SetThreadpoolTimerEx( TP_TIMER *timer, FILETIME *due_time,
 {
     LARGE_INTEGER timeout;
 
-    TRACE( "%p, %p, %u, %u\n", timer, due_time, period, window_length );
+    //TRACE( "%p, %p, %u, %u\n", timer, due_time, period, window_length );
 
     if (due_time)
     {
@@ -1187,7 +1187,7 @@ BOOL WINAPI SetThreadpoolWaitEx( TP_WAIT *wait, HANDLE handle, FILETIME *due_tim
 {
     LARGE_INTEGER timeout;
 
-    TRACE( "%p, %p, %p\n", wait, handle, due_time );
+    //TRACE( "%p, %p, %p\n", wait, handle, due_time );
 
     if (!handle)
     {
@@ -1219,7 +1219,7 @@ BOOL WINAPI TrySubmitThreadpoolCallback( PTP_SIMPLE_CALLBACK callback, PVOID use
 {
     NTSTATUS status;
 
-    TRACE( "%p, %p, %p\n", callback, userdata, environment );
+    //TRACE( "%p, %p, %p\n", callback, userdata, environment );
 
     status = TpSimpleTryPost( callback, userdata, environment );
     if (status)
@@ -1238,7 +1238,7 @@ BOOL WINAPI CallbackMayRunLong( TP_CALLBACK_INSTANCE *instance )
 {
     NTSTATUS status;
 
-    TRACE( "%p\n", instance );
+    //TRACE( "%p\n", instance );
 
     status = TpCallbackMayRunLong( instance );
     if (status)
@@ -1258,7 +1258,7 @@ PTP_CLEANUP_GROUP WINAPI CreateThreadpoolCleanupGroup( void )
     TP_CLEANUP_GROUP *group;
     NTSTATUS status;
 
-    TRACE( "\n" );
+    //TRACE( "\n" );
 
     status = TpAllocCleanupGroup( &group );
     if (status)
@@ -1412,7 +1412,7 @@ CreateThreadpoolIo(
     TP_IO *io;
     NTSTATUS status;
 
-    TRACE( "%p, %p, %p\n", pfnio, pv, pcbe );
+    //TRACE( "%p, %p, %p\n", pfnio, pv, pcbe );
 
     status = TpAllocIoCompletion( &io, file, (PTP_IO_CALLBACK)pfnio, pv, pcbe );
     if (status)
@@ -1450,7 +1450,7 @@ GetThreadIdealProcessorEx(
  */
 HRESULT WINAPI SetThreadDescription( HANDLE handle, const WCHAR *descW )
 {
-    TRACE("(%p,%s)\n", handle, wine_dbgstr_w( descW ));
+    //TRACE("(%p,%s)\n", handle, wine_dbgstr_w( descW ));
     if (handle != GetCurrentThread())
     {
         FIXME("Can't set other thread description\n");
@@ -1534,9 +1534,13 @@ SetThreadInformation(
             return set_ntstatus( NtSetInformationThread( thread, ThreadPagePriority, info, size ));
         // case ThreadPowerThrottling:
             // return set_ntstatus( NtSetInformationThread( thread, ThreadPowerThrottlingState, info, size ));
+        case ThreadAbsoluteCpuPriority:
+            NtSetInformationThread( thread, ThreadActualBasePriority, info, size );
+            return TRUE;
+        // The other two info_classes are only introduced on Windows 10, so we do not need to do anything.
         default:
-            FIXME("Unsupported class %u.\n", info_class);
-            return FALSE;
+			FIXME("Unsupported class %u.\n", info_class);		
+            return TRUE;        
     }
 }
 

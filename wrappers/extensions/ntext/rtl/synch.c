@@ -1820,7 +1820,7 @@ typedef struct _KEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET {
 // hashes addresses will become larger and slower by more than a factor of 2.
 // demo: https://godbolt.org/z/K9q9KheYj
 //
-#define KexRtlWoaHashEntries 32 // Must be a power of two.
+#define KexRtlWoaHashEntries 128 // Must be a power of two.
 static KEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET KexRtlWaitOnAddressHashTable[KexRtlWoaHashEntries] = {0};
 
 #pragma warning(disable:4715) // not all control paths return a value

@@ -25,24 +25,10 @@ WINE_DEFAULT_DEBUG_CHANNEL(iphlpapi);
 
 #define CHARS_IN_GUID 39
 
-int Ipv4Mask[8];
-
 const NPI_MODULEID NPI_MS_IPV4_MODULEID = {0x00};
 const NPI_MODULEID NPI_MS_IPV6_MODULEID = {0x01};
 const NPI_MODULEID NPI_MS_TCP_MODULEID = {0x03};
 const NPI_MODULEID NPI_MS_NDIS_MODULEID = {0x11};
-
-void initialization()
-{
-	Ipv4Mask[24] = 0;
-	Ipv4Mask[25] = 128;
-	Ipv4Mask[26] = 192;
-	Ipv4Mask[27] = 224;
-	Ipv4Mask[28] = 240;
-	Ipv4Mask[29] = 248;
-	Ipv4Mask[30] = 252;
-	Ipv4Mask[31] = 254;	
-}
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -51,7 +37,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     switch(fdwReason)
     {
         case DLL_PROCESS_ATTACH:
-			initialization();
             DisableThreadLibraryCalls(hInstDLL);
             break;
     }
@@ -789,9 +774,13 @@ NETIOAPI_API GetIpInterfaceEntry(
 DWORD WINAPI NotifyUnicastIpAddressChange(ADDRESS_FAMILY family, PUNICAST_IPADDRESS_CHANGE_CALLBACK callback,
                                           PVOID context, BOOLEAN init_notify, PHANDLE handle)
 {
-    FIXME("(family %d, callback %p, context %p, init_notify %d, handle %p): stub\n",
+    FIXME("(family %d, callback %p, context %p, init_notify %d, handle %p): semi-stub\n",
           family, callback, context, init_notify, handle);
+    if (family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) return ERROR_INVALID_PARAMETER;
     if (handle) *handle = NULL;
+    if (init_notify)
+        callback(context, NULL, MibInitialNotification);
+
     return ERROR_NOT_SUPPORTED;
 }
 
@@ -803,6 +792,7 @@ DWORD WINAPI NotifyRouteChange2(ADDRESS_FAMILY family, PIPFORWARD_CHANGE_CALLBAC
 {
     FIXME("(family %d, callback %p, context %p, init_notify %d, handle %p): stub\n",
         family, callback, context, init_notify, handle);
+    if (family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) return ERROR_INVALID_PARAMETER;
     if (handle) *handle = NULL;
     return NO_ERROR;
 }
@@ -1175,20 +1165,24 @@ ConvertInterfaceIndexToLuid(
   _Out_ PNET_LUID   InterfaceLuid
 )
 {
-	MIB_IFROW row;
-	if(InterfaceLuid==0)
-      return ERROR_INVALID_PARAMETER;
+    MIB_IFROW row;
+    NETIO_STATUS Status;
+    if (InterfaceLuid == NULL)
+        return ERROR_INVALID_PARAMETER;
   
-	memset(InterfaceLuid, 0, sizeof(*InterfaceLuid));
-	
-	row.dwIndex = InterfaceIndex;
-    if (GetIfEntry(&row) != NO_ERROR)
-		return ERROR_FILE_NOT_FOUND;
-	
-	InterfaceLuid->Info.Reserved     = 0;
+    memset(InterfaceLuid, 0, sizeof(*InterfaceLuid));
+    memset(&row, 0, sizeof(MIB_IFROW));
+
+    row.dwIndex = InterfaceIndex;
+    Status = GetIfEntry(&row);
+    if (Status != NO_ERROR) {
+        ERR("ConvertInterfaceIndexToLuid: GetIfEntry failed with result %i", Status);
+        return Status;
+    }
+    InterfaceLuid->Info.Reserved     = 0;
     InterfaceLuid->Info.NetLuidIndex = InterfaceIndex;
     InterfaceLuid->Info.IfType       = row.dwType;
-	return NO_ERROR;
+    return NO_ERROR;
 }
 
 /******************************************************************

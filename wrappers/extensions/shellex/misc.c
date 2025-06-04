@@ -102,21 +102,6 @@ HRESULT WINAPI SHQueryUserNotificationState(QUERY_USER_NOTIFICATION_STATE *pquns
 
 HRESULT 
 WINAPI 
-SHBindToFolderIDListParentEx(
-  _In_opt_   IShellFolder *psfRoot,
-  _In_       PCUIDLIST_RELATIVE pidl,
-  _In_opt_   IBindCtx *ppbc,
-  _In_       REFIID riid,
-  _Out_      void **ppv,
-  _Out_opt_  PCUITEMID_CHILD *ppidlLast
-)
-{
-	return E_NOTIMPL;
-	//return SHBindToFolderIDListParent(psfRoot, pidl, riid, ppv, ppidlLast);
-}
-
-HRESULT 
-WINAPI 
 SHFormatForDisplay(
   _In_   REFPROPERTYKEY propkey,
   _In_   REFPROPVARIANT propvar,

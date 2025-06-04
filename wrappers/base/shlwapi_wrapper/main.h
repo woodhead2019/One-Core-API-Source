@@ -43,6 +43,20 @@ Revision History:
 
 #define IDS_BYTES_FORMAT 64
 
+#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+
+/* FIXME: This value is stored in the header, but we hard-code it to 0x1000. */
+#define LIMIT_TO_USE_SMALL_BLOCK 0x1000
+
+#define STGM_ACCESS_MODE(stgm)   ((stgm)&0x0000f)
+#define STGM_SHARE_MODE(stgm)    ((stgm)&0x000f0)
+#define STGM_CREATE_MODE(stgm)   ((stgm)&0x0f000)
+
+#define ILSkip(pidl, cb) ((PUIDLIST_RELATIVE)VOID_OFFSET((pidl), (cb)))
+#define ILNext(pidl) ILSkip(pidl, (pidl)->mkid.cb) 
+
+#define VOID_OFFSET(pv, cb) ((void*)(((BYTE*)(pv))+(cb)))
+
 /* Structure for formatting byte strings */
 typedef struct tagSHLWAPI_BYTEFORMATS
 {
@@ -80,3 +94,9 @@ PathCreateFromUrlW(
 
 BOOL WINAPI PathRemoveFileSpecA(_Inout_ LPSTR);
 BOOL WINAPI PathRemoveFileSpecW(_Inout_ LPWSTR);
+
+ULARGE_INTEGER inline UlongToLargeInt(int i) {
+    ULARGE_INTEGER li;
+    li.QuadPart = i;
+    return li;
+}

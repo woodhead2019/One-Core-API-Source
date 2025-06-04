@@ -285,6 +285,7 @@
 @ stdcall SetConvertStg(ptr long)
 @ stdcall SetDocumentBitStg(ptr long)
 @ stdcall SetErrorInfo(long ptr)
+@ stdcall SetRestrictedErrorInfo(ptr)
 @ stdcall StgConvertPropertyToVariant(ptr long ptr ptr)
 @ stdcall StgConvertVariantToProperty(ptr long ptr ptr long long ptr)
 @ stdcall StgCreateDocfile(wstr long long ptr)
@@ -436,18 +437,24 @@
 @ stdcall RoGetAgileReference(long ptr ptr ptr)
 
 #combase specific functions
+@ stdcall IsRestrictedErrorObject(ptr)
 @ stdcall GetRestrictedErrorInfo(ptr)
+@ stdcall RoActivateInstance(ptr ptr)
+@ stdcall RoCaptureErrorContext(long)
 @ stdcall RoInitialize(long)
-@ stdcall RoOriginateLanguageException(long ptr ptr)
+@ stdcall RoGetActivationFactory(ptr ptr ptr)
 @ stdcall RoGetApartmentIdentifier(ptr)
 @ stdcall RoGetParameterizedTypeInstanceIID(long ptr ptr ptr ptr)
 @ stdcall RoGetServerActivatableClasses(ptr ptr ptr)
 @ stdcall RoOriginateError(long ptr)
+@ stdcall RoOriginateErrorW(long long ptr)
+@ stdcall RoOriginateLanguageException(long ptr ptr)
 @ stdcall RoRegisterActivationFactories(ptr ptr long ptr)
 @ stdcall RoRegisterForApartmentShutdown(ptr ptr ptr)
+@ stdcall RoSetErrorReportingFlags(long)
+@ stdcall RoTransformError(long long str)
+@ stdcall RoTransformErrorW(long long long wstr)
 @ stdcall RoUninitialize()
-@ stdcall RoActivateInstance(ptr ptr)
-@ stdcall RoGetActivationFactory(ptr ptr ptr)
 @ stdcall WindowsCompareStringOrdinal(ptr ptr ptr)
 @ stdcall WindowsConcatString(ptr ptr ptr)
 @ stdcall WindowsCreateString(wstr long ptr)
@@ -467,7 +474,6 @@
 @ stdcall WindowsSubstringWithSpecifiedLength(ptr long long ptr)
 @ stdcall WindowsTrimStringEnd(ptr ptr ptr)
 @ stdcall WindowsTrimStringStart(ptr ptr ptr)
-
 
 @ stub ObjectStublessClient3
 @ stub ObjectStublessClient4

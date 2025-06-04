@@ -39,6 +39,17 @@ Revision History:
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
+HINSTANCE WINAPI ShellExecuteANative(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
+                               LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd);
+
+BOOL WINAPI ShellExecuteExANative(
+  SHELLEXECUTEINFOA *pExecInfo
+);
+
+BOOL WINAPI ShellExecuteExWNative(
+  SHELLEXECUTEINFOW *pExecInfo
+);
+
 /**************************************************************************
  * Default ClassFactory types
  */
@@ -76,45 +87,20 @@ static const struct {
 	{NULL, NULL}
 };		   
 
-
-BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
-    if (lpData->cbSize > NOTIFYICONDATAW_V2_SIZE) {
-        NOTIFYICONDATAW lpXPData;
-        memcpy(&lpXPData, lpData, NOTIFYICONDATAW_V2_SIZE);
-        lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
-        // Remove Vista flags.
-        if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
-            lpXPData.uFlags ^= 0x80;
-        }
-        if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
-            lpXPData.uFlags ^= 0x40;
-        }
-        if (lpXPData.dwInfoFlags & 0x20) {
-            // I hope it picks the right icon.
-            lpXPData.dwInfoFlags ^= 0x20;
-        }
-        if (lpXPData.dwInfoFlags & 0x80) {
-            lpXPData.dwInfoFlags ^= 0x80;
-        }
-        if (lpXPData.uVersion > 3)
-            lpXPData.uVersion = 3;
-        return Shell_NotifyIconWNative(dwMessage, &lpXPData);
-    }
-    return Shell_NotifyIconWNative(dwMessage, lpData);
-}
-
-BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
-    // if (lpData->cbSize > NOTIFYICONDATAA_V2_SIZE) {
-        // NOTIFYICONDATAA lpXPData;
-        // memcpy(&lpXPData, lpData, NOTIFYICONDATAA_V2_SIZE);
-        // lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
+// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
+    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
+        // NOTIFYICONDATAW lpXPData;
+        // memcpy(&lpXPData, lpData, NOTIFYICONDATAW_V3_SIZE);
+        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
         // // Remove Vista flags.
-        // if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
+        // if (lpXPData.uFlags & 0x80) // NIF_SHOWTIP
             // lpXPData.uFlags ^= 0x80;
-        // }
-        // if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
+        // if (lpXPData.uFlags & 0x40) // NIF_REALTIME
             // lpXPData.uFlags ^= 0x40;
-        // }
+        // if (lpXPData.uFlags & 0x20) // NIF_GUID
+            // lpXPData.uFlags ^= 0x20;
+        
+        // // & 0x20 is "reserved", we do not want to mess with it normally, but since this is conditionally defined, it's fair game.
         // if (lpXPData.dwInfoFlags & 0x20) {
             // // I hope it picks the right icon.
             // lpXPData.dwInfoFlags ^= 0x20;
@@ -124,10 +110,64 @@ BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) 
         // }
         // if (lpXPData.uVersion > 3)
             // lpXPData.uVersion = 3;
-        // return Shell_NotifyIconANative(dwMessage, &lpXPData);
+        // memset(&(lpXPData.guidItem), 0, sizeof(GUID));
+        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
     // }
-    return Shell_NotifyIconA(dwMessage, lpData);
-}
+    // return Shell_NotifyIconWNative(dwMessage, lpData);
+// }
+
+// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
+    // // Verifica se a estrutura é válida e se é de uma versão superior à V3
+    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
+        // // Faz uma cópia para manipulação, sem afetar a original
+        // NOTIFYICONDATAW lpXPData = {0};
+        // memcpy(&lpXPData, lpData, sizeof(NOTIFYICONDATAW));
+        
+        // // Corrige a cbSize para V3
+        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
+
+        // // Remove flags específicas do Vista que não existem na V3
+        // lpXPData.uFlags &= ~(0x80 | 0x40 | 0x20); // NIF_SHOWTIP, NIF_REALTIME, NIF_GUID
+        // lpXPData.dwInfoFlags &= ~(0x20 | 0x80);   // Valores específicos que causam problemas
+        // lpXPData.uVersion = min(lpXPData.uVersion, 3);
+
+        // // Zera GUID para evitar uso incorreto (já que o campo foi removido)
+        // ZeroMemory(&(lpXPData.guidItem), sizeof(GUID));
+
+        // // Chama a versão nativa com a estrutura compatível
+        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
+    // }
+
+    // // Estrutura compatível, pode chamar diretamente
+    // return Shell_NotifyIconWNative(dwMessage, lpData);
+// }
+
+
+// BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
+    // // // if (lpData->cbSize > NOTIFYICONDATAA_V2_SIZE) {
+        // // // NOTIFYICONDATAA lpXPData;
+        // // // memcpy(&lpXPData, lpData, NOTIFYICONDATAA_V2_SIZE);
+        // // // lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
+        // // // // Remove Vista flags.
+        // // // if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
+            // // // lpXPData.uFlags ^= 0x80;
+        // // // }
+        // // // if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
+            // // // lpXPData.uFlags ^= 0x40;
+        // // // }
+        // // // if (lpXPData.dwInfoFlags & 0x20) {
+            // // // // I hope it picks the right icon.
+            // // // lpXPData.dwInfoFlags ^= 0x20;
+        // // // }
+        // // // if (lpXPData.dwInfoFlags & 0x80) {
+            // // // lpXPData.dwInfoFlags ^= 0x80;
+        // // // }
+        // // // if (lpXPData.uVersion > 3)
+            // // // lpXPData.uVersion = 3;
+        // // // return Shell_NotifyIconANative(dwMessage, &lpXPData);
+    // // // }
+    // return Shell_NotifyIconA(dwMessage, lpData);
+// }
 
 BOOLEAN 
 CheckIfIsOSExec(){
@@ -658,4 +698,108 @@ HRESULT WINAPI ILLoadFromStream (IStream * pStream, LPITEMIDLIST * ppPidl)
     IStream_Release (pStream);
     TRACE("done\n");
     return ret;
+}
+
+void remove_extended_prefix(const char* input, char* output, size_t output_size) {
+    const char* prefix = "\\\\?\\";
+    size_t prefix_len = strlen(prefix);
+
+    if (strncmp(input, prefix, prefix_len) == 0) {
+        // Remove o prefixo
+        strncpy(output, input + prefix_len, output_size - 1);
+        output[output_size - 1] = '\0'; // Garantir terminação nula
+    } else {
+        // Copia normalmente se não tiver o prefixo
+        strncpy(output, input, output_size - 1);
+        output[output_size - 1] = '\0';
+    }
+}
+
+void remove_extended_prefix_w(LPCWSTR input, LPWSTR output, size_t output_size) {
+    const LPCWSTR prefix = L"\\\\?\\";
+    const size_t prefix_len = 4;
+    const LPCWSTR unc_prefix = L"UNC\\";
+
+    if (wcsncmp(input, prefix, prefix_len) == 0) {
+        // Trata caso \\?\UNC\... → \\server\share
+        if (wcsncmp(input + prefix_len, unc_prefix, 4) == 0) {
+            // Copia "\\server\share" (começando após "UNC\")
+            wcsncpy(output, L"\\\\", output_size - 1);
+            output[output_size - 1] = L'\0';
+            wcsncat(output, input + prefix_len + 4, output_size - wcslen(output) - 1);
+        } else {
+            // Caminho normal: apenas pula o \\?\
+            wcsncpy(output, input + prefix_len, output_size - 1);
+            output[output_size - 1] = L'\0';
+        }
+    } else {
+        // Sem prefixo, copia normalmente
+        wcsncpy(output, input, output_size - 1);
+        output[output_size - 1] = L'\0';
+    }
+}
+
+// /*************************************************************************
+ // * ShellExecuteA            [SHELL32.290]
+ // */
+// HINSTANCE WINAPI ShellExecuteAInternal(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
+                               // LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd)
+// {
+	// // char converted[MAX_PATH];
+	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
+	// // remove_extended_prefix(lpFile, converted ,MAX_PATH);
+	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
+	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
+	// return ShellExecuteANative(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, iShowCmd);
+// }
+
+// /*************************************************************************
+ // * ShellExecuteW			[SHELL32.294]
+ // * from shellapi.h
+ // * WINSHELLAPI HINSTANCE APIENTRY ShellExecuteW(HWND hwnd, LPCWSTR lpVerb,
+ // * LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
+ // */
+// HINSTANCE WINAPI ShellExecuteWInternal(HWND hwnd, LPCWSTR lpVerb, LPCWSTR lpFile,
+                               // LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
+// {
+	// // wchar_t converted[MAX_PATH];
+	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
+	// // remove_extended_prefix_w(lpFile, converted ,MAX_PATH);
+	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
+	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
+	// return ShellExecuteWNative(hwnd, lpVerb, lpFile, lpParameters, lpDirectory, nShowCmd);
+// }
+
+BOOL WINAPI ShellExecuteExAInternal(
+  SHELLEXECUTEINFOA *pExecInfo
+)
+{
+    static const char prefix[] = "\\\\?\\";
+    char cleanPath[MAX_PATH];
+
+    if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
+		DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
+        strncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
+        cleanPath[MAX_PATH - 1] = '\0';
+        pExecInfo->lpFile = cleanPath;
+    }	
+	
+	return ShellExecuteExANative(pExecInfo);
+}
+
+BOOL WINAPI ShellExecuteExWInternal(
+  SHELLEXECUTEINFOW *pExecInfo
+)
+{
+    static const wchar_t prefix[] = L"\\\\?\\";
+    wchar_t cleanPath[MAX_PATH];
+
+    if (pExecInfo && pExecInfo->lpFile && wcsncmp(pExecInfo->lpFile, prefix, 4) == 0) {
+		DbgPrint("ShellExecuteExWInternal:: original file: %ws\n", pExecInfo->lpFile);			
+        wcsncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
+        cleanPath[MAX_PATH - 1] = L'\0';
+        pExecInfo->lpFile = cleanPath;
+    }
+	
+	return ShellExecuteExWNative(pExecInfo);
 }

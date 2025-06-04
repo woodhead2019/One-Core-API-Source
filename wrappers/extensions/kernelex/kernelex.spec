@@ -1229,8 +1229,8 @@
 @ stdcall SetFileAttributesTransactedA(str long ptr)
 @ stdcall SetFileAttributesTransactedW(wstr long ptr)
 @ stdcall SetFileBandwidthReservation(ptr long long long ptr ptr)
-@ stdcall SetFileInformationByHandle(long long ptr long) #fileextd.SetFileInformationByHandle
-@ stdcall SetFileInformationByHandleW(long long ptr long) SetFileInformationByHandle #fileextd.SetFileInformationByHandle
+@ stdcall SetFileInformationByHandle(long long ptr long) 
+@ stdcall SetFileInformationByHandleW(long long ptr long) SetFileInformationByHandle
 @ stdcall SetNamedPipeAttribute(ptr long str ptr long)
 @ stdcall SetProcessAffinityUpdateMode(ptr long)
 @ stdcall SetProcessPreferredUILanguages(long wstr ptr)
@@ -1487,6 +1487,7 @@
 @ stdcall FlsGetValue2(long)
 @ stdcall GetTempPath2A(long str)
 @ stdcall GetTempPath2W(long wstr)
+@ stdcall QueryIoRingCapabilities(ptr)
 @ stdcall TlsGetValue2(long)
 
 #Import from advapi32 or registry function

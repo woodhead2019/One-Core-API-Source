@@ -26,88 +26,6 @@ LPDIRECT3DTEXTURE9 TextureProxyInterface = 0;
 
 typedef IDirect3D9* (WINAPI *LPDIRECT3DCREATE9)(UINT);
 
-static LPCSTR D3dError_WrongSdkVersion =
-    "D3D ERROR: D3D header version mismatch.\n"
-    "The application was compiled against and will only work with "
-    "D3D_SDK_VERSION (%d), but the currently installed runtime is "
-    "version (%d).\n"
-    "Recompile the application against the appropriate SDK for the installed runtime.\n"
-    "\n";
-
-// HRESULT WINAPI Direct3DShaderValidatorCreate9(void)
-// {
-    // UNIMPLEMENTED;
-    // return 0;
-// }
-
-// HRESULT WINAPI PSGPError(void)
-// {
-    // UNIMPLEMENTED;
-    // return 0;
-// }
-
-// HRESULT WINAPI PSGPSampleTexture(void)
-// {
-    // UNIMPLEMENTED;
-    // return 0;
-// }
-
-// HRESULT WINAPI DebugSetLevel(void)
-// {
-    // UNIMPLEMENTED;
-    // return 0;
-// }
-
-// HRESULT WINAPI DebugSetMute(DWORD dw1)
-// {
-    // UNIMPLEMENTED;
-    // return 0;
-// }
-
-// IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion)
-// {
-    // HINSTANCE hDebugDll;
-    // DWORD LoadDebugDll;
-    // DWORD LoadDebugDllSize;
-    // LPDIRECT3D9 D3D9Obj = 0;
-    // LPDIRECT3DCREATE9 DebugDirect3DCreate9 = 0;
-    // CHAR DebugMessageBuffer[DEBUG_MESSAGE_BUFFER_SIZE];
-    // UINT NoDebugSDKVersion = SDKVersion & ~DX_D3D9_DEBUG;
-
-    // LoadDebugDllSize = sizeof(LoadDebugDll);
-    // if (ReadRegistryValue(REG_DWORD, "LoadDebugRuntime", (LPBYTE)&LoadDebugDll, &LoadDebugDllSize))
-    // {
-        // if (0 != LoadDebugDll)
-        // {
-            // hDebugDll = LoadLibraryA("d3d9d.dll");
-
-            // if (0 != hDebugDll)
-            // {
-                // DebugDirect3DCreate9 = (LPDIRECT3DCREATE9)GetProcAddress(hDebugDll, "Direct3DCreate9");
-
-                // return DebugDirect3DCreate9(SDKVersion);
-            // }
-        // }
-    // }
-
-    // if (NoDebugSDKVersion != D3D_SDK_VERSION && NoDebugSDKVersion != D3D9b_SDK_VERSION)
-    // {
-        // if (SDKVersion & DX_D3D9_DEBUG)
-        // {
-            // HRESULT hResult;
-            // hResult = SafeFormatString(DebugMessageBuffer, DEBUG_MESSAGE_BUFFER_SIZE, D3dError_WrongSdkVersion, NoDebugSDKVersion, D3D_SDK_VERSION);
-            // if (SUCCEEDED(hResult))
-                // OutputDebugStringA(DebugMessageBuffer);
-        // }
-
-        // return NULL;
-    // }
-
-    // CreateD3D9(&D3D9Obj, SDKVersion);
-
-    // return D3D9Obj;
-// }
-
 HRESULT CreateD3D9Ex(OUT LPDIRECT3D9EX *ppDirect3D9, UINT SDKVersion, LPDIRECT3D9 d3dObj, BOOL pIsD3d9Ex)
 {
     LPDIRECT3D9EX_INT pDirect3D9;
@@ -162,17 +80,20 @@ HRESULT WINAPI Direct3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex **d3d9Ex)
     LPDIRECT3D9EX D3d9ExObj = 0;
 	LPDIRECT3D9 D3dObj;
 	
-	//ProxyInterface = Direct3DCreate9(D3D_SDK_VERSION);
+	DbgPrint("Direct3DCreate9Ex called\n");	
+	
 	D3dObj = Direct3DCreate9(D3D_SDK_VERSION);
 	
-	DbgPrint("Direct3DCreate9Ex called\n");
+	if(!D3dObj){
+		DbgPrint("Direct3DCreate9Ex:: Direct3DCreate9failed\n");
+		return DDERR_GENERIC;
+	}
 
     CreateD3D9Ex(&D3d9ExObj, SDKVersion, D3dObj, TRUE);
 	
 	*d3d9Ex = D3d9ExObj;
 
     return D3D_OK;
-    //return ProxyInterface;
 }
 
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
@@ -188,12 +109,3 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserve
 
     return TRUE;
 }
-
-// /***********************************************************************
- // *              D3DPERF_SetOptions (D3D9.@)
- // *
- // */
-// void WINAPI D3DPERF_SetOptions(DWORD options)
-// {
-  // FIXME("(%#x) : stub\n", options);
-// }

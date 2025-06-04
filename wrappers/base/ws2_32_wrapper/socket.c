@@ -24,6 +24,20 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(socket);
 
+static inline char *strdupWtoA(const WCHAR *str)
+{
+    char *ret = NULL;
+
+    if(str) {
+        size_t size = WideCharToMultiByte(CP_ACP, 0, str, -1, NULL, 0, NULL, NULL);
+        ret = malloc(size);
+        if(ret)
+            WideCharToMultiByte(CP_ACP, 0, str, -1, ret, size, NULL, NULL);
+    }
+
+    return ret;
+}
+
 static int hexval(unsigned c)
 {
     if (c-'0'<10) return c-'0';
@@ -672,9 +686,13 @@ void WSAAPI FreeAddrInfoEx(ADDRINFOEXA *ai)
 /***********************************************************************
  *		GetAddrInfoExOverlappedResult  (WS2_32.@)
  */
-int WSAAPI GetAddrInfoExOverlappedResult(OVERLAPPED *overlapped)
+int WINAPI GetAddrInfoExOverlappedResult( OVERLAPPED *overlapped )
 {
-    TRACE("(%p)\n", overlapped);
+    TRACE( "(%p)\n", overlapped );
+
+    if (!overlapped)
+        return WSAEINVAL;
+
     return overlapped->Internal;
 }
 
@@ -690,69 +708,183 @@ int WSAAPI GetAddrInfoExCancel(HANDLE *handle)
 /***********************************************************************
  *     WSASendMsg
  */
-int WSAAPI WSASendMsg( 
-	SOCKET s,
-	LPWSAMSG msg, 
-	DWORD dwFlags, 
-	LPDWORD lpNumberOfBytesSent,
-    LPWSAOVERLAPPED lpOverlapped,
-    LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
-)
+int WINAPI WSASendMsg( SOCKET s, LPWSAMSG msg, DWORD dwFlags, LPDWORD lpNumberOfBytesSent,
+                       LPWSAOVERLAPPED lpOverlapped,
+                       LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
 {
-	return WSA_INVALID_HANDLE;
+    if (!msg)
+    {
+        SetLastError( WSAEFAULT );
+        return SOCKET_ERROR;
+    }
+
+    return WSASendTo( s, msg->lpBuffers, msg->dwBufferCount, lpNumberOfBytesSent,
+                       dwFlags, msg->name, msg->namelen,
+                       lpOverlapped, lpCompletionRoutine );
 }
 
-SOCKET WSAAPI WSASocketAInternal(int af, int type, int protocol,
-                         LPWSAPROTOCOL_INFOA lpProtocolInfo,
-                         GROUP g, DWORD dwFlags)
+/***********************************************************************
+ *          WSAConnectByNameA      (WS2_32.@)
+ */
+BOOL WINAPI WSAConnectByNameA(SOCKET s, const char *node_name, const char *service_name,
+                              DWORD *local_addr_len, struct sockaddr *local_addr,
+                              DWORD *remote_addr_len, struct sockaddr *remote_addr,
+                              const struct timeval *timeout, WSAOVERLAPPED *reserved)
 {
-        SOCKET curSock;
-    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
-                
-        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
-                curSock = WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
-                if (curSock != INVALID_SOCKET) {
-                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
-                }
-        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
-                return curSock;
+    WSAPROTOCOL_INFOA proto_info;
+    WSAPOLLFD pollout;
+    struct addrinfo *service, hints;
+    int ret, proto_len, sockaddr_size, sockname_size, sock_err, int_len;
+
+    TRACE("socket %#Ix, node_name %s, service_name %s, local_addr_len %p, local_addr %p, \
+          remote_addr_len %p, remote_addr %p, timeout %p, reserved %p\n",
+          s, debugstr_a(node_name), debugstr_a(service_name), local_addr_len, local_addr,
+          remote_addr_len, remote_addr, timeout, reserved );
+
+    if (!node_name || !service_name || reserved)
+    {
+        SetLastError(WSAEINVAL);
+        return FALSE;
     }
-    return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+
+    if (!s)
+    {
+        SetLastError(WSAENOTSOCK);
+        return FALSE;
+    }
+
+    if (timeout)
+        FIXME("WSAConnectByName timeout stub\n");
+
+    proto_len = sizeof(WSAPROTOCOL_INFOA);
+    ret = getsockopt(s, SOL_SOCKET, SO_PROTOCOL_INFOA, (char *)&proto_info, &proto_len);
+    if (ret)
+        return FALSE;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_socktype = proto_info.iSocketType;
+    hints.ai_family = proto_info.iAddressFamily;
+    hints.ai_protocol = proto_info.iProtocol;
+    ret = getaddrinfo(node_name, service_name, &hints, &service);
+    if (ret)
+        return FALSE;
+
+    if (proto_info.iSocketType != SOCK_STREAM)
+    {
+        freeaddrinfo(service);
+        SetLastError(WSAEFAULT);
+        return FALSE;
+    }
+
+    switch (proto_info.iAddressFamily)
+    {
+    case AF_INET:
+        sockaddr_size = sizeof(SOCKADDR_IN);
+        break;
+    case AF_INET6:
+        sockaddr_size = sizeof(SOCKADDR_IN6);
+        break;
+    default:
+        freeaddrinfo(service);
+        SetLastError(WSAENOTSOCK);
+        return FALSE;
+    }
+
+    ret = connect(s, service->ai_addr, sockaddr_size);
+    if (ret)
+    {
+        freeaddrinfo(service);
+        return FALSE;
+    }
+
+    pollout.fd = s;
+    pollout.events = POLLWRNORM;
+    ret = WSAPoll(&pollout, 1, -1);
+    if (ret == SOCKET_ERROR)
+    {
+        freeaddrinfo(service);
+        return FALSE;
+    }
+    if (pollout.revents & (POLLERR | POLLHUP | POLLNVAL))
+    {
+        freeaddrinfo(service);
+        int_len = sizeof(int);
+        ret = getsockopt(s, SOL_SOCKET, SO_ERROR, (char *)&sock_err, &int_len);
+        if (ret == SOCKET_ERROR)
+            return FALSE;
+        SetLastError(sock_err);
+        return FALSE;
+    }
+
+    if (remote_addr_len && remote_addr)
+    {
+        if (*remote_addr_len >= sockaddr_size)
+        {
+            memcpy(remote_addr, service->ai_addr, sockaddr_size);
+            *remote_addr_len = sockaddr_size;
+        }
+        else
+        {
+            freeaddrinfo(service);
+            SetLastError(WSAEFAULT);
+            return FALSE;
+        }
+    }
+
+    freeaddrinfo(service);
+
+    if (local_addr_len && local_addr)
+    {
+        if (*local_addr_len >= sockaddr_size)
+        {
+            sockname_size = sockaddr_size;
+            ret = getsockname(s, local_addr, &sockname_size);
+            if (ret)
+                return FALSE;
+            if (proto_info.iAddressFamily == AF_INET6)
+                ((SOCKADDR_IN6 *)local_addr)->sin6_port = 0;
+            else
+                ((SOCKADDR_IN *)local_addr)->sin_port = 0;
+            *local_addr_len = sockaddr_size;
+        }
+        else
+        {
+            SetLastError(WSAEFAULT);
+            return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 
-SOCKET WSAAPI WSASocketWInternal(int af, int type, int protocol,
-                         LPWSAPROTOCOL_INFOW lpProtocolInfo,
-                         GROUP g, DWORD dwFlags)
+/***********************************************************************
+ *          WSAConnectByNameW      (WS2_32.@)
+ */
+BOOL WINAPI WSAConnectByNameW(SOCKET s, const WCHAR *node_name, const WCHAR *service_name,
+                              DWORD *local_addr_len, struct sockaddr *local_addr,
+                              DWORD *remote_addr_len, struct sockaddr *remote_addr,
+                              const struct timeval *timeout, WSAOVERLAPPED *reserved)
 {
-        SOCKET curSock;
-    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
-                
-        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
-                curSock = WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
-                if (curSock != INVALID_SOCKET) {
-                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
-                }
-        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
-                return curSock;
-    }
-    return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
-}
+    char *node_nameA, *service_nameA;
+    BOOL ret;
 
-INT
-WSAAPI
-setsockoptInternal(
-	IN SOCKET s,
-    IN INT level,
-    IN INT optname,
-    IN CONST CHAR FAR* optval,
-    IN INT optlen)
-{
-    // FIXME: emulate TCP_KEEPALIVE using the SIO_KEEPALIVE_VALS IOCTL.
-    if( (level == IPPROTO_IPV6 && optname == IPV6_V6ONLY) // League Display/CEF
-     || (level == IPPROTO_TCP && optname == TCP_KEEPALIVE) // Node Native Fetch
-    ){
-        return S_OK;
+    if (!node_name || !service_name)
+    {
+        SetLastError(WSAEINVAL);
+        return FALSE;
     }
-	
-	return setsockopt(s, level, optname, optval, optlen);
+
+    node_nameA = strdupWtoA(node_name);
+    service_nameA = strdupWtoA(service_name);
+    if (!node_nameA || !service_nameA)
+    {
+        SetLastError(WSAENOBUFS);
+        return FALSE;
+    }
+
+    ret = WSAConnectByNameA(s, node_nameA, service_nameA, local_addr_len, local_addr,
+                             remote_addr_len, remote_addr, timeout, reserved);
+    free(node_nameA);
+    free(service_nameA);
+    return ret;
 }

@@ -20,6 +20,8 @@ Revision History:
 
 #include "main.h"
 
+WINE_DEFAULT_DEBUG_CHANNEL(fileinfo);
+
 BOOL bIsFileApiAnsi = TRUE; // set the file api to ansi or oem
 
 static BOOL (WINAPI *pSetFileCompletionNotificationModes)(HANDLE, UCHAR);
@@ -92,4 +94,14 @@ SetFileCompletionNotificationModes(IN HANDLE FileHandle,
     }
 
     return TRUE;
+}
+
+/***********************************************************************
+ *	QueryIoRingCapabilities   (kernelbase.@)
+ */
+HRESULT WINAPI QueryIoRingCapabilities(IORING_CAPABILITIES *caps)
+{
+    FIXME( "caps %p stub.\n", caps );
+
+    return E_NOTIMPL;
 }

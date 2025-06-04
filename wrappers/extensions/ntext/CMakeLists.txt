@@ -10,7 +10,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/ndk)
 
 spec2def(ntext.dll ntext.spec ADD_IMPORTLIB)
 
-set(baseaddress_ntext     0x7C910000)	
+set(baseaddress_ntext     0x79990000)	
 
 
 list(APPEND SOURCE
@@ -88,6 +88,6 @@ endif()
 
 target_link_libraries(ntext libcntpr uuid ${PSEH_LIB})
 
-add_importlibs(ntext ntdll)
+add_importlibs(ntext ntdll wevtapi)
 
 add_cd_file(TARGET ntext DESTINATION reactos/system32 FOR all)

@@ -1480,12 +1480,16 @@ BOOL
 WINAPI 
 QueryProcessAffinityUpdateMode(
   _In_      HANDLE ProcessHandle,
-  _Out_opt_ DWORD  lpdwFlags
+  _Out_opt_ LPDWORD lpdwFlags
 )
 {
-	//We don't support this feature for now, setting disabling feature
-	lpdwFlags = 0;
-	return TRUE;	
+    if (!lpdwFlags) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    //We don't support this feature for now, setting disabling feature
+    *lpdwFlags = 0;
+    return TRUE;
 }
 
 DWORD 
@@ -1849,6 +1853,57 @@ BOOL WINAPI DECLSPEC_HOTPATCH SetProcessGroupAffinity( HANDLE process, const GRO
     return TRUE;
 }
 
+// BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pNativeMachine)
+// /*
+  // An enhanced version of IsWow64Process() introduced with Windows 10 1511.
+  // Not only does it determine if the process is running under WOW64, but it also determines the
+  // WOW64 and native platforms.
+// */
+// {
+	// BOOL Wow64Process;
+	// BOOL Wow64CurrentProcess;
+	
+	// if(!pProcessMachine)
+	// {
+		// SetLastError(ERROR_INVALID_PARAMETER);
+		// return FALSE;
+	// }
+	
+    // if(!IsWow64Process(hProcess, &Wow64Process) || !IsWow64Process(GetCurrentProcess(), &Wow64CurrentProcess))
+	// {
+        // return FALSE;
+	// }
+	
+	// if(!Wow64Process)
+	// {
+		// *pProcessMachine = IMAGE_FILE_MACHINE_UNKNOWN;
+	// }
+	// else
+	// {
+    // #ifdef _AMD64_
+        // *pProcessMachine = Wow64Process ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386; // Yeaa....
+    // #else
+        // if (Wow64CurrentProcess)
+		// {
+            // *pProcessMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_I386 : IMAGE_FILE_MACHINE_AMD64; // This is on a 64 bit system
+        // } else {
+            // *pProcessMachine = IMAGE_FILE_MACHINE_I386; // TODO: look at 16-bit process behavior (NTVDM)
+        // }
+    // #endif		
+	// }
+	
+    // if(pNativeMachine)
+    // {
+        // #ifdef _AMD64_
+            // *pNativeMachine = IMAGE_FILE_MACHINE_AMD64; // The true successor to IsWow64Process can only return AMD64.
+        // #else
+            // *pNativeMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386;
+        // #endif
+    // }
+	
+	// return TRUE;
+// }
+
 BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pNativeMachine)
 /*
   An enhanced version of IsWow64Process() introduced with Windows 10 1511.
@@ -1881,7 +1936,7 @@ BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pN
     #else
         if (Wow64CurrentProcess)
 		{
-            *pProcessMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_I386 : IMAGE_FILE_MACHINE_AMD64; // This is on a 64 bit system
+            *pProcessMachine = Wow64Process ? IMAGE_FILE_MACHINE_I386 : IMAGE_FILE_MACHINE_AMD64; // This is on a 64 bit system
         } else {
             *pProcessMachine = IMAGE_FILE_MACHINE_I386; // TODO: look at 16-bit process behavior (NTVDM)
         }

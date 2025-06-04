@@ -368,3 +368,47 @@ BCryptDeriveKeyCapi(
 	
     return _Status;
 }
+
+NTSTATUS 
+WINAPI 
+BCryptGenerateSymmetricKeyInternal( 
+    BCRYPT_ALG_HANDLE hAlgorithm, 
+    BCRYPT_KEY_HANDLE *phHash, 
+    UCHAR *pbHashObject, 
+    ULONG cbHashObject,
+    UCHAR *pbSecret, 
+    ULONG cbSecret,
+    ULONG dwFlags 
+)
+{
+    ULONG Unused;
+    NTSTATUS Status;
+    if (pbHashObject == NULL && cbHashObject == 0) {
+        Status = BCryptGetProperty(hAlgorithm, L"ObjectLength", (PUCHAR)&cbHashObject, 4, &Unused, 0);
+        if (Status != 0) 
+            return Status;
+        pbHashObject = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, cbHashObject);
+    }
+    return BCryptGenerateSymmetricKeyNative(hAlgorithm, phHash, pbHashObject, cbHashObject, pbSecret, cbSecret, dwFlags);
+}
+
+NTSTATUS 
+WINAPI 
+BCryptDuplicateKeyInternal( 
+    BCRYPT_KEY_HANDLE hKey,
+    BCRYPT_KEY_HANDLE *phNewKey,
+    PUCHAR            pbKeyObject,
+    ULONG             cbKeyObject,
+    ULONG             dwFlags
+)
+{
+    ULONG Unused;
+    NTSTATUS Status;
+    if (pbKeyObject == NULL && cbKeyObject == 0) {
+        Status = BCryptGetProperty(hKey, L"ObjectLength", (PUCHAR)&cbKeyObject, 4, &Unused, 0);
+        if (Status != 0) 
+            return Status;
+        pbKeyObject = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, cbKeyObject);
+    }
+    return BCryptDuplicateKeyNative(hKey, phNewKey, pbKeyObject, cbKeyObject, dwFlags);
+}

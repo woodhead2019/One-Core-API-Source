@@ -689,7 +689,7 @@
 #Win7 functions
 @ stdcall BeginGdiRendering(long long) NtGdiBeginGdiRendering
 @ stdcall EndGdiRendering(long long ptr) NtGdiEndGdiRendering
-@ stdcall CreateBitmapFromDxSurface(long long long long ptr) gdibase.CreateBitmapFromDxSurface
+@ stdcall CreateBitmapFromDxSurface(long long long long ptr)
 @ stdcall GetFontFileData(long long int64 ptr long)
 @ stdcall GetFontFileInfo(long long ptr long long)
 @ stdcall GetFontRealizationInfo(long ptr)

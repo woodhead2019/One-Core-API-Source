@@ -78,6 +78,14 @@
 
 #define TCP_KEEPALIVE                   3
 
+#define SO_PROTOCOL_INFOA          0x2004
+
+#define SIO_BASE_HANDLE 0x48000022
+#define SIO_BSP_HANDLE 0x4800001B
+#define SIO_BSP_HANDLE_SELECT 0x4800001C
+#define SIO_BSP_HANDLE_POLL 0x4800001D
+#define SIO_LOOPBACK_FAST_PATH 0x98000010
+
 static const unsigned __int64 epoch = ((unsigned __int64) 116444736000000000ULL);
 
 struct pollfd
@@ -302,7 +310,24 @@ typedef WSAPROTOCOL_INFOA WSAPROTOCOL_INFO;
 typedef LPWSAPROTOCOL_INFOA LPWSAPROTOCOL_INFO;
 #endif
 
+typedef struct in6_addr {
+  union {
+    UCHAR  Byte[16];
+    USHORT Word[8];
+  } u;
+} IN6_ADDR, *PIN6_ADDR, *LPIN6_ADDR;
+
+struct sockaddr_in6 {
+        short   sin6_family;
+        u_short sin6_port;
+        u_long  sin6_flowinfo;
+        struct  in6_addr sin6_addr;
+        u_long  sin6_scope_id;
+};
+
 typedef unsigned int GROUP;
+
+typedef struct sockaddr_in6 SOCKADDR_IN6;
 
 SOCKET
 WINAPI 
@@ -324,3 +349,27 @@ WSASocketW(
     GROUP g, 
 	DWORD dwFlags
 );
+
+INT
+WSAAPI
+WSASendTo(IN SOCKET s,
+          IN LPWSABUF lpBuffers,
+          IN DWORD dwBufferCount,
+          OUT LPDWORD lpNumberOfBytesSent,
+          IN DWORD dwFlags,
+          IN CONST struct sockaddr *lpTo,
+          IN INT iToLen,
+          IN LPWSAOVERLAPPED lpOverlapped,
+          IN LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+		  
+INT
+WSAAPI
+WSAIoctl(IN SOCKET s,
+         IN DWORD dwIoControlCode,
+         IN LPVOID lpvInBuffer,
+         IN DWORD cbInBuffer,
+         OUT LPVOID lpvOutBuffer,
+         IN DWORD cbOutBuffer,
+         OUT LPDWORD lpcbBytesReturned,
+         IN LPWSAOVERLAPPED lpOverlapped,
+         IN LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);		  

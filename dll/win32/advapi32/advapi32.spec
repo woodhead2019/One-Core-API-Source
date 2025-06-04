@@ -763,6 +763,8 @@
 
 
 #For hooks
+@ stdcall ConvertStringSecurityDescriptorToSecurityDescriptorANative(str long ptr ptr)
+@ stdcall ConvertStringSecurityDescriptorToSecurityDescriptorWNative(wstr long ptr ptr)
 @ stdcall SetNamedSecurityInfoWNative(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoW
 @ stdcall SetSecurityInfoNative(long long long ptr ptr ptr ptr) SetSecurityInfo
 @ stdcall GetSecurityInfoNative(long long long ptr ptr ptr ptr ptr) GetSecurityInfo

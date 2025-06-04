@@ -234,17 +234,71 @@ GetFileInformationByHandleEx(
 			cbMinBufferSize = sizeof(FILE_ATTRIBUTE_TAG_INFO);
 			break;
 		case FileIdBothDirectoryRestartInfo:
+			NtFileInformationClass = FileIdBothDirectoryInformation;
+			cbMinBufferSize = sizeof(FILE_ID_BOTH_DIR_INFO);
+			bNtQueryDirectoryFile = TRUE;
 			RestartScan = TRUE;
 		case FileIdBothDirectoryInfo:
 			NtFileInformationClass = FileIdBothDirectoryInformation;
 			cbMinBufferSize = sizeof(FILE_ID_BOTH_DIR_INFO);
 			bNtQueryDirectoryFile = TRUE;
+			RestartScan = FALSE;
+			break;
+		case FileFullDirectoryRestartInfo:
+			NtFileInformationClass = FileFullDirectoryInformation;
+			cbMinBufferSize = sizeof(FILE_FULL_DIR_INFO);
+			bNtQueryDirectoryFile = TRUE;
+			RestartScan = TRUE;
+		case FileFullDirectoryInfo:
+			NtFileInformationClass = FileFullDirectoryInformation;
+			cbMinBufferSize = sizeof(FILE_FULL_DIR_INFO);
+			bNtQueryDirectoryFile = TRUE;
+			RestartScan = FALSE;
 			break;
 		case FileRemoteProtocolInfo:
 			NtFileInformationClass = FileRemoteProtocolInformation;
 			cbMinBufferSize = sizeof(FILE_REMOTE_PROTOCOL_INFO);
 			break;
+		case FileIdInfo:
+			if (dwBufferSize >= sizeof(FILE_ID_INFO)) {
+				// 128-bit file IDs are something only that only ReFS supports on Windows, which there is no driver for
+				// prior to Windows 8. MSVC STL 2025 is going to require this soon, so let's prepare ahead of it.
+				BY_HANDLE_FILE_INFORMATION hnd;
+				if (!GetFileInformationByHandle(hFile, &hnd))
+					return FALSE;
+				((PFILE_ID_INFO)lpFileInformation)->VolumeSerialNumber = hnd.dwVolumeSerialNumber;
+				// hacky way to emulate a 128-bit file ID from a 64-bit file ID
+				memset(&((PFILE_ID_INFO)lpFileInformation)->FileId, 0, 16);
+				memcpy(&((PFILE_ID_INFO)lpFileInformation)->FileId, &hnd.nFileIndexHigh, 8);
+				return TRUE;				
+			}
+			SetLastError(ERROR_BAD_LENGTH);
+			return FALSE;
+		case FileStorageInfo:
+			if (dwBufferSize >= sizeof(FILE_STORAGE_INFO)) {
+				// Usually only used for databases... but let's add it anyway!
+				// TODO: figure out how to get the drive letter from a file handle
+				DWORD sectors_per_cluster, bytes_per_sector, clusters_free, clusters_total;
+				if (!GetDiskFreeSpaceW(NULL, &sectors_per_cluster, &bytes_per_sector, &clusters_free, &clusters_total))
+					return FALSE;
+				((PFILE_STORAGE_INFO)lpFileInformation)->LogicalBytesPerSector = bytes_per_sector;
+				((PFILE_STORAGE_INFO)lpFileInformation)->PhysicalBytesPerSectorForAtomicity = bytes_per_sector;
+				((PFILE_STORAGE_INFO)lpFileInformation)->PhysicalBytesPerSectorForPerformance = bytes_per_sector;
+				((PFILE_STORAGE_INFO)lpFileInformation)->FileSystemEffectivePhysicalBytesPerSectorForAtomicity = bytes_per_sector;
+				((PFILE_STORAGE_INFO)lpFileInformation)->Flags = 0;
+				((PFILE_STORAGE_INFO)lpFileInformation)->ByteOffsetForSectorAlignment = 0xFFFFFFFF;
+				((PFILE_STORAGE_INFO)lpFileInformation)->ByteOffsetForPartitionAlignment = 0xFFFFFFFF;
+				return TRUE;			
+			}
+			SetLastError(ERROR_BAD_LENGTH);
+			return FALSE;
+		case FileAlignmentInfo:
+			NtFileInformationClass = FileAlignmentInformation;
+			cbMinBufferSize = sizeof(FILE_ALIGNMENT_INFO);
+			break;
 		default:
+			// FileRemoteProtocolInfo - requires SMB2, so we can't implement that
+			DbgPrint("GetFileInformationByHandleEx: unhandled parameter %i\n", FileInformationClass);
 			SetLastError(ERROR_INVALID_PARAMETER);
 			return FALSE;
 			break;
@@ -256,7 +310,8 @@ GetFileInformationByHandleEx(
 		SetLastError(ERROR_BAD_LENGTH);
 		return FALSE;
 	}
-
+	
+	// Emulated 
 	if (bNtQueryDirectoryFile)
 	{
 
@@ -411,7 +466,6 @@ SetFileInformationByHandle(
 			NtFileInformationClass = FileIoPriorityHintInformation;
 			cbMinBufferSize = sizeof(FILE_IO_PRIORITY_HINT_INFO);
 
-			//长度检查，微软原版似乎没有该安全检查
 			if (cbMinBufferSize > dwBufferSize)
 			{
 				SetLastError(ERROR_BAD_LENGTH);
@@ -423,8 +477,9 @@ SetFileInformationByHandle(
 				SetLastError(ERROR_INVALID_PARAMETER);
 				return FALSE;
 			}
-
-			break;
+			// I/O Priority hints are simply not a thing on Windows XP. So therefore the best that we can do in this case
+			// is return TRUE.
+			return TRUE;
 		default:
 			SetLastError(ERROR_INVALID_PARAMETER);
 			return FALSE;

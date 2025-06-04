@@ -355,12 +355,16 @@ HRESULT WINAPI WindowsSubstringWithSpecifiedLength(HSTRING str, UINT32 start, UI
 /***********************************************************************
  *      WindowsConcatString (combase.@)
  */
+/***********************************************************************
+ *      WindowsReplaceString (combase.@)
+ */
 HRESULT WINAPI WindowsConcatString(HSTRING str1, HSTRING str2, HSTRING *out)
 {
     struct hstring_private *priv1 = impl_from_HSTRING(str1);
     struct hstring_private *priv2 = impl_from_HSTRING(str2);
     struct hstring_private *priv;
-
+    UINT64 newLength;
+    
     TRACE("(%p, %p, %p)\n", str1, str2, out);
 
     if (out == NULL)
@@ -374,7 +378,10 @@ HRESULT WINAPI WindowsConcatString(HSTRING str1, HSTRING str2, HSTRING *out)
         *out = NULL;
         return S_OK;
     }
-    if (!alloc_string(priv1->header.length + priv2->header.length, out))
+    newLength = (UINT64)priv1->header.length + (UINT64)priv2->header.length;
+    if (newLength > 0xFFFFFFFF) // One Core Api addition: missing error-case
+        return E_INVALIDARG;
+    if (!alloc_string((UINT32)newLength, out))
         return E_OUTOFMEMORY;
     priv = impl_from_HSTRING(*out);
     memcpy(priv->buffer, priv1->header.str, priv1->header.length * sizeof(*priv1->buffer));

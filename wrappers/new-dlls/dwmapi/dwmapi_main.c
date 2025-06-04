@@ -337,6 +337,30 @@ HRESULT WINAPI DwmGetWindowAttribute(HWND hwnd, DWORD attribute, PVOID pv_attrib
         //SetThreadDpiAwarenessContext(context);
         break;
     }
+	case DWMWA_CLOAKED:
+    {
+        DWORD *rect = (DWORD *)pv_attribute;
+
+        if (!rect)
+            return E_INVALIDARG;
+        if (size < sizeof(*rect))
+            return E_NOT_SUFFICIENT_BUFFER;
+        *rect = 0;
+        hr = S_OK;
+        break;
+    }
+	case DWMWA_NCRENDERING_ENABLED:
+    {
+        BOOL *rect = (BOOL *)pv_attribute;
+
+        if (!rect)
+            return E_INVALIDARG;
+        if (size < sizeof(*rect))
+            return E_NOT_SUFFICIENT_BUFFER;
+        *rect = FALSE; // Communicate to application that non-client rendering is always disabled.
+        hr = S_OK;
+        break;
+    }	
     default:
         FIXME("attribute %ld not implemented.\n", attribute);
         hr = E_NOTIMPL;

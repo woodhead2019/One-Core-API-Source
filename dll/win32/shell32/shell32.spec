@@ -482,6 +482,9 @@
 @ stdcall -stub SHQueryUserNotificationState(ptr) 
 
 #For extension
+@ stdcall ShellExecuteANative(long str str str str long) ShellExecuteA
+@ stdcall ShellExecuteExANative (long) ShellExecuteExA
+@ stdcall ShellExecuteExWNative (long) ShellExecuteExW
 @ stdcall ShellExecuteWNative(long wstr wstr wstr wstr long) ShellExecuteW
 @ stdcall Shell_NotifyIconNative(long ptr) Shell_NotifyIcon
 @ stdcall Shell_NotifyIconANative(long ptr) Shell_NotifyIconANative

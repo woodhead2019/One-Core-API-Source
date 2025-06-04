@@ -21,7 +21,7 @@
 @ stub EvtIntGetClassicLogDisplayName
 @ stub EvtIntRenderResourceEventTemplate
 @ stub EvtIntReportAuthzEventAndSourceAsync
-@ stub EvtIntReportEventAndSourceAsync
+@ stdcall -stub EvtIntReportEventAndSourceAsync(ptr ptr long ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stub EvtIntRetractConfig
 @ stub EvtIntSysprepCleanup
 @ stub EvtIntWriteXmlEventToLocalLogfile

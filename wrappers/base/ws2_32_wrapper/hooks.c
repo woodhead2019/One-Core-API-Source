@@ -110,28 +110,31 @@ int WSAAPI WSAIoctlInternal(
   LPWSAOVERLAPPED                    lpOverlapped,
   LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
 ) {
-	if (dwIoControlCode == SIO_BASE_HANDLE
-			|| dwIoControlCode == SIO_BSP_HANDLE
-			|| dwIoControlCode == SIO_BSP_HANDLE_SELECT
-			|| dwIoControlCode == SIO_BSP_HANDLE_POLL) { 
-		if (lpvOutBuffer == NULL || lpcbBytesReturned == NULL) {
-			WSASetLastError(WSAEFAULT);
-			return SOCKET_ERROR;
-		}
+    if (dwIoControlCode == SIO_BASE_HANDLE
+            || dwIoControlCode == SIO_BSP_HANDLE
+            || dwIoControlCode == SIO_BSP_HANDLE_SELECT
+            || dwIoControlCode == SIO_BSP_HANDLE_POLL) { 
+        if (lpvOutBuffer == NULL || lpcbBytesReturned == NULL) {
+            WSASetLastError(WSAEFAULT);
+            return SOCKET_ERROR;
+        }
 
-		*(SOCKET*)lpvOutBuffer = s;
-		*lpcbBytesReturned = sizeof(SOCKET);
-		return 0;
-	}
+        *(SOCKET*)lpvOutBuffer = s;
+        *lpcbBytesReturned = sizeof(SOCKET);
+        return 0;
+	}else if (dwIoControlCode == SIO_LOOPBACK_FAST_PATH) {
+        // Let Java and other applications handle fast TCP loopback not being supported. 
+        return WSAEOPNOTSUPP;
+    }
     // fall back into original function
-    return WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, lpcbBytesReturned, lpOverlapped, lpCompletionRoutine);
+    return WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, lpcbBytesReturned, lpOverlapped, lpCompletionRoutine); 
 }
 
 SOCKET WSAAPI WSASocketAInternal(int af, int type, int protocol,
                          LPWSAPROTOCOL_INFOA lpProtocolInfo,
                          GROUP g, DWORD dwFlags)
 {
-        SOCKET curSock;
+    SOCKET curSock;
     if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
                 
         dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;

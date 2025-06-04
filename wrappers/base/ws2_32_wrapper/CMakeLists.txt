@@ -5,6 +5,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
 
 
 list(APPEND SOURCE
+    hooks.c
     main.c
 	protocol.c
 	socket.c

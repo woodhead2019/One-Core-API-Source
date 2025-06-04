@@ -47,6 +47,12 @@ RegNotifyChangeKeyValueNative(
 	BOOL   fAsynchronous
 );
 
+BOOL 
+WINAPI
+DECLSPEC_HOTPATCH 
+ConvertStringSecurityDescriptorToSecurityDescriptorWNative(
+        const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size );
+
 typedef struct _MAX_SID
 {
     /* same fields as struct _SID */
@@ -114,11 +120,11 @@ static const WELLKNOWNSID WellKnownSids[] =
     { WinBuiltinAuthorizationAccessSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_AUTHORIZATIONACCESS } } },
     { WinBuiltinTerminalServerLicenseServersSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_TS_LICENSE_SERVERS } } },
     { WinBuiltinDCOMUsersSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_DCOM_USERS } } },
-    { WinLowLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_LOW_RID} } },
-    { WinMediumLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_MEDIUM_RID } } },
-    { WinHighLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_HIGH_RID } } },
-    { WinSystemLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_SYSTEM_RID } } },
-    { WinBuiltinAnyPackageSid, { SID_REVISION, 2, { SECURITY_APP_PACKAGE_AUTHORITY }, { SECURITY_APP_PACKAGE_BASE_RID, SECURITY_BUILTIN_PACKAGE_ANY_PACKAGE } } },
+    // { WinLowLabelSid, { SID_REVISION, 1, { SECURITY_LOCAL_SID_AUTHORITY}, { SECURITY_LOCAL_RID} } },
+    // { WinMediumLabelSid, { SID_REVISION, 1, { SECURITY_LOCAL_SID_AUTHORITY}, { SECURITY_LOCAL_RID } } },
+    // { WinHighLabelSid, { SID_REVISION, 1, { SECURITY_LOCAL_SID_AUTHORITY}, { SECURITY_LOCAL_RID } } },
+    // { WinSystemLabelSid, { SID_REVISION, 1, { SECURITY_LOCAL_SID_AUTHORITY}, { SECURITY_LOCAL_RID } } },
+    // { WinBuiltinAnyPackageSid, { SID_REVISION, 2, { SECURITY_LOCAL_SID_AUTHORITY }, { SECURITY_LOCAL_RID, SECURITY_LOCAL_RID } } },
 };
 
 /* these SIDs must be constructed as relative to some domain - only the RID is well-known */
@@ -182,9 +188,9 @@ ace_rights[] =
     { L"KW", KEY_WRITE },
     { L"KX", KEY_EXECUTE },
 
-    { L"NR", SYSTEM_MANDATORY_LABEL_NO_READ_UP },
-    { L"NW", SYSTEM_MANDATORY_LABEL_NO_WRITE_UP },
-    { L"NX", SYSTEM_MANDATORY_LABEL_NO_EXECUTE_UP },
+    // { L"NR", GENERIC_ALL },
+    // { L"NW", GENERIC_ALL },
+    // { L"NX", GENERIC_ALL },
 };
 
 struct max_sid
@@ -254,11 +260,11 @@ well_known_sids[] =
     { {0,0}, WinBuiltinAuthorizationAccessSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_AUTHORIZATIONACCESS } } },
     { {0,0}, WinBuiltinTerminalServerLicenseServersSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_TS_LICENSE_SERVERS } } },
     { {0,0}, WinBuiltinDCOMUsersSid, { SID_REVISION, 2, { SECURITY_NT_AUTHORITY }, { SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_DCOM_USERS } } },
-    { {'L','W'}, WinLowLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_LOW_RID} } },
-    { {'M','E'}, WinMediumLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_MEDIUM_RID } } },
-    { {'H','I'}, WinHighLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_HIGH_RID } } },
-    { {'S','I'}, WinSystemLabelSid, { SID_REVISION, 1, { SECURITY_MANDATORY_LABEL_AUTHORITY}, { SECURITY_MANDATORY_SYSTEM_RID } } },
-    { {'A','C'}, WinBuiltinAnyPackageSid, { SID_REVISION, 2, { SECURITY_APP_PACKAGE_AUTHORITY }, { SECURITY_APP_PACKAGE_BASE_RID, SECURITY_BUILTIN_PACKAGE_ANY_PACKAGE } } },
+    // { {'L','W'}, WinWorldSid, { SID_REVISION, 1, { SECURITY_WORLD_SID_AUTHORITY }, { SECURITY_WORLD_RID } } },
+    // { {'M','E'}, WinWorldSid, { SID_REVISION, 1, { SECURITY_WORLD_SID_AUTHORITY }, { SECURITY_WORLD_RID } } },
+    // { {'H','I'}, WinWorldSid, { SID_REVISION, 1, { SECURITY_WORLD_SID_AUTHORITY }, { SECURITY_WORLD_RID } } },
+    // { {'S','I'}, WinWorldSid, { SID_REVISION, 1, { SECURITY_WORLD_SID_AUTHORITY }, { SECURITY_WORLD_RID } } },
+    // { {'A','C'}, WinWorldSid, { SID_REVISION, 1, { SECURITY_WORLD_SID_AUTHORITY }, { SECURITY_WORLD_RID } } },
 };
 
 /* these SIDs must be constructed as relative to some domain - only the RID is well-known */
@@ -284,16 +290,6 @@ well_known_rids[] =
     { {'P','A'}, WinAccountPolicyAdminsSid,     DOMAIN_GROUP_RID_POLICY_ADMINS },
     { {'R','S'}, WinAccountRasAndIasServersSid, DOMAIN_ALIAS_RID_RAS_SERVERS },
 };
-
-BOOL 
-WINAPI 
-DECLSPEC_HOTPATCH 
-ConvertStringSecurityDescriptorToSecurityDescriptorExW(
-    const WCHAR *string, 
-	DWORD revision, 
-	PSECURITY_DESCRIPTOR *sd, 
-	ULONG *ret_size 
-);
 
 BOOL 
 WINAPI 
@@ -1148,7 +1144,7 @@ static BYTE parse_ace_type( const WCHAR **string_ptr )
         { L"AU", SYSTEM_AUDIT_ACE_TYPE },
         { L"A",  ACCESS_ALLOWED_ACE_TYPE },
         { L"D",  ACCESS_DENIED_ACE_TYPE },
-        { L"ML", SYSTEM_MANDATORY_LABEL_ACE_TYPE },
+        { L"ML", ACCESS_ALLOWED_ACE_TYPE },
         /*
         { ACCESS_ALLOWED_OBJECT_ACE_TYPE },
         { ACCESS_DENIED_OBJECT_ACE_TYPE },
@@ -1469,14 +1465,15 @@ ConvertStringSecurityDescriptorToSecurityDescriptorWInternal(
 {
     DWORD size;
     SECURITY_DESCRIPTOR *psd;
+	
+    if(ConvertStringSecurityDescriptorToSecurityDescriptorWNative(string, revision, sd, ret_size)){
+        return TRUE;
+    }    	
 
-    TRACE("%s, %u, %p, %p\n", debugstr_w(string), revision, sd, ret_size);
+    //TRACE("%s, %u, %p, %p\n", debugstr_w(string), revision, sd, ret_size);
+	
+	DbgPrint("OCA_CSSDTSD failed with LastError %i. Now trying %ws, %u, %p, %p\n", GetLastError(), string, revision, sd, ret_size);
 
-    if (GetVersion() & 0x80000000)
-    {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-        return FALSE;
-    }
     if (!string || !sd)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -1553,12 +1550,6 @@ ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
     const WCHAR *string_end;
 
     TRACE("%s, %p\n", debugstr_w(string), sid);
-
-    if (GetVersion() & 0x80000000)
-    {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-        return FALSE;
-    }
 
     if (!string || !sid)
     {

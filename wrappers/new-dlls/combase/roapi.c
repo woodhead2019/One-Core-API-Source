@@ -51,6 +51,14 @@ Revision History:
 WINE_DEFAULT_DEBUG_CHANNEL(combase);
 
 #define COINIT_DISABLEOLE1DDE 4
+#define NT_SUCCESS(status)              (status >= 0)
+
+DEFINE_GUID(IID_IUnknown, 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
+
+// {66818B96-DC17-4C12-8CA1-8E1FBAA5BF80}
+DEFINE_GUID(IID_IInternalErrorInfo, 0x66818B96, 0xDC17, 0x4C12, 0x8C, 0xA1, 0x8E, 0x1F, 0xBA, 0xA5, 0xBF, 0x80);
+
+DEFINE_GUID(IID_IErrorInfo, 0x1cf2b120, 0x547d, 0x101b, 0x8e, 0x65, 0x08, 0x00, 0x2b, 0x2b, 0xd1, 0x19);
 
 const GUID GUID_NULL = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
@@ -308,13 +316,86 @@ HRESULT WINAPI RoRegisterForApartmentShutdown(IApartmentShutdown *callback,
 }
 
 
-/***********************************************************************
- *      RoOriginateError (combase.@)
- */
-BOOL WINAPI RoOriginateError(HRESULT error, HSTRING message)
+// Error infastructure imported from VxKex.
+
+BOOL WINAPI RoOriginateErrorW(HRESULT Result, ULONG Length, PCWSTR Message)
 {
-    FIXME("%#lx, %s: stub\n", error,message);
-    return FALSE;
+    if (NT_SUCCESS(Result))
+        return FALSE;
+    
+    TRACE("One or more WinRT components returned error %08X, message %s\n", Result, debugstr_w(Message));
+    return TRUE;
+}
+
+BOOL WINAPI RoOriginateError(HRESULT Result, HSTRING Message)
+{
+    return RoOriginateErrorW(
+        Result,
+        WindowsGetStringLen(Message),
+        WindowsGetStringRawBuffer(Message, NULL));
+}
+
+BOOL WINAPI RoTransformErrorW(HRESULT OldError, HRESULT NewError, ULONG MessageLength, PCWSTR Message)
+{
+    if (OldError == NewError || NT_SUCCESS(OldError) && NT_SUCCESS(NewError))
+        return FALSE;
+
+    return RoOriginateErrorW(NewError, MessageLength, Message);
+}
+
+BOOL WINAPI RoTransformError(HRESULT OldError, HRESULT NewError, HSTRING Message)
+{
+    if (OldError == NewError || NT_SUCCESS(OldError) && NT_SUCCESS(NewError))
+        return FALSE;
+
+    return RoOriginateError(NewError, Message);
+}
+
+HRESULT WINAPI IsRestrictedErrorObject(IRestrictedErrorInfo *RestrictedErrorInfo)
+{
+    HRESULT Result;
+    IUnknown *InternalErrorInfo = NULL;
+
+    InternalErrorInfo = NULL;
+
+    Result = RestrictedErrorInfo->lpVtbl->QueryInterface(
+        RestrictedErrorInfo,
+        &IID_IInternalErrorInfo,
+        (PVOID*) &InternalErrorInfo);
+
+    if (Result == E_NOINTERFACE) {
+        Result = E_INVALIDARG;
+        RoOriginateErrorW(Result, 0, L"RestrictedErrorInfo");
+    }
+        if (InternalErrorInfo)
+        InternalErrorInfo->lpVtbl->Release(InternalErrorInfo);
+    return Result;
+}
+
+HRESULT WINAPI SetRestrictedErrorInfo(IRestrictedErrorInfo *RestrictedErrorInfo){
+    HRESULT Result;
+    IErrorInfo *ErrorInfo;
+
+    Result = S_OK;
+    ErrorInfo = NULL;
+
+    if (RestrictedErrorInfo) {
+        Result = IsRestrictedErrorObject(RestrictedErrorInfo);
+        if (FAILED(Result))
+            return Result;
+
+        Result = RestrictedErrorInfo->lpVtbl->QueryInterface(
+            RestrictedErrorInfo,
+            &IID_IErrorInfo,
+            (PVOID*) &ErrorInfo);
+    }
+
+    if (SUCCEEDED(Result))
+        Result = SetErrorInfo(0, ErrorInfo);
+
+    if (ErrorInfo)
+        ErrorInfo->lpVtbl->Release(ErrorInfo);
+    return Result;
 }
 
 /***********************************************************************
@@ -323,7 +404,7 @@ BOOL WINAPI RoOriginateError(HRESULT error, HSTRING message)
 HRESULT WINAPI GetRestrictedErrorInfo(IRestrictedErrorInfo **info)
 {
     FIXME( "(%p)\n", info );
-    return S_OK;
+    return S_FALSE;
 }
 
 /***********************************************************************
@@ -335,22 +416,11 @@ BOOL WINAPI RoOriginateLanguageException(HRESULT error, HSTRING message, IUnknow
     return TRUE;
 }
 
-DEFINE_GUID(IID_IUnknown, 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-
 static struct list registered_classes = LIST_INIT(registered_classes);
 
 typedef interface IUnknown IActivationFilter;
 
 IActivationFilter globalActivationFilter = {0};
-
-static CRITICAL_SECTION registered_classes_cs;
-static CRITICAL_SECTION_DEBUG registered_classes_cs_debug =
-{
-    0, 0, &registered_classes_cs,
-    { &registered_classes_cs_debug.ProcessLocksList, &registered_classes_cs_debug.ProcessLocksList },
-      0, 0, { (DWORD_PTR)(__FILE__ ": registered_classes_cs") }
-};
-static CRITICAL_SECTION registered_classes_cs = { &registered_classes_cs_debug, -1, 0, 0, 0, 0 };
 
 /* will create if necessary */
 static inline struct oletls *COM_CurrentInfo(void)
@@ -575,4 +645,19 @@ RoGetAgileReference(
 	IUnknown_AddRef(pUnk);
 	*ppAgileReference = Reference;
 	return 0;
+}
+
+/***********************************************************************
+ *      RoSetErrorReportingFlags (combase.@)
+ */
+HRESULT WINAPI RoSetErrorReportingFlags(UINT32 flags)
+{
+    FIXME("(%08x): stub\n", flags);
+    return S_OK;
+}
+
+HRESULT WINAPI RoCaptureErrorContext(
+	HRESULT	hr)
+{
+	return E_NOTIMPL;
 }

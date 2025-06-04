@@ -11,6 +11,7 @@ spec2def(shlwapi_wrapper.dll shlwapi_wrapper.spec)
 
 list(APPEND SOURCE
     assoc.c
+    istream.c
     main.c
     string.c
     thread.c
@@ -21,7 +22,7 @@ list(APPEND SOURCE
 set(baseaddress_shlwapi_wrapper     0x60050000)		
 
 add_library(shlwapi_wrapper SHARED ${SOURCE})
-set_module_type(shlwapi_wrapper win32dll)
+set_module_type(shlwapi_wrapper win32dll ENTRYPOINT 0)
 target_link_libraries(shlwapi_wrapper wine uuid)
 add_importlibs(shlwapi_wrapper shlwapibase advapi32 msvcrt kernel32 user32 ole32 gdi32 ntdll userenv wininet shell32 propsys)
 add_cd_file(TARGET shlwapi_wrapper DESTINATION reactos/system32 FOR all)

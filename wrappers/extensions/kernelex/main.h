@@ -1246,6 +1246,65 @@ typedef struct _SYSTEM_CPU_SET_INFORMATION {
   } DUMMYUNIONNAME;
 } SYSTEM_CPU_SET_INFORMATION, *PSYSTEM_CPU_SET_INFORMATION;
 
+typedef struct _FILE_FULL_DIR_INFO {
+  ULONG         NextEntryOffset;
+  ULONG         FileIndex;
+  LARGE_INTEGER CreationTime;
+  LARGE_INTEGER LastAccessTime;
+  LARGE_INTEGER LastWriteTime;
+  LARGE_INTEGER ChangeTime;
+  LARGE_INTEGER EndOfFile;
+  LARGE_INTEGER AllocationSize;
+  ULONG         FileAttributes;
+  ULONG         FileNameLength;
+  ULONG         EaSize;
+  WCHAR         FileName[1];
+} FILE_FULL_DIR_INFO, *PFILE_FULL_DIR_INFO;
+
+typedef struct _FILE_ID_128 {
+  BYTE Identifier[16];
+} FILE_ID_128, *PFILE_ID_128;
+
+typedef struct _FILE_ID_INFO {
+  ULONGLONG   VolumeSerialNumber;
+  FILE_ID_128 FileId;
+} FILE_ID_INFO, *PFILE_ID_INFO;
+
+typedef struct _FILE_STORAGE_INFO {
+  ULONG LogicalBytesPerSector;
+  ULONG PhysicalBytesPerSectorForAtomicity;
+  ULONG PhysicalBytesPerSectorForPerformance;
+  ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
+  ULONG Flags;
+  ULONG ByteOffsetForSectorAlignment;
+  ULONG ByteOffsetForPartitionAlignment;
+} FILE_STORAGE_INFO, *PFILE_STORAGE_INFO;
+
+typedef struct _FILE_ALIGNMENT_INFO {
+  ULONG AlignmentRequirement;
+} FILE_ALIGNMENT_INFO, *PFILE_ALIGNMENT_INFO;
+
+typedef enum IORING_VERSION {
+  IORING_VERSION_INVALID,
+  IORING_VERSION_1,
+  IORING_VERSION_2,
+  IORING_VERSION_3,
+  IORING_VERSION_4
+} IORING_VERSION;
+
+typedef enum IORING_FEATURE_FLAGS {
+  IORING_FEATURE_FLAGS_NONE,
+  IORING_FEATURE_UM_EMULATION,
+  IORING_FEATURE_SET_COMPLETION_EVENT
+} IORING_FEATURE_FLAGS;
+
+typedef struct IORING_CAPABILITIES {
+  IORING_VERSION       MaxVersion;
+  UINT32               MaxSubmissionQueueSize;
+  UINT32               MaxCompletionQueueSize;
+  IORING_FEATURE_FLAGS FeatureFlags;
+} IORING_CAPABILITIES;
+
 typedef HANDLE HPSS;
 
 ULONG
