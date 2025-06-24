@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Robert Shearman
+ * Copyright 2014 Hans Leidekker for CodeWeavers
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,16 +16,4 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/* @makedep: winhttp_tlb.tlb */
-
-/* @makedep: winhttp_tlb.rgs */
-1 WINE_REGISTRY winhttp_tlb.rgs
-
-#define WINE_FILEDESCRIPTION_STR "Wine HTTP Library"
-#define WINE_FILENAME_STR "winhttp.dll"
-#define WINE_FILEVERSION_MAJOR 5
-#define WINE_FILEVERSION_MINOR 1
-#define WINE_FILEVERSION_BUILD 2600
-#define WINE_FILEVERSION_PLATFORMID 2180
-
-#include "wine/wine_common_ver.rc"
+HRESULT list_manager_create(void **);

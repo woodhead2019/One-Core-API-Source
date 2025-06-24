@@ -17,23 +17,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <stdarg.h>
-
-#define COBJMACROS
-
-#include "windef.h"
-#include "winbase.h"
-#include "wingdi.h"
-#include "winuser.h"
-#include "initguid.h"
-#include "ocidl.h"
-#include "shellscalingapi.h"
-#include "shlwapi.h"
-#include "featurestagingapi.h"
-#include "shcore.h"
-
-#include "wine/debug.h"
-#include "wine/heap.h"
+#include "main.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(shcore);
 

@@ -58,6 +58,15 @@ WINE_DEFAULT_DEBUG_CHANNEL(setupapi);
 
 #define CMP_MAGIC  0x01234567
 
+typedef GUID  DEVPROPGUID, *PDEVPROPGUID;
+
+typedef ULONG DEVPROPID;
+
+typedef struct DEVPROPKEY {
+  DEVPROPGUID fmtid;
+  DEVPROPID   pid;
+};
+
 struct DeviceInterface /* Element of DeviceInfo.InterfaceListHead */
 {
     LIST_ENTRY ListEntry;

@@ -13,6 +13,7 @@
 #include <wine/debug.h>
 WINE_DEFAULT_DEBUG_CHANNEL(user32);
 
+BOOLEAN NlsMbCodePageTag = 0;
 
 #ifdef __i386__
 /* For bad applications which provide bad (non stdcall) WndProc */

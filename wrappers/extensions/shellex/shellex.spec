@@ -527,9 +527,9 @@
 @ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
 @ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectInternal
 @ stdcall ShellExecuteA(long str str str str long) ;ShellExecuteAInternal
-@ stdcall ShellExecuteEx(long) ShellExecuteExAInternal
-@ stdcall ShellExecuteExA(long) ShellExecuteExAInternal
-@ stdcall ShellExecuteExW(long) ShellExecuteExWInternal
+@ stdcall ShellExecuteEx(ptr) ShellExecuteExA #ShellExecuteExAInternal
+@ stdcall ShellExecuteExA(ptr) #ShellExecuteExAInternal
+@ stdcall ShellExecuteExW(ptr)
 @ stdcall ShellExecuteW(long wstr wstr wstr wstr long) ;ShellExecuteWInternal
 @ stdcall Shell_NotifyIcon(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconA(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell

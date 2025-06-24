@@ -9,6 +9,7 @@ set(baseaddress_shcore 0x72000000)
 spec2def(shcore.dll shcore.spec ADD_IMPORTLIB)
 
 list(APPEND SOURCE
+    istream.c
     main.c
 	shcore.rc
     ${CMAKE_CURRENT_BINARY_DIR}/shcore_stubs.c

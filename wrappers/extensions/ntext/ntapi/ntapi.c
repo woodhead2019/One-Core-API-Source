@@ -446,3 +446,153 @@ NTSTATUS WINAPI NtRemoveIoCompletionEx( HANDLE handle, FILE_IO_COMPLETION_INFORM
     *written = i ? i : 1;
     return status;
 }
+
+// NTSTATUS
+// NTAPI
+// NtGetNextThread (
+    // __in HANDLE ProcessHandle,
+    // __in HANDLE ThreadHandle,
+    // __in ACCESS_MASK DesiredAccess,
+    // __in ULONG HandleAttributes,
+    // __in ULONG Flags,
+    // __out PHANDLE NewThreadHandle
+    // )
+// {
+    // HANDLE hSnapshot;
+    // THREADENTRY32 te32;
+    // DWORD currentThreadId;
+    // DWORD nextThreadId;
+    // BOOL found;
+    // BOOL hasThread;
+    // HANDLE hThread;
+	// CLIENT_ID ClientId;
+	// OBJECT_ATTRIBUTES Obja;
+	// NTSTATUS Status;
+
+    // currentThreadId = 0;
+    // nextThreadId = 0;
+    // found = FALSE;
+	
+	// UNREFERENCED_PARAMETER(ProcessHandle);
+	// UNREFERENCED_PARAMETER(ThreadHandle);
+	// UNREFERENCED_PARAMETER(DesiredAccess);
+	// UNREFERENCED_PARAMETER(HandleAttributes);
+	// UNREFERENCED_PARAMETER(Flags);
+
+    // hSnapshot = LdrCreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    // if (hSnapshot == INVALID_HANDLE_VALUE) {
+        // return STATUS_UNSUCCESSFUL;
+    // }
+
+    // te32.dwSize = sizeof(THREADENTRY32);
+    // hasThread = LdrThread32First(hSnapshot, &te32);
+
+    // while (hasThread) {
+        // if (te32.th32OwnerProcessID == HandleToUlong(NtCurrentTeb()->ClientId.UniqueProcess) && te32.th32ThreadID > currentThreadId) {
+            // if (!found || te32.th32ThreadID < nextThreadId) {
+                // nextThreadId = te32.th32ThreadID;
+                // found = TRUE;
+            // }
+        // }
+        // hasThread = LdrThread32Next(hSnapshot, &te32);
+    // }
+
+    // //CloseHandle(hSnapshot);
+	// NtClose(hSnapshot);
+
+    // if (!found) {
+        // return STATUS_NO_MORE_ENTRIES;
+    // }
+
+	// ClientId.UniqueThread = (HANDLE)LongToHandle(te32.th32ThreadID);
+	// ClientId.UniqueProcess = (HANDLE)NULL;
+
+	// InitializeObjectAttributes(&Obja,
+								// NULL,
+								// 0,
+								// NULL,
+								// NULL
+								// );
+	// Status = NtOpenThread(
+						// &hThread,
+						// (ACCESS_MASK)THREAD_QUERY_INFORMATION,
+						// &Obja,
+						// &ClientId
+						// );
+	// if ( !NT_SUCCESS(Status) ) {
+		// return Status;
+	// }
+
+    // // hThread = OpenThread(DesiredAccess, (HandleAttributes & OBJ_INHERIT) != 0, nextThreadId);
+    // // if (hThread == NULL) {
+        // // return STATUS_ACCESS_DENIED;
+    // // }
+
+    // *NewThreadHandle = hThread;
+    // return STATUS_SUCCESS;
+// }
+
+// NTSTATUS 
+// NTAPI
+// NtGetNextProcess(
+    // HANDLE ProcessHandle,
+    // ACCESS_MASK DesiredAccess,
+    // ULONG HandleAttributes,
+    // ULONG Flags,
+    // PHANDLE NewProcessHandle
+// ) {
+    // HANDLE hSnapshot;
+    // PROCESSENTRY32W pe32;
+    // DWORD currentPid;
+    // DWORD nextPid;
+    // BOOL found;
+    // BOOL hasProcess;
+    // HANDLE hProcess;
+	// CLIENT_ID cid;
+	// OBJECT_ATTRIBUTES objAttr;
+	// NTSTATUS status;
+
+    // currentPid = 0;
+    // nextPid = 0;
+    // found = FALSE;
+	
+	// UNREFERENCED_PARAMETER(ProcessHandle);
+	// UNREFERENCED_PARAMETER(Flags);
+
+    // hSnapshot = LdrCreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    // if (hSnapshot == INVALID_HANDLE_VALUE) {
+        // return STATUS_UNSUCCESSFUL;
+    // }
+
+    // pe32.dwSize = sizeof(PROCESSENTRY32);
+    // hasProcess = LdrProcess32First(hSnapshot, &pe32);
+
+    // while (hasProcess) {
+        // if (pe32.th32ProcessID > currentPid) {
+            // if (!found || pe32.th32ProcessID < nextPid) {
+                // nextPid = pe32.th32ProcessID;
+                // found = TRUE;
+            // }
+        // }
+        // hasProcess = LdrProcess32Next(hSnapshot, &pe32);
+    // }
+
+    // NtClose(hSnapshot);
+
+    // if (!found) {
+        // return STATUS_NO_MORE_ENTRIES;
+    // }
+
+
+    // // Abre o novo processo usando NtOpenProcess
+    // cid.UniqueProcess = (HANDLE)(ULONG_PTR)nextPid;
+    // cid.UniqueThread = NULL;
+    // InitializeObjectAttributes(&objAttr, NULL, HandleAttributes, NULL, NULL);
+
+    // status = NtOpenProcess(&hProcess, DesiredAccess, &objAttr, &cid);
+    // if (status != STATUS_SUCCESS)
+        // return STATUS_ACCESS_DENIED;
+
+    // *NewProcessHandle = hProcess;
+    // return STATUS_SUCCESS;
+// }

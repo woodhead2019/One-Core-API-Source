@@ -770,12 +770,14 @@ void remove_extended_prefix_w(LPCWSTR input, LPWSTR output, size_t output_size) 
 	// return ShellExecuteWNative(hwnd, lpVerb, lpFile, lpParameters, lpDirectory, nShowCmd);
 // }
 
-BOOL WINAPI ShellExecuteExAInternal(
+BOOL WINAPI ShellExecuteExA(
   SHELLEXECUTEINFOA *pExecInfo
 )
 {
     static const char prefix[] = "\\\\?\\";
     char cleanPath[MAX_PATH];
+	
+	DbgPrint("ShellExecuteExAInternal called\n");
 
     if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
@@ -787,12 +789,15 @@ BOOL WINAPI ShellExecuteExAInternal(
 	return ShellExecuteExANative(pExecInfo);
 }
 
-BOOL WINAPI ShellExecuteExWInternal(
+//Intl.cpl require this hook with original name, don't accept alternate name
+BOOL WINAPI ShellExecuteExW(
   SHELLEXECUTEINFOW *pExecInfo
 )
 {
     static const wchar_t prefix[] = L"\\\\?\\";
     wchar_t cleanPath[MAX_PATH];
+	
+	DbgPrint("ShellExecuteExWInternal called\n");	
 
     if (pExecInfo && pExecInfo->lpFile && wcsncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExWInternal:: original file: %ws\n", pExecInfo->lpFile);			

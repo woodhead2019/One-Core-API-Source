@@ -180,12 +180,12 @@ SetupVerifyInfFileW(
     return FALSE;
 }
 
-WINAPI 
 BOOL 
+WINAPI
 SetupDiGetDevicePropertyKeys(
    HDEVINFO         DeviceInfoSet,
    PSP_DEVINFO_DATA DeviceInfoData,
-   DEVPROPKEY       *PropertyKeyArray,
+   /*DEVPROPKEY*/ PVOID       *PropertyKeyArray,
    DWORD            PropertyKeyCount,
    PDWORD           RequiredPropertyKeyCount,
    DWORD            Flags
@@ -198,8 +198,8 @@ BOOL
 WINAPI 
 SetupDiGetClassPropertyExW(
     const GUID *ClassGuid,
-    const DEVPROPKEY *PropertyKey,
-    DEVPROPTYPE *PropertyType,
+    const /*DEVPROPKEY*/ PVOID *PropertyKey,
+    /*DEVPROPTYPE*/ PVOID *PropertyType,
     PBYTE PropertyBuffer,
     DWORD PropertyBufferSize,
     PDWORD RequiredSize,
@@ -215,7 +215,7 @@ BOOL
 WINAPI
 SetupDiGetClassPropertyKeysExW(
     const GUID *ClassGuid,
-    DEVPROPKEY *PropertyKeyArray,
+    /*DEVPROPKEY*/ PVOID *PropertyKeyArray,
     DWORD PropertyKeyCount,
     PDWORD RequiredPropertyKeyCount,
     DWORD Flags,
@@ -259,7 +259,7 @@ CM_Install_DevNode_ExW(
 
 BOOL 
 WINAPI 
-pSetupCloseTextLogSection(
+SetupCloseTextLogSection(
 	int a1, 
 	int a2, 
 	int a3, 
@@ -272,7 +272,7 @@ pSetupCloseTextLogSection(
 
 int 
 WINAPI 
-pSetupCreateTextLogSectionW(
+SetupCreateTextLogSectionW(
 	LPCWSTR lpString, 
 	int a2, 
 	LPCWSTR a3, 
@@ -296,7 +296,7 @@ SetupDiReportDriverNotFoundError(
 int 
 SetupGetThreadLogToken()
 {
-	return 0
+	return 0;
 }
 
 void 
@@ -306,9 +306,9 @@ SetupSetThreadLogToken(int LogToken)
 }
 
 int 
-pSetupWriteTextLog(int a1, int a2, int a3, int a4, size_t *pcchNewDestLength)
+SetupWriteTextLog(int a1, int a2, int a3, int a4, size_t *pcchNewDestLength)
 {
-	return 0
+	return 0;
 }
 
 BOOL 
@@ -330,7 +330,7 @@ pSetupDiInvalidateHelperModules(
 	char a3
 )
 {
-	return 0
+	return 0;
 }
 
 BOOL 
@@ -356,5 +356,5 @@ CM_Install_DevNodeW(
 	int a8
 )
 {
-	return 0
+	return 0;
 }

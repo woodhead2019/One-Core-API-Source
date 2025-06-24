@@ -48,6 +48,7 @@ list(APPEND SOURCE
 add_library(gdibase SHARED
     ${SOURCE}
     gdibase.rc
+	${CMAKE_CURRENT_BINARY_DIR}/gdibase_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/gdibase.def)
 
 set_module_type(gdibase

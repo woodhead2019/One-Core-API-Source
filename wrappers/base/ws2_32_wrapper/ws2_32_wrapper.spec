@@ -138,8 +138,8 @@
 @ stdcall GetAddrInfoExCancel(ptr)
 @ stdcall GetAddrInfoExOverlappedResult(ptr)
 @ stdcall GetAddrInfoExW(wstr wstr long ptr ptr ptr ptr ptr ptr ptr)
-@ stdcall inet_ntop(long ptr ptr long) WS_inet_ntop
-@ stdcall inet_pton(long str ptr) WS_inet_pton
+@ stdcall inet_ntop(long ptr ptr long) 
+@ stdcall inet_pton(long str ptr)
 @ stdcall InetNtopW(long ptr wstr long)
 @ stdcall InetPtonW(long wstr ptr)
 @ stdcall WSAConnectByNameA(long str str ptr ptr ptr ptr ptr ptr)

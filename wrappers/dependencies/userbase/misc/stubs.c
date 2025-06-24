@@ -586,7 +586,7 @@ Win32PoolAllocationStats(DWORD dw1, DWORD dw2, DWORD dw3, DWORD dw4, DWORD dw5)
 
 NTSTATUS
 DwmStartup(
-	Handle hwnd
+	PVOID hwnd
 ){
 	return 0;
 }

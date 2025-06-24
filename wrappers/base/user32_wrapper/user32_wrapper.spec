@@ -825,6 +825,7 @@
 @ stdcall PaintMonitor(ptr ptr ptr) ;not-implemented
 @ stdcall PrivateRegisterICSProc(ptr) ;userbase.PrivateRegisterICSProc
 @ stdcall PhysicalToLogicalPoint(ptr ptr)
+@ stdcall PhysicalToLogicalPointForPerMonitorDPI(ptr ptr)
 @ stdcall QueryDisplayConfig(long ptr ptr ptr ptr ptr)
 @ stdcall RegisterErrorReportingDialog(ptr long)
 @ stdcall RegisterFrostWindow(ptr long)

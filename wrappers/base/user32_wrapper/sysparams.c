@@ -75,3 +75,16 @@ BOOL WINAPI LogicalToPhysicalPoint(
     // Since Windows 8.1, this function does nothing
     return TRUE;	
 }
+
+BOOL WINAPI PhysicalToLogicalPointForPerMonitorDPI(
+  _In_     HWND hWnd,
+  _Inout_  LPPOINT lpPoint
+)
+{
+	// DbgPrint("PhysicalToLogicalPoint is UNIMPLEMENTED\n");  
+	// lpPoint->x = 0;
+	// lpPoint->y = 0;
+	// return TRUE;
+    // Since Windows 8.1, this function does nothing
+    return TRUE;	
+}

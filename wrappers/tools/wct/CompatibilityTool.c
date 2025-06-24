@@ -2,7 +2,6 @@
 #include <commctrl.h>
 #include <tchar.h>
 #include <winreg.h>
-#include <stdBOOL.h>
 #include <stdio.h>
 
 // IDs dos controles
@@ -12,7 +11,7 @@
 #define IDC_CANCEL_BUTTON 104
 
 // Opções do dropdown
-const TCHAR* versions[] = {
+static LPCTSTR versions[] = {
     _T("Windows 2000"),
     _T("Windows XP SP3"),
     _T("Windows Server 2003 SP2"),
@@ -26,9 +25,7 @@ const TCHAR* versions[] = {
     _T("Windows 11 24H2")
 };
 
-
-// Valores associados às opções
-const TCHAR* versionValues[] = {
+static LPCTSTR versionValues[] = {
     _T("5.0.2195"),
     _T("5.1.2600"),
     _T("5.2.3790"),
@@ -42,128 +39,103 @@ const TCHAR* versionValues[] = {
     _T("10.0.22600")
 };
 
-// Prototipo das funções
+// Prototipos
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void WriteToRegistry(const TCHAR*, BOOL);
-void DeleteRegistryKey(BOOL);
+void WriteToRegistry(LPCTSTR, int);
+void DeleteRegistryKey(int);
+void HandleWindow(int, HWND, HWND, HWND, HWND, HWND);
+void ExitWindow(int);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    LPTSTR cmdLine = GetCommandLine(); // Gets the full command line
+    LPTSTR cmdLine = GetCommandLine();
 
-    // Skip the program's own name
-    if (cmdLine[0] == _T('"'))
-    {
-        // If the program name is quoted, skip until the closing quote
+    if (cmdLine[0] == _T('"')) {
         cmdLine = _tcschr(cmdLine + 1, _T('"'));
         if (cmdLine)
             cmdLine++;
-    }
-    else
-    {
-        // Otherwise, skip until the first space
+    } else {
         cmdLine = _tcschr(cmdLine, _T(' '));
     }
 
-    // Skip any spaces after the program name
     if (cmdLine)
         while (*cmdLine == _T(' '))
             cmdLine++;
 
-    // Check if there's anything left in the command line
-    if (cmdLine && *cmdLine)
-    {
-        if (_tcsicmp(cmdLine, _T("/win2000")) == 0)
-        {
-            WriteToRegistry(versionValues[0], false); // Windows 2000
+    if (cmdLine && *cmdLine) {
+        if (_tcsicmp(cmdLine, _T("/win2000")) == 0) {
+            WriteToRegistry(versionValues[0], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/winxp")) == 0)
-        {
-            WriteToRegistry(versionValues[1], false); // Windows XP SP3
+        } else if (_tcsicmp(cmdLine, _T("/winxp")) == 0) {
+            WriteToRegistry(versionValues[1], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/win2003")) == 0)
-        {
-            WriteToRegistry(versionValues[2], false); // Windows Server 2003 SP2
+        } else if (_tcsicmp(cmdLine, _T("/win2003")) == 0) {
+            WriteToRegistry(versionValues[2], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/winvista")) == 0)
-        {
-            WriteToRegistry(versionValues[3], false); // Windows Vista SP2
+        } else if (_tcsicmp(cmdLine, _T("/winvista")) == 0) {
+            WriteToRegistry(versionValues[3], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/win7")) == 0)
-        {
-            WriteToRegistry(versionValues[4], false); // Windows 7 SP1
+        } else if (_tcsicmp(cmdLine, _T("/win7")) == 0) {
+            WriteToRegistry(versionValues[4], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/win8")) == 0)
-        {
-            WriteToRegistry(versionValues[5], false); // Windows 8.1
+        } else if (_tcsicmp(cmdLine, _T("/win8")) == 0) {
+            WriteToRegistry(versionValues[5], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/win10")) == 0)
-        {
-            WriteToRegistry(versionValues[9], false); // Windows 10 22H2
+        } else if (_tcsicmp(cmdLine, _T("/win10")) == 0) {
+            WriteToRegistry(versionValues[9], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/win11")) == 0)
-        {
-            WriteToRegistry(versionValues[10], false); // Windows 11 24H2
+        } else if (_tcsicmp(cmdLine, _T("/win11")) == 0) {
+            WriteToRegistry(versionValues[10], 0);
             return 0;
-        }
-        else if (_tcsicmp(cmdLine, _T("/delete")) == 0)
-        {
-            DeleteRegistryKey(false);
+        } else if (_tcsicmp(cmdLine, _T("/delete")) == 0) {
+            DeleteRegistryKey(0);
             return 0;
-        }
-        else
-        {
-            MessageBox(
-                NULL,
-                _T("Usage: wct.exe [options]\n\n"
-                   "Options:\n"
-                   "/win2000 - Set Windows 2000 compatibility\n"
-                   "/winxp - Set Windows XP SP3 compatibility\n"
-                   "/win2003 - Set Windows Server 2003 SP2 compatibility\n"
-                   "/winvista - Set Windows Vista SP2 compatibility\n"
-                   "/win7 - Set Windows 7 SP1 compatibility\n"
-                   "/win8 - Set Windows 8.1 compatibility\n"
-                   "/win10 - Set Windows 10 22H2 compatibility\n"
-                   "/win11 - Set Windows 11 24H2 compatibility\n"
-                   "/delete - Remove the compatibility"),
+        } else {
+            MessageBox(NULL,
+                _T("Usage: wct.exe [options]\n\n")
+                _T("Options:\n")
+                _T("/win2000 - Set Windows 2000 compatibility\n")
+                _T("/winxp - Set Windows XP SP3 compatibility\n")
+                _T("/win2003 - Set Windows Server 2003 SP2 compatibility\n")
+                _T("/winvista - Set Windows Vista SP2 compatibility\n")
+                _T("/win7 - Set Windows 7 SP1 compatibility\n")
+                _T("/win8 - Set Windows 8.1 compatibility\n")
+                _T("/win10 - Set Windows 10 22H2 compatibility\n")
+                _T("/win11 - Set Windows 11 24H2 compatibility\n")
+                _T("/delete - Remove the compatibility"),
                 _T("Help"), MB_OK | MB_ICONINFORMATION);
             return 1;
         }
     }
 
-    WNDCLASS wc = {0};
-	HWND hwnd;
-	MSG msg = {0};
-	
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = _T("DropdownApp");
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    {
+        WNDCLASS wc;
+        HWND hwnd;
+        MSG msg;
 
-    if (!RegisterClass(&wc)) return -1;
+        ZeroMemory(&wc, sizeof(wc));
+        wc.lpfnWndProc = WndProc;
+        wc.hInstance = hInstance;
+        wc.lpszClassName = _T("DropdownApp");
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
-    hwnd = CreateWindowExW(
-        WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_DLGMODALFRAME,
-        _T("DropdownApp"), 
-        _T("Windows Compatibility Tool"), 
-        WS_VISIBLE | WS_BORDER | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 
-        398, 165, 
-        NULL, NULL, hInstance, NULL
-    );
-    
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!RegisterClass(&wc)) return -1;
+
+        hwnd = CreateWindowEx(
+            WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_DLGMODALFRAME,
+            _T("DropdownApp"),
+            _T("Windows Compatibility Tool"),
+            WS_VISIBLE | WS_BORDER | WS_SYSMENU | WS_MINIMIZEBOX,
+            CW_USEDEFAULT, CW_USEDEFAULT, 398, 165,
+            NULL, NULL, hInstance, NULL
+        );
+
+        while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        return 0;
     }
-
-    return 0;
 }
 
 // Function to enable or disable the window and its controls
@@ -261,7 +233,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     HandleWindow(FALSE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
 				    if (idx != CB_ERR) {
 				        const TCHAR* selectedValue = versionValues[idx];
-				        WriteToRegistry(selectedValue, true);
+				        WriteToRegistry(selectedValue, TRUE);
 				    } else {
 				        MessageBox(hwnd, _T("Please select a version."), _T("Error"), MB_OK | MB_ICONERROR);
 				    }
@@ -274,7 +246,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     SendMessage(hComboBox, CB_SETCURSEL, -1, 0);
                     // Disable the window
                     HandleWindow(FALSE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
-                    DeleteRegistryKey(true);
+                    DeleteRegistryKey(TRUE);
                     //MessageBox(hwnd, _T("Seleção deletada e chave de registro removida!"), _T("Deletar"), MB_OK | MB_ICONINFORMATION);
                     // Enable the window
                     HandleWindow(TRUE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
@@ -284,7 +256,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case IDC_CANCEL_BUTTON: {
                     PostQuitMessage(0);
                     break;
-                }
+                }				
             }
             break;
         }
@@ -335,10 +307,7 @@ void WriteToRegistry(const TCHAR* value, BOOL useMessageBox) {
         {
             msgboxID = MessageBox(NULL, _T("Value saved with success on registry!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
 
-            if (msgboxID == IDOK)
-            {
-                PostQuitMessage(0);
-            }
+            ExitWindow(msgboxID);
         }
         else
         {
@@ -347,7 +316,9 @@ void WriteToRegistry(const TCHAR* value, BOOL useMessageBox) {
     } else {
         if (useMessageBox)
         {
-            MessageBox(NULL, _T("Error while trying access the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+            msgboxID = MessageBox(NULL, _T("Error while trying access the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+			
+            ExitWindow(msgboxID);			
         }
         else
         {
@@ -395,10 +366,8 @@ void DeleteRegistryKey(BOOL useMessageBox) {
             if (useMessageBox)
             {
                 msgboxID = MessageBox(NULL, _T("Registry Key removed with success!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
-                if (msgboxID == IDOK)
-                {
-                    PostQuitMessage(0);
-                }
+                
+				ExitWindow(msgboxID);
             }
             else
             {
@@ -407,7 +376,9 @@ void DeleteRegistryKey(BOOL useMessageBox) {
         } else {
             if (useMessageBox)
             {
-                MessageBox(NULL, _T("Error while trying remove the registry key value."), _T("Error"), MB_OK | MB_ICONERROR);
+                msgboxID = MessageBox(NULL, _T("Error while trying remove the registry key value."), _T("Error"), MB_OK | MB_ICONERROR);
+				
+				ExitWindow(msgboxID);
             }
             else
             {
@@ -417,12 +388,21 @@ void DeleteRegistryKey(BOOL useMessageBox) {
     } else {
         if (useMessageBox)
         {
-            MessageBox(NULL, _T("Error trying open the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+            msgboxID = MessageBox(NULL, _T("Error trying open the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+			
+			ExitWindow(msgboxID);
         }
         else
         {
             PostQuitMessage(1);
         }
+    }
+}
+
+void ExitWindow(int msgboxID){
+	if (msgboxID == IDOK)
+    {
+        PostQuitMessage(0);
     }
 }
 

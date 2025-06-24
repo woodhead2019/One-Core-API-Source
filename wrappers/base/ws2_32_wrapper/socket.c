@@ -364,56 +364,56 @@ int poll( struct pollfd *fds, unsigned int count, int timeout )
         return result;
     }
 
-/***********************************************************************
-*              InetPtonW                      (WS2_32.@)
-*/
-INT WSAAPI InetPtonW(INT family, PCWSTR addr, PVOID buffer)
-{
-    char *addrA;
-    int len;
-    INT ret;
+// /***********************************************************************
+// *              InetPtonW                      (WS2_32.@)
+// */
+// INT WSAAPI InetPtonW(INT family, PCWSTR addr, PVOID buffer)
+// {
+    // char *addrA;
+    // int len;
+    // INT ret;
 
-    TRACE("family %d, addr %s, buffer (%p)\n", family, debugstr_w(addr), buffer);
+    // TRACE("family %d, addr %s, buffer (%p)\n", family, debugstr_w(addr), buffer);
 
-    if (!addr)
-    {
-        SetLastError(WSAEFAULT);
-        return SOCKET_ERROR;
-    }
+    // if (!addr)
+    // {
+        // SetLastError(WSAEFAULT);
+        // return SOCKET_ERROR;
+    // }
 
-    len = WideCharToMultiByte(CP_ACP, 0, addr, -1, NULL, 0, NULL, NULL);
-    if (!(addrA = HeapAlloc(GetProcessHeap(), 0, len)))
-    {
-        SetLastError(WSA_NOT_ENOUGH_MEMORY);
-        return SOCKET_ERROR;
-    }
-    WideCharToMultiByte(CP_ACP, 0, addr, -1, addrA, len, NULL, NULL);
+    // len = WideCharToMultiByte(CP_ACP, 0, addr, -1, NULL, 0, NULL, NULL);
+    // if (!(addrA = HeapAlloc(GetProcessHeap(), 0, len)))
+    // {
+        // SetLastError(WSA_NOT_ENOUGH_MEMORY);
+        // return SOCKET_ERROR;
+    // }
+    // WideCharToMultiByte(CP_ACP, 0, addr, -1, addrA, len, NULL, NULL);
 
-    ret = WS_inet_pton(family, addrA, buffer);
+    // ret = WS_inet_pton(family, addrA, buffer);
 
-    HeapFree(GetProcessHeap(), 0, addrA);
-    return ret;
-}
+    // HeapFree(GetProcessHeap(), 0, addrA);
+    // return ret;
+// }
 
-/***********************************************************************
- *              InetNtopW                      (WS2_32.@)
- */
-PCWSTR WSAAPI InetNtopW(INT family, PVOID addr, PWSTR buffer, SIZE_T len)
-{
-    char bufferA[WS_INET6_ADDRSTRLEN];
-    PWSTR ret = NULL;
+// /***********************************************************************
+ // *              InetNtopW                      (WS2_32.@)
+ // */
+// PCWSTR WSAAPI InetNtopW(INT family, PVOID addr, PWSTR buffer, SIZE_T len)
+// {
+    // char bufferA[WS_INET6_ADDRSTRLEN];
+    // PWSTR ret = NULL;
 
-    TRACE("family %d, addr (%p), buffer (%p), len %ld\n", family, addr, buffer, len);
+    // TRACE("family %d, addr (%p), buffer (%p), len %ld\n", family, addr, buffer, len);
 
-    if (WS_inet_ntop(family, addr, bufferA, sizeof(bufferA)))
-    {
-        if (MultiByteToWideChar(CP_ACP, 0, bufferA, -1, buffer, len))
-            ret = buffer;
-        else
-            SetLastError(ERROR_INVALID_PARAMETER);
-    }
-    return ret;
-}
+    // if (WS_inet_ntop(family, addr, bufferA, sizeof(bufferA)))
+    // {
+        // if (MultiByteToWideChar(CP_ACP, 0, bufferA, -1, buffer, len))
+            // ret = buffer;
+        // else
+            // SetLastError(ERROR_INVALID_PARAMETER);
+    // }
+    // return ret;
+// }
 
 static ADDRINFOEXW *addrinfo_AtoW(const PADDRINFOA ai)
 {
@@ -887,4 +887,145 @@ BOOL WINAPI WSAConnectByNameW(SOCKET s, const WCHAR *node_name, const WCHAR *ser
     free(node_nameA);
     free(service_nameA);
     return ret;
+}
+
+PCSTR
+WINAPI
+inet_ntop(
+    _In_ INT Family,
+    _In_ const VOID *pAddr,
+    _Out_writes_(StringBufSize) PSTR pStringBuf,
+    _In_ size_t StringBufSize)
+{
+    NTSTATUS Status;
+    ULONG BufSize = StringBufSize;
+
+    switch (Family)
+    {
+        case AF_INET:
+            Status = RtlIpv4AddressToStringExA(pAddr, 0, pStringBuf, &BufSize);
+            break;
+        case AF_INET6:
+            Status = RtlIpv6AddressToStringExA(pAddr, 0, 0, pStringBuf, &BufSize);
+            break;
+        default:
+            SetLastError(WSAEAFNOSUPPORT);
+            return NULL;
+    }
+
+    if (!NT_SUCCESS(Status)) 
+    {
+        SetLastError(WSAEINVAL);
+        return NULL;
+    }
+
+    return pStringBuf;
+}
+
+PCWSTR
+WINAPI
+InetNtopW(
+    _In_ INT Family,
+    _In_ const VOID *pAddr,
+    _Out_writes_(StringBufSize) PWSTR pStringBuf,
+    _In_ size_t StringBufSize)
+{
+    NTSTATUS Status;
+    ULONG BufSize = StringBufSize;
+
+    switch (Family)
+    {
+        case AF_INET:
+            Status = RtlIpv4AddressToStringExW(pAddr, 0, pStringBuf, &BufSize);
+            break;
+        case AF_INET6:
+            Status = RtlIpv6AddressToStringExW(pAddr, 0, 0, pStringBuf, &BufSize);
+            break;
+        default:
+            SetLastError(WSAEAFNOSUPPORT);
+            return NULL;
+    }
+
+    if (!NT_SUCCESS(Status)) 
+    {
+        SetLastError(WSAEINVAL);
+        return NULL;
+    }
+
+    return pStringBuf;
+}
+
+INT
+WINAPI
+inet_pton(
+    _In_ INT Family,
+    _In_ PCSTR pszAddrString,
+    _Out_writes_bytes_(sizeof(IN_ADDR6)) PVOID pAddrBuf)
+{
+    NTSTATUS Status;
+    PCSTR ch;
+
+    if (!pszAddrString || !pAddrBuf)
+    {
+        SetLastError(WSAEFAULT);
+        return -1;
+    }
+
+    switch (Family)
+    {
+        case AF_INET:
+            Status = RtlIpv4StringToAddressA(pszAddrString, TRUE, &ch, pAddrBuf);
+            break;
+        case AF_INET6:
+            Status = RtlIpv6StringToAddressA(pszAddrString, &ch, pAddrBuf);
+            break;
+        default:
+            SetLastError(WSAEAFNOSUPPORT);
+            return -1;
+    }
+
+    if (!NT_SUCCESS(Status) || (*ch != 0)) 
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+INT
+WINAPI
+InetPtonW(
+    _In_ INT Family,
+    _In_ PCWSTR pszAddrString,
+    _Out_writes_bytes_(sizeof(IN_ADDR6)) PVOID pAddrBuf)
+{
+    NTSTATUS Status;
+    PCWSTR ch;
+
+    if (!pszAddrString || !pAddrBuf)
+    {
+        SetLastError(WSAEFAULT);
+        return -1;
+    }
+
+    switch (Family)
+    {
+        case AF_INET:
+            Status = RtlIpv4StringToAddressW(pszAddrString, TRUE, &ch, pAddrBuf);
+            break;
+        case AF_INET6:
+            Status = RtlIpv6StringToAddressW(pszAddrString, &ch, pAddrBuf);
+            break;
+        default:
+            SetLastError(WSAEAFNOSUPPORT);
+            return -1;
+    }
+
+    if (!NT_SUCCESS(Status) || (*ch != 0)) 
+    {
+        SetLastError(WSAEINVAL); /* Only unicode version sets this error */
+        return 0;
+    }
+
+    return 1;
 }

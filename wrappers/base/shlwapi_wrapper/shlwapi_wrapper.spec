@@ -1168,7 +1168,7 @@
 @ stdcall PathMatchSpecExW(wstr wstr long)
 @ stdcall PathCreateFromUrlAlloc(wstr wstr long)
 @ stdcall StrFormatByteSizeEx(long long long wstr long)
-;@ stdcall SHAutoCompGetPidl(ptr ptr long ptr) ;cause error on VirtulBox Machine on x64. Is from Longhorn?
+@ stdcall SHAutoCompGetPidl(ptr ptr long ptr) ;cause error on VirtulBox Machine on x64. Is from Longhorn?
 
 @ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
 @ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW

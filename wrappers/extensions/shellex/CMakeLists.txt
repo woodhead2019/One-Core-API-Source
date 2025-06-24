@@ -1,3 +1,13 @@
+if(NOT MSVC)
+    # HACK: this should be enabled globally!
+    add_compile_flags_language("-std=c++11" "CXX")
+endif()
+
+if(MSVC)
+    # error C4311: 'type cast': pointer truncation from 'HANDLE' to 'INT'
+    replace_compile_flags("/we4311" " ")
+endif()
+
 remove_definitions(-D_WIN32_WINNT=0x502)
 add_definitions(-D_WIN32_WINNT=0x600)
 
@@ -8,9 +18,16 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/sdk/include/psdk)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/propsys)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/shellbase)
+
+set_cpp(WITH_RUNTIME)
 spec2def(shellex.dll shellex.spec)
 
 set(baseaddress_shellex    0x6b630000)
+
+add_definitions(
+    -D_SHELL32_
+    -D_WINE
+    -D_ATL_NO_EXCEPTIONS)
 
 list(APPEND SOURCE
 	assoc.c

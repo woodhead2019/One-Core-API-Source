@@ -13,6 +13,13 @@
 #include <wine/unicode.h>
 #include <winsock.h>
 #include <winsock2.h>
+/* PSDK and NDK Headers */
+#include <winreg.h>
+#include <winnls.h>
+#include <winuser.h>
+#include <ndk/rtlfuncs.h>
+#include <pseh/pseh2.h>
+
 
 #define POLLHUP                    0x0002
 #define WS_POLLHUP                 0x0002
@@ -310,12 +317,12 @@ typedef WSAPROTOCOL_INFOA WSAPROTOCOL_INFO;
 typedef LPWSAPROTOCOL_INFOA LPWSAPROTOCOL_INFO;
 #endif
 
-typedef struct in6_addr {
-  union {
-    UCHAR  Byte[16];
-    USHORT Word[8];
-  } u;
-} IN6_ADDR, *PIN6_ADDR, *LPIN6_ADDR;
+// typedef struct in6_addr {
+  // union {
+    // UCHAR  Byte[16];
+    // USHORT Word[8];
+  // } u;
+// } IN6_ADDR, *PIN6_ADDR, *LPIN6_ADDR;
 
 struct sockaddr_in6 {
         short   sin6_family;
