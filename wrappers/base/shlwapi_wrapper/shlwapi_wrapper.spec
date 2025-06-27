@@ -1157,13 +1157,12 @@
 743 stdcall -i386 SHRegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
 
 #Windows Vista Functions
-@ stdcall IStream_Copy(ptr ptr long)
 184 stdcall IStream_Read(ptr ptr long) ;Implemented on XP/2003, however, not exported by name 
 212 stdcall IStream_Write(ptr ptr long) ;Implemented on XP/2003, however, not exported by name
 512 stdcall IStream_ReadPidl(ptr ptr) ;Implemented on XP/2003, however, not exported by name
-@ stdcall IStream_ReadStr(ptr wstr)
+#@ stdcall IStream_ReadStr(ptr wstr)
 513 stdcall IStream_WritePidl(ptr ptr) ;Implemented on XP/2003, however, not exported by name
-@ stdcall IStream_WriteStr(ptr wstr)
+#@ stdcall IStream_WriteStr(ptr wstr)
 @ stdcall PathMatchSpecExA(str str long)
 @ stdcall PathMatchSpecExW(wstr wstr long)
 @ stdcall PathCreateFromUrlAlloc(wstr wstr long)

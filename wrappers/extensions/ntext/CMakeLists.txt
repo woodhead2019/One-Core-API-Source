@@ -10,8 +10,11 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/ndk)
 
 spec2def(ntext.dll ntext.spec ADD_IMPORTLIB)
 
-set(baseaddress_ntext     0x7C910000)	
-
+if(ARCH STREQUAL "amd64")
+	set(baseaddress_ntext   0x36D60000)
+elseif(ARCH STREQUAL "i386")
+	set(baseaddress_ntext   0x7DD60000)
+endif()
 
 list(APPEND SOURCE
 	crypt.c

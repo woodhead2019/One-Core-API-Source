@@ -455,7 +455,7 @@
 @ stdcall WOWShellExecute(ptr str str str str long ptr)
 
 #Missing on Windows XP SP1
-727 stdcall -noname SHGetImageList(long ptr ptr)
+727 stdcall SHGetImageList(long ptr ptr)
 
 #Functions exported by Longhorn shell32.dll
 @ stdcall SHInitializeNamespace() ;version 3718

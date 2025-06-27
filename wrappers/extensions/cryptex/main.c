@@ -35,6 +35,7 @@
 #include <wine/list.h>
 #include <wine/unicode.h>
 #include <wincrypt.h>
+#include <rtlfuncs.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(pdh);
 
@@ -110,7 +111,6 @@ CryptVerifyTimeStampSignature(
 
 BOOL
 WINAPI 
-WINAPI 
 CryptExportPublicKeyInfoFromBCryptKeyHandle(
   BCRYPT_KEY_HANDLE hBCryptKey,
   DWORD dwCertEncodingType,
@@ -122,4 +122,102 @@ CryptExportPublicKeyInfoFromBCryptKeyHandle(
 )
 {
 	return FALSE;
+}
+
+typedef BOOL (WINAPI *CertGetCertificateChain_t)(
+    HCERTCHAINENGINE,
+    PCCERT_CONTEXT,
+    LPFILETIME,
+    HCERTSTORE,
+    PCERT_CHAIN_PARA,
+    DWORD,
+    LPVOID,
+    PCCERT_CHAIN_CONTEXT *
+);
+
+BOOL 
+WINAPI 
+CertGetCertificateChain(
+	HCERTCHAINENGINE hChainEngine,
+	PCCERT_CONTEXT pCertContext, 
+	LPFILETIME pTime, 
+	HCERTSTORE hAdditionalStore,
+	PCERT_CHAIN_PARA pChainPara, 
+	DWORD dwFlags, 
+	LPVOID pvReserved,
+	PCCERT_CHAIN_CONTEXT* ppChainContext
+	)
+{
+    HMODULE hCrypt32;
+	BOOL resp;
+	//PCCERT_CHAIN_CONTEXT pChainContext;
+    char path[MAX_PATH];
+    char *filename;
+	CertGetCertificateChain_t pCertGetCertificateChain;
+
+    // Obtém o caminho completo do executável atual
+    if (GetModuleFileNameA(NULL, path, MAX_PATH) == 0) {
+        return 1;
+    }
+
+    // Extrai apenas o nome do arquivo (sem o caminho)
+    filename = strrchr(path, '\\');
+    if (filename != NULL) {
+        filename++;  // avança para o nome do executável
+    } else {
+        filename = path;  // não encontrou barra invertida, usa a string completa
+    }
+
+    // Verifica se é explorer.exe (case-insensitive)
+    if ((_stricmp(filename, "explorer.exe") == 0) || _stricmp(filename, "taskmgr.exe") == 0) {
+		hCrypt32 = LoadLibraryA("cryptcore.dll");
+		pCertGetCertificateChain = (CertGetCertificateChain_t)GetProcAddress(hCrypt32, "CertGetCertificateChain");
+    } else {
+		hCrypt32 = LoadLibraryA("crypt32.dll");
+		pCertGetCertificateChain = (CertGetCertificateChain_t)GetProcAddress(hCrypt32, "CertGetCertificateChainNative");
+    }			
+		
+	resp = pCertGetCertificateChain(hChainEngine,
+									pCertContext,
+									pTime,
+									hAdditionalStore,
+									pChainPara,
+									dwFlags,
+									pvReserved,
+									ppChainContext);
+										
+	// pChainContext = *ppChainContext;
+
+    // DbgPrint("CertGetCertificateChain:: ppChainContext size is : %d\n", pChainContext->cbSize);	
+    // DbgPrint("CertGetCertificateChain:: ppChainContext TrustStatus->dwErrorStatus is : %d\n", pChainContext->TrustStatus.dwErrorStatus);	
+    // DbgPrint("CertGetCertificateChain:: ppChainContext TrustStatus->dwInfoStatus is : %d\n", pChainContext->TrustStatus.dwErrorStatus);	
+									
+	// DbgPrint("CertGetCertificateChain:: the return is: %d\n", resp);
+	// DbgPrint("CertGetCertificateChain:: LastError value: 0x%X\n", GetLastError());									
+									
+	// // if(GetLastError() == 0x5){
+			// // DbgPrint("CertGetCertificateChain:: we get a error, try again\n");
+			// hCrypt32 = LoadLibraryA("crypt32.dll");
+			// pCertGetCertificateChain = (CertGetCertificateChain_t)GetProcAddress(hCrypt32, "CertGetCertificateChainNative");	
+			
+			// resp = pCertGetCertificateChain(hChainEngine,
+											// pCertContext,
+											// pTime,
+											// hAdditionalStore,
+											// pChainPara,
+											// dwFlags,
+											// pvReserved,
+											// ppChainContext);
+											
+			// DbgPrint("CertGetCertificateChain:: the return is: %d\n", resp);
+			// DbgPrint("CertGetCertificateChain:: LastError value: 0x%X\n", GetLastError());											
+
+			// FreeLibrary(hCrypt32);									
+			
+			// return resp;
+	// }
+	
+	FreeLibrary(hCrypt32);
+	
+	return resp;
 }
