@@ -13,7 +13,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/ws2_32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/ws2_32_wrapper.def)
 	
-set(baseaddress_ws2_32_wrapper     0x62070000)	
+set(baseaddress_ws2_32_wrapper     0x72D70000)	
 
 add_library(ws2_32_wrapper SHARED ${SOURCE})
 set_module_type(ws2_32_wrapper win32dll ENTRYPOINT 0)

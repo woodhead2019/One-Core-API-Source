@@ -47,6 +47,7 @@ list(APPEND SOURCE
 	rtl/imagedir.c
 	rtl/interlck.c
 	rtl/ldrrsrc.c
+	rtl/loader.c
 	rtl/locale.c
 	rtl/misc.c
 	rtl/nls.c

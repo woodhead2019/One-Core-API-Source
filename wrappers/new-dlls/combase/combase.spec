@@ -444,6 +444,7 @@
 @ stdcall RoInitialize(long)
 @ stdcall RoGetActivationFactory(ptr ptr ptr)
 @ stdcall RoGetApartmentIdentifier(ptr)
+@ stdcall RoGetBufferMarshaler(ptr)
 @ stdcall RoGetParameterizedTypeInstanceIID(long ptr ptr ptr ptr)
 @ stdcall RoGetServerActivatableClasses(ptr ptr ptr)
 @ stdcall RoOriginateError(long ptr)

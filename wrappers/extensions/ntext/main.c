@@ -27,6 +27,7 @@ void load_global_options(void);
 void init_locale();
 void NTAPI RtlpInitSRWLock();
 VOID InitializeGlobalKeyedEventHandle();
+BOOL IsUniprocessorMachine = FALSE;
 
 /*****************************************************
  *      DllMain
@@ -53,6 +54,10 @@ LdrInitialize(
 		RtlpInitSRWLock(NtCurrentTeb()->ProcessEnvironmentBlock);
 		RtlpInitConditionVariable(NtCurrentTeb()->ProcessEnvironmentBlock);
 		InitializeGlobalKeyedEventHandle();
+		if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors == 1)
+		{
+			IsUniprocessorMachine = TRUE;
+		}
     }
     else if (dwReason == DLL_PROCESS_DETACH)
     {

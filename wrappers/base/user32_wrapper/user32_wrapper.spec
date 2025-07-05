@@ -87,9 +87,6 @@
 @ stdcall CreateDialogParamA(long ptr long ptr long)
 @ stdcall CreateDialogParamW(long ptr long ptr long)
 @ stdcall CreateIcon(long long long long long ptr ptr)
-@ stdcall CreateIconFromResource (ptr long long long)
-@ stdcall CreateIconFromResourceEx(ptr long long long long long long)
-@ stdcall CreateIconIndirect(ptr)
 @ stdcall CreateMDIWindowA(ptr ptr long long long long long long long long)
 @ stdcall CreateMDIWindowW(ptr ptr long long long long long long long long)
 @ stdcall CreateMenu()
@@ -441,14 +438,6 @@
 @ stdcall LoadAcceleratorsW(long wstr)
 @ stdcall LoadBitmapA(long str)
 @ stdcall LoadBitmapW(long wstr)
-@ stdcall LoadCursorA(long str)
-@ stdcall LoadCursorFromFileA(str)
-@ stdcall LoadCursorFromFileW(wstr)
-@ stdcall LoadCursorW(long wstr)
-@ stdcall LoadIconA(long str)
-@ stdcall LoadIconW(long wstr)
-@ stdcall LoadImageA(long str long long long long)
-@ stdcall LoadImageW(long wstr long long long long)
 @ stdcall LoadKeyboardLayoutA(str long)
 @ stdcall LoadKeyboardLayoutEx(long ptr long)
 @ stdcall LoadKeyboardLayoutW(wstr long)
@@ -752,6 +741,17 @@
 @ stdcall GetAutoRotationState(ptr)
 
 #Hooks
+@ stdcall CreateIconFromResource (ptr long long long) CreateIconFromResourceHook
+@ stdcall CreateIconFromResourceEx(ptr long long long long long long) CreateIconFromResourceExHook
+@ stdcall CreateIconIndirect(ptr) #CreateIconIndirectHook
+@ stdcall LoadCursorA(long str) LoadCursorAHook
+@ stdcall LoadCursorFromFileA(str) LoadCursorFromFileAHook
+@ stdcall LoadCursorFromFileW(wstr) LoadCursorFromFileWHook
+@ stdcall LoadCursorW(long wstr) LoadCursorWHook
+@ stdcall LoadIconA(long str) LoadIconAHook
+@ stdcall LoadIconW(long wstr) LoadIconWHook
+@ stdcall LoadImageA(long str long long long long) LoadImageAHook
+@ stdcall LoadImageW(long wstr long long long long) LoadImageWHook
 @ stdcall GetUserObjectSecurity (long ptr ptr long ptr) #GetUserObjectSecurityInternal
 @ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
 @ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal
@@ -784,7 +784,7 @@
 @ stdcall FrostCrashedWindow(ptr ptr)
 @ stub gapfnScSendMessage
 @ stdcall GetCIMSSM(ptr)
-#@ stdcall GetCurrentInputMessageSource(ptr long) ;commented because cause error with Ccleaner
+@ stdcall GetCurrentInputMessageSource(ptr long) ;commented because cause error with Ccleaner
 @ stdcall GetDisplayConfigBufferSizes(long ptr ptr)
 @ stdcall GetGestureConfig(ptr long long ptr ptr long)
 @ stdcall GetGestureExtraArgs(ptr long ptr)
@@ -903,6 +903,7 @@
 @ stdcall GetPointerTouchInfo(long ptr)
 @ stdcall GetPointerTouchInfoHistory(long ptr ptr)
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
+@ stdcall GetProcessUIContextInformation(long ptr)
 @ stdcall IsImmersiveProcess(long)
 @ stdcall RegisterSuspendResumeNotification(long long)
 @ stdcall SetProcessDpiAwarenessContext(ptr)

@@ -835,7 +835,7 @@ void NTAPI RtlAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 	__declspec(align(16)) SYNCITEM item;
 	BOOL IsOptimize;
 	SYNCSTATUS NewStatus;
-	DWORD dwBackOffCount=0;
+	USHORT dwBackOffCount=0;
 	SYNCSTATUS CurrStatus;
 	SYNCSTATUS OldStatus;
 	int i;
@@ -930,7 +930,7 @@ void NTAPI RtlAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
 	//volatile
 	__declspec(align(16)) SYNCITEM item;
 	BOOL IsOptimize;
-	DWORD dwBackOffCount=0;
+	USHORT dwBackOffCount=0;
 	int i;
 
 	SYNCSTATUS NewStatus;
@@ -1120,7 +1120,7 @@ BOOL NTAPI RtlTryAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 
 BOOL NTAPI RtlTryAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
 {
-	DWORD dwBackOffCount=0;
+	USHORT dwBackOffCount=0;
 	SYNCSTATUS NewStatus;
 	SYNCSTATUS CurrStatus;
 	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
@@ -1177,7 +1177,7 @@ static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL
 	size_t shareCount;
 	size_t Current;
 	size_t New;
-	ULONG backoff;
+	USHORT backoff = 0;
 				
 	for (;;)
 	{
@@ -1749,29 +1749,33 @@ RtlSleepConditionVariableSRW(
 }
 
 //通过延时来暂时退避竞争
-void NTAPI RtlBackoff(DWORD* pCount)
+void
+NTAPI
+RtlBackoff(USHORT* const pBackoff)
 {
-	DWORD nBackCount=*pCount;
-	if (nBackCount==0)
-	{
-		if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors==1)
-			return ;
-		nBackCount=0x40;
-		nBackCount*=2;
-	}
-	else
-	{
-		if (nBackCount<0x1FFF)
-			nBackCount=nBackCount+nBackCount;
-	}
-	nBackCount=(__rdtsc()&(nBackCount-1))+nBackCount;
-	//Win7原代码借用参数来计数，省去局部变量
-	pCount=0;
-	while ((DWORD)pCount<nBackCount)
-	{
-		YieldProcessor();
-		(DWORD)pCount++;
-	}
+    USHORT Backoff = *pBackoff;
+	USHORT i;
+	
+    if (Backoff != 0)
+    {
+        if (Backoff + 1 < (1u << 13))
+            Backoff *= 2;
+    }
+    else
+    {
+        /* No need to do back-off on UP */
+        if (IsUniprocessorMachine)
+            return;
+
+        Backoff = 64;
+    }
+
+    *pBackoff = Backoff;
+
+    Backoff += (Backoff - 1) & __rdtsc();
+
+    for (i = 0; i < Backoff; ++i)
+        YieldProcessor();
 }
 
 

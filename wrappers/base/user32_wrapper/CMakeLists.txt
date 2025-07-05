@@ -46,7 +46,7 @@ set_module_type(user32_wrapper win32dll ENTRYPOINT 0)
 
 target_link_libraries(user32_wrapper wine)
 
-add_delay_importlibs(user32_wrapper usp10)
+add_delay_importlibs(user32_wrapper libpng)
 
 add_importlibs(user32_wrapper userbase kernel32 gdi32 ntdll advapi32 winsrv)
 

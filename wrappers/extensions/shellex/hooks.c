@@ -777,7 +777,7 @@ BOOL WINAPI ShellExecuteExA(
     static const char prefix[] = "\\\\?\\";
     char cleanPath[MAX_PATH];
 	
-	DbgPrint("ShellExecuteExAInternal called\n");
+	//DbgPrint("ShellExecuteExAInternal called\n");
 
     if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
@@ -797,7 +797,7 @@ BOOL WINAPI ShellExecuteExW(
     static const wchar_t prefix[] = L"\\\\?\\";
     wchar_t cleanPath[MAX_PATH];
 	
-	DbgPrint("ShellExecuteExWInternal called\n");	
+	//DbgPrint("ShellExecuteExWInternal called\n");	
 
     if (pExecInfo && pExecInfo->lpFile && wcsncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExWInternal:: original file: %ws\n", pExecInfo->lpFile);			

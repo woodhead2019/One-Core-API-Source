@@ -661,3 +661,9 @@ HRESULT WINAPI RoCaptureErrorContext(
 {
 	return E_NOTIMPL;
 }
+
+HRESULT WINAPI RoGetBufferMarshaler(
+	OUT	IUnknown	**BufferMarshaler)
+{
+	return E_NOTIMPL;
+}

@@ -1,5 +1,6 @@
 @ stdcall lstrcmpiA(str str) kernel32.lstrcmpiA
 @ stdcall lstrcmpiW(wstr wstr) kernel32.lstrcmpiW
+@ stdcall lstrcmpA(str str) kernel32.lstrcmpA
 @ stdcall lstrcmpW(wstr wstr) kernel32.lstrcmpW
 @ stdcall lstrcpynA(ptr str long) kernel32.lstrcpynA
 @ stdcall lstrcpynW(ptr wstr long) kernel32.lstrcpynW

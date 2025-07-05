@@ -246,3 +246,11 @@ LONG WINAPI GetCurrentPackageInfo( const UINT32 flags, UINT32 *buffer_size, BYTE
     FIXME( "(%#x %p %p %p): stub\n", flags, buffer_size, buffer, count );
     return APPMODEL_ERROR_NO_PACKAGE;
 }
+
+NTSTATUS NTAPI ApiSetQueryApiSetPresence(
+	IN	PUNICODE_STRING	Namespace,
+	OUT	PBOOLEAN		Present)
+{
+	*Present = TRUE;
+	return STATUS_SUCCESS;
+}

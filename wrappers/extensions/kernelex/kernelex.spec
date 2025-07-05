@@ -1375,11 +1375,13 @@
 
 #Win8 Functions 
 @ stdcall AddDllDirectory(wstr) ;Error in Avast
+@ stdcall ApiSetQueryApiSetPresence(ptr ptr) 
 @ stdcall AppPolicyGetProcessTerminationMethod(ptr ptr) 
 @ stdcall AppPolicyGetShowDeveloperDiagnostic(ptr ptr)
 @ stdcall AppPolicyGetThreadInitializationType(ptr ptr) 
 @ stdcall AppPolicyGetWindowingModel(ptr ptr)
 @ stdcall CheckTokenMembershipEx(long ptr long ptr)
+@ stdcall -stub CloseState(ptr ptr)
 @ stdcall CopyFile2(wstr wstr ptr)
 @ stdcall CreateFile2(wstr long long long ptr)
 @ stdcall CreateFileMappingFromApp(long ptr long int64 wstr)
@@ -1402,6 +1404,7 @@
 @ stdcall GetPackagesByPackageFamily(wstr ptr ptr ptr ptr)
 @ stdcall GetProcessInformation(long long ptr long)
 @ stdcall GetProcessMitigationPolicy(long long ptr long)
+@ stdcall -stub GetStateFolder(long long long ptr)
 @ stdcall GetSystemTimePreciseAsFileTime(ptr)
 @ stdcall GlobalAddAtomExA(str long)
 @ stdcall GlobalAddAtomExW(wstr long)
@@ -1411,6 +1414,8 @@
 @ stdcall MapViewOfFileFromApp(long long int64 long)
 @ stdcall OpenFileMappingFromApp(long long wstr)
 @ stdcall OpenPackageInfoByFullName (wstr long ptr)
+@ stdcall -stub OpenState()
+@ stdcall -stub OpenStateExplicit(ptr ptr)
 @ stdcall PackageIdFromFullName(wstr long ptr ptr)
 @ stdcall PathAllocCanonicalize(wstr long ptr)
 @ stdcall PathAllocCombine(wstr wstr long ptr)

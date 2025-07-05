@@ -1083,11 +1083,13 @@ typedef size_t SYNCSTATUS;
 #define SRW_HOLD_BIT	0
 #define SYNC_SPIN_BIT	1	//从0开始数
 
-void NTAPI RtlBackoff(DWORD* pCount);
+void NTAPI RtlBackoff(USHORT* const pCount);
 void NTAPI RtlpInitSRWLock(PEB* pPEB);
 void NTAPI RtlpInitConditionVariable(PEB* pPeb);
 
 HANDLE __fastcall GetGlobalKeyedEventHandle();
+
+extern BOOL IsUniprocessorMachine;
 
 #define CONDITION_VARIABLE_LOCKMODE_SHARED 0x1
 

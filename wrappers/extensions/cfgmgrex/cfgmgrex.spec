@@ -200,5 +200,20 @@
 @ stdcall CM_MapCrToWin32Err(long long) setupapi.CM_MapCrToWin32Err
 
 #Win8
+@ stdcall -stub CM_Delete_Device_Interface_Key_ExW(wstr long long)
+@ stdcall -stub CM_Get_Class_Property_ExW(ptr ptr ptr ptr ptr long long)
+@ stdcall -stub CM_Get_Class_Property_Keys_Ex(ptr ptr ptr long long)
+@ stdcall CM_Get_DevNode_Property_ExW(ptr ptr ptr ptr ptr long long)
+@ stdcall -stub CM_Get_DevNode_Property_Keys_Ex(long ptr ptr long long)
+@ stdcall -stub CM_Get_Device_Interface_Property_ExW(wstr ptr ptr ptr ptr long long)
+@ stdcall -stub CM_Get_Device_Interface_Property_Keys_ExW(wstr ptr ptr long long)
+@ stdcall -stub CM_Open_Device_Interface_Key_ExW(wstr long long ptr long long)
+@ stdcall -stub CM_Set_Class_Property_ExW(ptr ptr long ptr long long long)
+@ stdcall -stub CM_Set_Device_Interface_Property_ExW(wstr ptr long ptr long long long)
+@ stdcall -stub CM_Set_DevNode_Property_ExW(long ptr long ptr long long long)
 @ stdcall CM_Register_Notification(ptr ptr ptr ptr) setupapi.CM_Register_Notification
 @ stdcall CM_Unregister_Notification(ptr) setupapi.CM_Unregister_Notification
+@ stdcall -stub DevCloseObjectQuery(long)
+@ stdcall -stub DevCreateObjectQuery(long long long ptr long ptr ptr ptr ptr)
+@ stdcall -stub DevFreeObjectProperties(long ptr)
+@ stdcall -stub DevGetObjectProperties(long wstr long long ptr ptr ptr)

@@ -259,3 +259,8 @@ NTSTATUS WINAPI RtlInitializeCriticalSectionEx( RTL_CRITICAL_SECTION *crit, ULON
     crit->SpinCount = spincount & ~0x80000000;
     return STATUS_SUCCESS;
 }
+
+BOOLEAN NTAPI RtlTryAcquirePebLock( VOID )
+{
+    return RtlTryEnterCriticalSection(NtCurrentTeb()->ProcessEnvironmentBlock->FastPebLock);
+}

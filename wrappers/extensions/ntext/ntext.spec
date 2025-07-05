@@ -1721,6 +1721,7 @@
 @ stdcall RtlDeregisterSecureMemoryCacheCallback(ptr)
 @ stdcall RtlDisableThreadProfiling(ptr)
 @ stdcall RtlEnableThreadProfiling(ptr long int64 ptr)
+@ stdcall RtlFindExportedRoutineByName(ptr str)
 @ stdcall RtlInitializeExtendedContext2(ptr long ptr int64)
 @ stdcall RtlGetExePath(wstr ptr)
 @ stdcall RtlGetExtendedContextLength2(long ptr int64)
@@ -1763,7 +1764,7 @@
 @ stdcall RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
 @ stdcall RtlQueryEnvironmentVariable() ntdll.RtlQueryEnvironmentVariable
 @ stdcall RtlSetEnvironmentVar() ntdll.RtlSetEnvironmentVar
-@ stdcall RtlTryAcquirePebLock() ntdll.RtlTryAcquirePebLock
+@ stdcall RtlTryAcquirePebLock()
 @ stdcall RtlWerpReportException() ntdll.RtlWerpReportException
 @ stdcall RtlpCheckDynamicTimeZoneInformation() ntdll.RtlpCheckDynamicTimeZoneInformation
 @ stdcall RtlpConvertCultureNamesToLCIDs() ntdll.RtlpConvertCultureNamesToLCIDs
