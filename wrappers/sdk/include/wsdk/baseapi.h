@@ -355,7 +355,7 @@ NTSTATUS WINAPI RtlGetUserPreferredUILanguages(DWORD dwFlags,
 											   PZZWSTR pwszLanguagesBuffer, 
 											   PULONG pcchLanguagesBuffer);
 											   
-typedef VOID (*PTP_IO_CALLBACK)(PTP_CALLBACK_INSTANCE,void*,void*,IO_STATUS_BLOCK*,PTP_IO);
+typedef void (CALLBACK *PTP_IO_CALLBACK)(PTP_CALLBACK_INSTANCE,void*,void*,IO_STATUS_BLOCK*,PTP_IO);
 
 /* Thread Pool */
 VOID NTAPI TpDisassociateCallback(__inout PTP_CALLBACK_INSTANCE Instance); 

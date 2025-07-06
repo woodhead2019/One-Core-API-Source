@@ -21,7 +21,7 @@ Revision History:
 #include "main.h"
 #include "shlobj.h"
 
-WINE_DEFAULT_DEBUG_CHANNEL(istream);
+WINE_DEFAULT_DEBUG_CHANNEL(shlwapi);
 
 /*************************************************************************
  * IStream_ReadStr   [SHLWAPI.596]

@@ -741,17 +741,17 @@
 @ stdcall GetAutoRotationState(ptr)
 
 #Hooks
-@ stdcall CreateIconFromResource (ptr long long long) CreateIconFromResourceHook
-@ stdcall CreateIconFromResourceEx(ptr long long long long long long) CreateIconFromResourceExHook
+@ stdcall CreateIconFromResource (ptr long long long) #CreateIconFromResourceHook
+@ stdcall CreateIconFromResourceEx(ptr long long long long long long) #CreateIconFromResourceExHook
 @ stdcall CreateIconIndirect(ptr) #CreateIconIndirectHook
-@ stdcall LoadCursorA(long str) LoadCursorAHook
-@ stdcall LoadCursorFromFileA(str) LoadCursorFromFileAHook
-@ stdcall LoadCursorFromFileW(wstr) LoadCursorFromFileWHook
-@ stdcall LoadCursorW(long wstr) LoadCursorWHook
-@ stdcall LoadIconA(long str) LoadIconAHook
-@ stdcall LoadIconW(long wstr) LoadIconWHook
-@ stdcall LoadImageA(long str long long long long) LoadImageAHook
-@ stdcall LoadImageW(long wstr long long long long) LoadImageWHook
+@ stdcall LoadCursorA(long str) #LoadCursorAHook
+@ stdcall LoadCursorFromFileA(str) #LoadCursorFromFileAHook
+@ stdcall LoadCursorFromFileW(wstr) #LoadCursorFromFileWHook
+@ stdcall LoadCursorW(long wstr) #LoadCursorWHook
+@ stdcall LoadIconA(long str) #LoadIconAHook
+@ stdcall LoadIconW(long wstr) #LoadIconWHook
+@ stdcall LoadImageA(long str long long long long) #LoadImageAHook
+@ stdcall LoadImageW(long wstr long long long long) #LoadImageWHook
 @ stdcall GetUserObjectSecurity (long ptr ptr long ptr) #GetUserObjectSecurityInternal
 @ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
 @ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal

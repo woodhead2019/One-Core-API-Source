@@ -1,6 +1,6 @@
-@ stdcall IStream_Copy(ptr ptr long) shlwapi.IStream_Copy
+@ stdcall IStream_Copy(ptr ptr long) shcore.IStream_Copy
 @ stdcall IStream_Read(ptr ptr long) shlwapi.IStream_Read
-@ stdcall IStream_ReadStr(ptr wstr) shlwapi.IStream_ReadStr
+@ stdcall IStream_ReadStr(ptr wstr) shcore.IStream_ReadStr
 @ stdcall IStream_Reset(ptr) shlwapi.IStream_Reset
 @ stdcall IStream_Size(ptr ptr) shlwapi.IStream_Size
 @ stdcall IStream_Write(ptr ptr long) shlwapi.IStream_Write

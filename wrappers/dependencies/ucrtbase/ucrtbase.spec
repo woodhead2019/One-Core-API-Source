@@ -2463,7 +2463,7 @@
 @ cdecl wcspbrk(wstr wstr)
 @ cdecl wcsspn(wstr wstr)
 @ cdecl wcstok(wstr wstr)
-;@ cdecl -stub wcstok_s(wstr wstr wstr)
+@ cdecl wcstok_s(wstr wstr wstr)
 @ cdecl wcsxfrm(ptr wstr long)
 @ stub wctype ;() ucrtbase.wctype
 @ stub wmemcpy_s ;(ptr long ptr long) ucrtbase.wmemcpy_s

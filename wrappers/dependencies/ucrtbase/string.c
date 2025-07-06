@@ -76,3 +76,31 @@ size_t __cdecl strnlen( const char *str, size_t len )
     for (s = str; len && *s; s++, len--) ;
     return s - str;
 }
+
+
+/*********************************************************************
+ *		wcstok_s  (MSVCRT.@)
+ */
+wchar_t * CDECL wcstok_s( wchar_t *str, const wchar_t *delim,
+                                 wchar_t **next_token )
+{
+    wchar_t *ret;
+
+    if (!MSVCRT_CHECK_PMT(delim != NULL)) return NULL;
+    if (!MSVCRT_CHECK_PMT(next_token != NULL)) return NULL;
+    if (!MSVCRT_CHECK_PMT(str != NULL || *next_token != NULL)) return NULL;
+
+    if (!str) str = *next_token;
+
+    while (*str && wcschr( delim, *str )) str++;
+    if (!*str) ret = NULL;
+    else
+    {
+        ret = str++;
+        while (*str && !wcschr( delim, *str )) str++;
+        if (*str) *str++ = 0;
+    }
+    *next_token = str;
+    return ret;
+}
+
