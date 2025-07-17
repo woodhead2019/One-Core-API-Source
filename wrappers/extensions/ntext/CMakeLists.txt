@@ -91,6 +91,10 @@ if(MSVC)
     add_target_link_flags(ntext "/RELEASE")
 endif()
 
+if(MSVC_IDE)
+	add_compile_options(/Ox /Ob2 /Ot /Oy)
+endif()
+
 target_link_libraries(ntext libcntpr uuid ${PSEH_LIB})
 
 add_importlibs(ntext ntdll)

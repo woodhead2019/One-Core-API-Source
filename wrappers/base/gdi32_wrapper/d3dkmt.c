@@ -37,6 +37,13 @@ Revision History:
 
 #define D3DKMT_MAX_ADAPTER_NAME_LENGTH 32
 
+#define BMF_1BPP       1L
+#define BMF_4BPP       2L
+#define BMF_8BPP       3L
+#define BMF_16BPP      4L
+#define BMF_24BPP      5L
+#define BMF_32BPP      6L
+
 /*Hack, i don't know how require these funcions really*/
 DWORD
 APIENTRY
@@ -241,7 +248,7 @@ const RGBQUAD *get_default_color_table( int bpp )
 /***********************************************************************
  *           D3DKMTCreateDCFromMemory    (GDI32.@)
  */
-NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *pData )
+NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
 {
 	pD3DKMTCreateDCFromMemory pD3dCreateDC;
 	
@@ -250,8 +257,170 @@ NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *pData )
                             "D3DKMTCreateDCFromMemory");	
 
 	if(pD3dCreateDC){
-		return pD3dCreateDC(pData);
+		return pD3dCreateDC(desc);
 	}else{
+		D3DKMT_CREATEDCFROMMEMORY localDesc;
+		HDC hdc = NULL;
+		HBITMAP hbm = NULL;
+		HPALETTE hpal = NULL;
+		VOID *pvBits = NULL;
+		DWORD flRed = 0, flGre = 0, flBlu = 0;
+		DWORD iFormat;
+		DWORD biCompression = BI_RGB;
+		BITMAPINFO *pbmi = NULL;
+		//ULONG cjBits;
+		//ULONG cColors = 256;
+		NTSTATUS status = STATUS_SUCCESS;
+
+		// __try {
+			// if (!desc)
+				// return STATUS_INVALID_PARAMETER;
+
+			// ProbeForRead(desc, sizeof(D3DKMT_CREATEDCFROMMEMORY), 1);
+		memcpy(&localDesc, desc, sizeof(D3DKMT_CREATEDCFROMMEMORY));
+		// } __except(EXCEPTION_EXECUTE_HANDLER) {
+			// DbgPrint("NtGdiDdDDICreateDCFromMemory: Exception reading parameters\n");
+			// return STATUS_INVALID_PARAMETER;
+		// }
+
+		switch (localDesc.Format)
+		{
+			case D3DDDIFMT_P8:
+				iFormat = BMF_8BPP;
+				biCompression = BI_RGB;
+				break;
+
+			case D3DDDIFMT_R5G6B5:
+			case D3DDDIFMT_X1R5G5B5:
+			case D3DDDIFMT_A1R5G5B5:
+			case D3DDDIFMT_X4R4G4B4:
+			case D3DDDIFMT_A4R4G4B4:
+				iFormat = BMF_16BPP;
+				biCompression = BI_BITFIELDS;
+				flRed = 0xF800;
+				flGre = 0x07E0;
+				flBlu = 0x001F;
+				break;
+
+			case D3DDDIFMT_R8G8B8:
+				iFormat = BMF_24BPP;
+				flRed = 0xFF0000;
+				flGre = 0x00FF00;
+				flBlu = 0x0000FF;
+				break;
+
+			case D3DDDIFMT_X8R8G8B8:
+			case D3DDDIFMT_A8R8G8B8:
+				iFormat = BMF_32BPP;
+				flRed = 0x00FF0000;
+				flGre = 0x0000FF00;
+				flBlu = 0x000000FF;
+				break;
+
+			default:
+				DbgPrint("NtGdiDdDDICreateDCFromMemory: Unsupported format\n");
+				return STATUS_INVALID_PARAMETER;
+		}
+
+		// // Validação adicional opcional da memória
+		// __try {
+			// ULONG totalSize;
+			// status = RtlULongLongToULong((ULONGLONG)localDesc.Pitch * localDesc.Height, &totalSize);
+			// if (!NT_SUCCESS(status)) {
+				// DbgPrint("NtGdiDdDDICreateDCFromMemory: RtlULongLongToULong failed\n");
+				// return STATUS_INVALID_PARAMETER;
+			// }
+
+			// ProbeForRead(localDesc.pMemory, totalSize, 1);
+		// } __except(EXCEPTION_EXECUTE_HANDLER) {
+			// DbgPrint("NtGdiDdDDICreateDCFromMemory: Exception validating pMemory\n");
+			// return STATUS_INVALID_PARAMETER;
+		// }
+
+		pbmi = (BITMAPINFO*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+			sizeof(BITMAPINFOHEADER) + (biCompression == BI_BITFIELDS ? 3 * sizeof(DWORD) : 0));
+
+		if (!pbmi) {
+			DbgPrint("NtGdiDdDDICreateDCFromMemory: HeapAlloc failed for BITMAPINFO\n");
+			return STATUS_NO_MEMORY;
+		}
+
+		pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		pbmi->bmiHeader.biWidth = localDesc.Width;
+		pbmi->bmiHeader.biHeight = -((LONG)localDesc.Height); // top-down
+		pbmi->bmiHeader.biPlanes = 1;
+		pbmi->bmiHeader.biBitCount = (WORD)(localDesc.Pitch * 8 / localDesc.Width);
+		pbmi->bmiHeader.biCompression = biCompression;
+
+		if (biCompression == BI_BITFIELDS) {
+			DWORD *masks = (DWORD*)(pbmi + 1);
+			masks[0] = flRed;
+			masks[1] = flGre;
+			masks[2] = flBlu;
+		}
+
+		hdc = CreateCompatibleDC(NULL);
+		if (!hdc) {
+			DbgPrint("NtGdiDdDDICreateDCFromMemory: CreateCompatibleDC failed\n");
+			status = STATUS_NO_MEMORY;
+			goto cleanup;
+		}
+
+		hbm = CreateDIBSection(hdc, pbmi, DIB_RGB_COLORS, &pvBits, NULL, 0);
+		if (!hbm || !pvBits) {
+			DbgPrint("NtGdiDdDDICreateDCFromMemory: CreateDIBSection failed\n");
+			status = STATUS_NO_MEMORY;
+			goto cleanup;
+		}
+
+		memcpy(pvBits, localDesc.pMemory, localDesc.Height * localDesc.Pitch);
+		SelectObject(hdc, hbm);
+
+		// Paleta
+		if (localDesc.Format == D3DDDIFMT_P8 && localDesc.pColorTable) {
+			// __try {
+				// ProbeForRead(localDesc.pColorTable, 256 * sizeof(PALETTEENTRY), 1);
+			// } __except(EXCEPTION_EXECUTE_HANDLER) {
+				// DbgPrint("NtGdiDdDDICreateDCFromMemory: Invalid color table\n");
+				// status = STATUS_INVALID_PARAMETER;
+				// goto cleanup;
+			// }
+
+			LOGPALETTE *plp = (LOGPALETTE*)HeapAlloc(GetProcessHeap(), 0,
+				sizeof(LOGPALETTE) + 256 * sizeof(PALETTEENTRY));
+
+			if (plp) {
+				plp->palVersion = 0x300;
+				plp->palNumEntries = 256;
+				memcpy(plp->palPalEntry, localDesc.pColorTable, 256 * sizeof(PALETTEENTRY));
+				hpal = CreatePalette(plp);
+				HeapFree(GetProcessHeap(), 0, plp);
+
+				if (hpal)
+					SelectPalette(hdc, hpal, FALSE);
+			}
+		}
+
+		__try {
+			desc->hDc = hdc;
+			desc->hBitmap = hbm;
+		} __except(EXCEPTION_EXECUTE_HANDLER) {
+			DbgPrint("NtGdiDdDDICreateDCFromMemory: Exception writing back to descriptor\n");
+			status = STATUS_INVALID_PARAMETER;
+		}
+
+	cleanup:
+		if (!NT_SUCCESS(status)) {
+			if (hdc) DeleteDC(hdc);
+			if (hbm) DeleteObject(hbm);
+			if (hpal) DeleteObject(hpal);
+		}
+
+		if (pbmi)
+			HeapFree(GetProcessHeap(), 0, pbmi);
+
+		return status;	
+	}	
 		// const struct d3dddi_format_info
 		// {
 			// D3DDDIFORMAT format;
@@ -349,77 +518,77 @@ NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *pData )
 
 		// DeleteDC( dc );
 		// return STATUS_INVALID_PARAMETER;	
-		BITMAPINFO *pbmi = NULL;
-		HDC hdc;
-		HBITMAP hBitmap;
-		int bitCount = 0;
-		int paletteSize = 0;
-		int i;
+		// BITMAPINFO *pbmi = NULL;
+		// HDC hdc;
+		// HBITMAP hBitmap;
+		// int bitCount = 0;
+		// int paletteSize = 0;
+		// int i;
 
-		if (!pData || !pData->Width || !pData->Height)
-			return -1; // STATUS_INVALID_PARAMETER
+		// if (!pData || !pData->Width || !pData->Height)
+			// return -1; // STATUS_INVALID_PARAMETER
 
-		// Determinar formato e configurações
-		switch (pData->Format) {
-			case D3DDDIFMT_A8R8G8B8:
-			case D3DDDIFMT_X8R8G8B8:
-				bitCount = 32;
-				paletteSize = 0;
-				break;
-			case D3DDDIFMT_R5G6B5:
-				bitCount = 16;
-				paletteSize = 0;
-				break;
-			case D3DDDIFMT_P8:
-				bitCount = 8;
-				paletteSize = 256;
-				break;
-			default:
-				return -2; // STATUS_NOT_SUPPORTED
-		}
+		// // Determinar formato e configurações
+		// switch (pData->Format) {
+			// case D3DDDIFMT_A8R8G8B8:
+			// case D3DDDIFMT_X8R8G8B8:
+				// bitCount = 32;
+				// paletteSize = 0;
+				// break;
+			// case D3DDDIFMT_R5G6B5:
+				// bitCount = 16;
+				// paletteSize = 0;
+				// break;
+			// case D3DDDIFMT_P8:
+				// bitCount = 8;
+				// paletteSize = 256;
+				// break;
+			// default:
+				// return -2; // STATUS_NOT_SUPPORTED
+		// }
 
-		// Alocar BITMAPINFO com espaço para paleta, se necessário
-		pbmi = (BITMAPINFO *)GlobalAlloc(GPTR, sizeof(BITMAPINFOHEADER) + paletteSize * sizeof(RGBQUAD));
-		if (!pbmi) return -3;
+		// // Alocar BITMAPINFO com espaço para paleta, se necessário
+		// pbmi = (BITMAPINFO *)GlobalAlloc(GPTR, sizeof(BITMAPINFOHEADER) + paletteSize * sizeof(RGBQUAD));
+		// if (!pbmi) return -3;
 
-		pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-		pbmi->bmiHeader.biWidth = pData->Width;
-		pbmi->bmiHeader.biHeight = -((int)pData->Height); // Top-down DIB
-		pbmi->bmiHeader.biPlanes = 1;
-		pbmi->bmiHeader.biBitCount = (WORD)bitCount;
-		pbmi->bmiHeader.biCompression = BI_RGB;
+		// pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		// pbmi->bmiHeader.biWidth = pData->Width;
+		// pbmi->bmiHeader.biHeight = -((int)pData->Height); // Top-down DIB
+		// pbmi->bmiHeader.biPlanes = 1;
+		// pbmi->bmiHeader.biBitCount = (WORD)bitCount;
+		// pbmi->bmiHeader.biCompression = BI_RGB;
 
-		// Copiar paleta se aplicável
-		if (paletteSize > 0 && pData->pColorTable) {
-			for (i = 0; i < paletteSize; i++) {
-				pbmi->bmiColors[i].rgbRed   = pData->pColorTable[i].peRed;
-				pbmi->bmiColors[i].rgbGreen = pData->pColorTable[i].peGreen;
-				pbmi->bmiColors[i].rgbBlue  = pData->pColorTable[i].peBlue;
-				pbmi->bmiColors[i].rgbReserved = 0;
-			}
-		}
+		// // Copiar paleta se aplicável
+		// if (paletteSize > 0 && pData->pColorTable) {
+			// for (i = 0; i < paletteSize; i++) {
+				// pbmi->bmiColors[i].rgbRed   = pData->pColorTable[i].peRed;
+				// pbmi->bmiColors[i].rgbGreen = pData->pColorTable[i].peGreen;
+				// pbmi->bmiColors[i].rgbBlue  = pData->pColorTable[i].peBlue;
+				// pbmi->bmiColors[i].rgbReserved = 0;
+			// }
+		// }
 
-		// Criar DC
-		hdc = pData->hDeviceDc ? pData->hDeviceDc : GetDC(NULL);
-		pData->hDc = CreateCompatibleDC(hdc);
+		// // Criar DC
+		// hdc = pData->hDeviceDc ? pData->hDeviceDc : GetDC(NULL);
+		// pData->hDc = CreateCompatibleDC(hdc);
 
-		// Criar DIBSection
-		hBitmap = CreateDIBSection(pData->hDc, pbmi, DIB_RGB_COLORS, &pData->pMemory, NULL, 0);
-		if (!hBitmap) {
-			DeleteDC(pData->hDc);
-			if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
-			GlobalFree(pbmi);
-			return -4;
-		}
+		// // Criar DIBSection
+		// hBitmap = CreateDIBSection(pData->hDc, pbmi, DIB_RGB_COLORS, &pData->pMemory, NULL, 0);
+		// if (!hBitmap) {
+			// DeleteDC(pData->hDc);
+			// if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
+			// GlobalFree(pbmi);
+			// return -4;
+		// }
 
-		SelectObject(pData->hDc, hBitmap);
-		pData->hBitmap = hBitmap;
+		// SelectObject(pData->hDc, hBitmap);
+		// pData->hBitmap = hBitmap;
 
-		if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
-		GlobalFree(pbmi);
-		return 0; // STATUS_SUCCESS	
+		// if (!pData->hDeviceDc) ReleaseDC(NULL, hdc);
+		// GlobalFree(pbmi);
+		// return 0; // STATUS_SUCCESS	
 		
-	}
+	// }
 }
 
 
