@@ -113,4 +113,8 @@ elseif(ARCH STREQUAL "amd64")
 	add_importlibs(kernelex kernel32 ntext advapi32 user32 shlwapi idndl)
 endif()
 
+if(MSVC)
+    add_target_link_flags(kernelex "/RELEASE")
+endif()
+
 add_cd_file(TARGET kernelex DESTINATION reactos/system32 FOR all)
