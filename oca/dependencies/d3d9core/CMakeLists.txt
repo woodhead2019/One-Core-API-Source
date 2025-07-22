@@ -30,6 +30,6 @@ add_library(d3d9core MODULE
 
 set_module_type(d3d9core win32dll UNICODE)
 target_link_libraries(d3d9core wine)
-add_importlibs(d3d9core wined3d user32 msvcrt kernel32 ntdll)
+add_importlibs(d3d9core d3dwine user32 msvcrt kernel32 ntdll)
 add_pch(d3d9core precomp.h SOURCE)
 add_cd_file(TARGET d3d9core DESTINATION reactos/system32 FOR all)
