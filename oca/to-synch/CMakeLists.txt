@@ -215,16 +215,14 @@ else()
     include_directories(
         sdk/include
         sdk/include/psdk
-        sdk/include/dxsdk		
+        sdk/include/dxsdk
         ${REACTOS_BINARY_DIR}/sdk/include
         ${REACTOS_BINARY_DIR}/sdk/include/psdk
         ${REACTOS_BINARY_DIR}/sdk/include/dxsdk
         ${REACTOS_BINARY_DIR}/sdk/include/ddk
         ${REACTOS_BINARY_DIR}/sdk/include/reactos
         ${REACTOS_BINARY_DIR}/sdk/include/reactos/mc
-		#Please, include these directories when integrate wrappers to reactos environment
-		oca/sdk/include/wsdk
-        ${REACTOS_BINARY_DIR}/oca/sdk/include/wsdk
+        ${REACTOS_BINARY_DIR}/oca/sdk/include
         sdk/include/crt
         sdk/include/ddk
         sdk/include/ndk
@@ -273,11 +271,7 @@ else()
     add_subdirectory(subsystems)
     add_subdirectory(sdk/tools/wpp)
     add_subdirectory(win32ss)
-	
-	#Please, include these directories when integrate wrappers to reactos environment
-    add_subdirectory(oca)
-    add_subdirectory(oca/sdk/include/wsdk)
-    add_subdirectory(oca/sdk/lib)
+    add_subdirectory(wrappers)
 
     # Create the registry hives
     create_registry_hives()
