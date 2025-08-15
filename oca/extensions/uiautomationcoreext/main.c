@@ -50,4 +50,12 @@ UiaRaiseNotificationEvent(
 	BSTR activityId
 ) {
     return S_OK;
-};
+}
+
+HRESULT WINAPI UiaDisconnectProvider(PVOID Provider_Ignored) {
+    return S_OK;
+}
+
+HRESULT WINAPI UiaDisconnectAllProviders() {
+    return S_OK;
+}

@@ -3,6 +3,7 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(dnsapiext.dll dnsapiext.spec)
 
+
 set(baseaddress_dnsapiext     0x613e0000)
 
 list(APPEND SOURCE

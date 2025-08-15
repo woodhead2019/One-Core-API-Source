@@ -95,3 +95,7 @@ DNS_STATUS WINAPI DnsServiceBrowseCancel(
 {
     return ERROR_SUCCESS;	
 }
+
+BOOL WINAPI DnsIsZtEnabled() {
+    return FALSE;
+}

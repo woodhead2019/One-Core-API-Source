@@ -535,3 +535,13 @@ GetFinalPathNameByHandleA(
 		}
 	}
 }
+
+BOOL WINAPI CompareObjectHandles(HANDLE h1, HANDLE h2) {
+    // This function is <10 lines of kernel code, that works down to NT 3.1. A custom driver
+    // can be written to implement this, but for now, we will return TRUE.
+
+    // We break the rules of API Sets and implement the function inside in order to not break
+    // applications that will definitely rely on advanced CompareObjectHandles behavior. So
+    // this function really only exists to make Chromium 140+ based browsers not crash.
+    return TRUE;
+}

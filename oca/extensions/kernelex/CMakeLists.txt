@@ -33,6 +33,7 @@ list(APPEND SOURCE
 	dir.c
 	dllatom.c
 	dllmain.c
+	enclave.c
 	error.c
 	filehops.c
 	fileinfo.c

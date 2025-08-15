@@ -2066,3 +2066,7 @@ BOOL WINAPI SetProcessDefaultCpuSets(HANDLE process, const ULONG *cpu_set_ids, U
 
     return TRUE;
 }
+
+BOOL WINAPI IsUserCetAvaliableInEnvironment(DWORD UserCetEnvironment) {
+    return FALSE;
+}

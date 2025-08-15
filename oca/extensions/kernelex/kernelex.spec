@@ -1475,10 +1475,13 @@
 #Win10 functions
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
 @ stdcall ClosePseudoConsole(ptr)
+@ stdcall CompareObjectHandles(long long)
 @ stdcall GetSystemCpuSetInformation(ptr long ptr ptr long)
 @ stdcall GetThreadDescription(long ptr)
 @ stdcall GetUserDefaultGeoName(ptr long)
 @ stdcall InitializeContext2(ptr long ptr ptr int64)
+@ stdcall IsEnclaveTypeSupported(long)
+@ stdcall IsUserCetAvaliableInEnvironment(long)
 @ stdcall IsWow64Process2(ptr ptr ptr)
 @ stdcall QueryInterruptTime(ptr)
 @ stdcall QueryInterruptTimePrecise(ptr)
