@@ -71,9 +71,9 @@
 #define ZBID_DEFAULT 0
 #define ZBID_DESKTOP 1
 
-typedef void *(WINAPI *RegisterCallback)(SIZE_T sizeOne, SIZE_T sizeTwo, int flags);
+typedef LPBITMAPINFOHEADER(*PCONVERT_TO_DIB_PROC)(LPBITMAPINFOHEADER lpPngData, DWORD dwSize);
 
-static RegisterCallback gpICSProc = NULL;
+static PCONVERT_TO_DIB_PROC gpICSProc = NULL;
 
 static BOOL gfdDPIProcess = FALSE;
 
@@ -108,6 +108,8 @@ PRTL_CRITICAL_SECTION gcsHdc;
 LPCRITICAL_SECTION lpCriticalSection;
 
 HANDLE pUserHeap;
+
+BOOL IsNativePNGConversor;
 
 typedef struct tagMAGCOLOREFFECT;
 
@@ -657,14 +659,127 @@ typedef struct tagPROCESS_UICONTEXT_INFORMATION {
     DWORD dwFlags; //PROCESS_UI_FLAGS
 } PROCESS_UICONTEXT_INFORMATION, * PPROCESS_UICONTEXT_INFORMATION;
 
+struct cursoricon_frame
+{
+    UINT     width;    /* frame-specific width */
+    UINT     height;   /* frame-specific height */
+    HBITMAP  color;    /* color bitmap */
+    HBITMAP  alpha;    /* pre-multiplied alpha bitmap for 32-bpp icons */
+    HBITMAP  mask;     /* mask bitmap (followed by color for 1-bpp icons) */
+    POINT    hotspot;
+};
+
 struct user_object
 {
     HANDLE             handle;
     enum user_obj_type type;
 };
 
-void USER_Lock(void);
-void USER_Unlock(void);
+struct cursoricon_object
+{
+    struct user_object      obj;        /* object header */
+    struct list             entry;      /* entry in shared icons list */
+    ULONG_PTR               param;      /* opaque param used by 16-bit code */
+    HMODULE                 module;     /* module for icons loaded from resources */
+    LPWSTR                  resname;    /* resource name for icons loaded from resources */
+    HRSRC                   rsrc;       /* resource for shared icons */
+    BOOL                    is_icon;    /* whether icon or cursor */
+    BOOL                    is_ani;     /* whether this object is a static cursor or an animated cursor */
+    UINT                    delay;      /* delay between this frame and the next (in jiffies) */
+    POINT                   hotspot;
+};
+
+struct cursoricon_desc
+{
+    UINT flags;
+    UINT num_steps;
+    UINT num_frames;
+    UINT delay;
+    struct cursoricon_frame *frames;
+    DWORD *frame_seq;
+    DWORD *frame_rates;
+    HRSRC rsrc;
+};
+
+typedef struct
+{
+    BYTE   bWidth;
+    BYTE   bHeight;
+    BYTE   bColorCount;
+    BYTE   bReserved;
+} ICONRESDIR;
+
+typedef struct
+{
+    WORD   wWidth;
+    WORD   wHeight;
+} CURSORDIR;
+
+typedef struct
+{   union
+    { ICONRESDIR icon;
+      CURSORDIR  cursor;
+    } ResInfo;
+    WORD   wPlanes;
+    WORD   wBitCount;
+    DWORD  dwBytesInRes;
+    WORD   wResId;
+} CURSORICONDIRENTRY;
+
+typedef struct
+{
+    WORD                idReserved;
+    WORD                idType;
+    WORD                idCount;
+    CURSORICONDIRENTRY  idEntries[1];
+} CURSORICONDIR;
+
+// typedef struct _CURSORICONFILEDIRENTRY
+// {
+    // BYTE bWidth;
+    // BYTE bHeight;
+    // BYTE bColorCount;
+    // BYTE bReserved;
+    // union
+    // {
+        // WORD wPlanes; /* For icons */
+        // WORD xHotspot; /* For cursors */
+    // };
+    // union
+    // {
+        // WORD wBitCount; /* For icons */
+        // WORD yHotspot; /* For cursors */
+    // };
+    // DWORD dwDIBSize;
+    // DWORD dwDIBOffset;
+// } CURSORICONFILEDIRENTRY;
+
+// typedef struct _CURSORICONFILEDIR
+// {
+    // WORD idReserved;
+    // WORD idType;
+    // WORD idCount;
+    // CURSORICONFILEDIRENTRY idEntries[1];
+// } CURSORICONFILEDIR;
+
+typedef struct
+{
+    WORD idReserved;   // Sempre 0
+    WORD idType;       // 1 para ícone
+    WORD idCount;      // Número de imagens
+} ICONDIR;
+
+typedef struct
+{
+    BYTE  bWidth;
+    BYTE  bHeight;
+    BYTE  bColorCount;
+    BYTE  bReserved;
+    WORD  wPlanes;
+    WORD  wBitCount;
+    DWORD dwBytesInRes;
+    DWORD dwImageOffset;
+} ICONDIRENTRY;
 
 BOOL 
 WINAPI 
@@ -676,7 +791,23 @@ SystemParametersInfoWInternal(
 	UINT uiAction,
 	UINT uiParam,
 	PVOID pvParam,
-	UINT fWinIni);
+	UINT fWinIni
+);
+	
+HICON WINAPI CreateIconFromResourceExHook(
+  _In_  PBYTE pbIconBits,
+  _In_  DWORD cbIconBits,
+  _In_  BOOL fIcon,
+  _In_  DWORD dwVersion,
+  _In_  int cxDesired,
+  _In_  int cyDesired,
+  _In_  UINT uFlags
+);	
+
+PVOID 
+TryGetProcedure(
+	char* procedureName
+);
 
 // Definitions of prototype functions for get address
 	
@@ -730,3 +861,8 @@ typedef BOOL (WINAPI *ConsoleControlFuncPtr)(
 typedef BOOL (WINAPI *ControlMagnificationFuncPtr)(
     BOOL,
 	PVOID);	
+	
+typedef BOOL (WINAPI *PrivateRegisterICSProcFuncPtr)(
+    PCONVERT_TO_DIB_PROC);		
+	
+static PrivateRegisterICSProcFuncPtr PrivateRegisterICSProcAddr;

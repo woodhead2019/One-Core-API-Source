@@ -87,6 +87,7 @@
 @ stdcall CreateDialogParamA(long ptr long ptr long)
 @ stdcall CreateDialogParamW(long ptr long ptr long)
 @ stdcall CreateIcon(long long long long long ptr ptr)
+@ stdcall CreateIconIndirect(ptr)
 @ stdcall CreateMDIWindowA(ptr ptr long long long long long long long long)
 @ stdcall CreateMDIWindowW(ptr ptr long long long long long long long long)
 @ stdcall CreateMenu()
@@ -438,6 +439,10 @@
 @ stdcall LoadAcceleratorsW(long wstr)
 @ stdcall LoadBitmapA(long str)
 @ stdcall LoadBitmapW(long wstr)
+@ stdcall LoadCursorA(long str)
+@ stdcall LoadCursorFromFileA(str)
+@ stdcall LoadCursorFromFileW(wstr)
+@ stdcall LoadCursorW(long wstr)
 @ stdcall LoadKeyboardLayoutA(str long)
 @ stdcall LoadKeyboardLayoutEx(long ptr long)
 @ stdcall LoadKeyboardLayoutW(wstr long)
@@ -508,10 +513,6 @@
 @ stdcall PostThreadMessageA(long long long long)
 @ stdcall PostThreadMessageW(long long long long)
 @ stdcall PrintWindow(ptr ptr long) ;NtUserPrintWindow
-@ stdcall PrivateExtractIconExA(str long ptr ptr long)
-@ stdcall PrivateExtractIconExW(wstr long ptr ptr long)
-@ stdcall PrivateExtractIconsA(str long long long ptr ptr long long)
-@ stdcall PrivateExtractIconsW(wstr long long long ptr ptr long long)
 @ stdcall PtInRect(ptr double)
 @ stdcall QuerySendMessage(ptr) ;NtUserQuerySendMessage
 @ stdcall RealChildWindowFromPoint(long double) ; Direct call NtUserRealChildWindowFromPoint
@@ -692,7 +693,7 @@
 @ stdcall UpdatePerUserSystemParameters(long long)
 @ stdcall UpdateWindow(long)
 @ stdcall User32InitializeImmEntryTable(ptr)
-@ stdcall UserClientDllInitialize(long long ptr) DllMain
+@ stdcall UserClientDllInitialize(long long ptr)
 @ stdcall UserHandleGrantAccess(ptr ptr long) ;NtUserUserHandleGrantAccess
 @ stdcall UserLpkPSMTextOut(long long long long long long)
 @ stdcall UserLpkTabbedTextOut(long long long long long long long long long long long long)
@@ -741,17 +742,16 @@
 @ stdcall GetAutoRotationState(ptr)
 
 #Hooks
-@ stdcall CreateIconFromResource (ptr long long long) #CreateIconFromResourceHook
-@ stdcall CreateIconFromResourceEx(ptr long long long long long long) #CreateIconFromResourceExHook
-@ stdcall CreateIconIndirect(ptr) #CreateIconIndirectHook
-@ stdcall LoadCursorA(long str) #LoadCursorAHook
-@ stdcall LoadCursorFromFileA(str) #LoadCursorFromFileAHook
-@ stdcall LoadCursorFromFileW(wstr) #LoadCursorFromFileWHook
-@ stdcall LoadCursorW(long wstr) #LoadCursorWHook
-@ stdcall LoadIconA(long str) #LoadIconAHook
-@ stdcall LoadIconW(long wstr) #LoadIconWHook
-@ stdcall LoadImageA(long str long long long long) #LoadImageAHook
-@ stdcall LoadImageW(long wstr long long long long) #LoadImageWHook
+@ stdcall CreateIconFromResource (ptr long long long) CreateIconFromResourceHook
+@ stdcall CreateIconFromResourceEx(ptr long long long long long long) CreateIconFromResourceExHook
+@ stdcall LoadIconA(long str) LoadIconAHook
+@ stdcall LoadIconW(long wstr) LoadIconWHook
+@ stdcall LoadImageA(long str long long long long) LoadImageAHook
+@ stdcall LoadImageW(long wstr long long long long) LoadImageWHook
+@ stdcall PrivateExtractIconExA(str long ptr ptr long) PrivateExtractIconExAHook
+@ stdcall PrivateExtractIconExW(wstr long ptr ptr long) PrivateExtractIconExWHook
+@ stdcall PrivateExtractIconsA(str long long long ptr ptr long long) PrivateExtractIconsAHook
+@ stdcall PrivateExtractIconsW(wstr long long long ptr ptr long long) PrivateExtractIconsWHook
 @ stdcall GetUserObjectSecurity (long ptr ptr long ptr) #GetUserObjectSecurityInternal
 @ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
 @ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal
@@ -789,7 +789,7 @@
 @ stdcall GetGestureConfig(ptr long long ptr ptr long)
 @ stdcall GetGestureExtraArgs(ptr long ptr)
 @ stdcall GetGestureInfo(ptr ptr)
-@ stdcall GetIconInfoExA(long ptr) GetIconInfoExW
+@ stdcall GetIconInfoExA(long ptr)
 @ stdcall GetIconInfoExW(long ptr)
 @ stdcall GetInputLocaleInfo(long wstr)
 @ stdcall GetMagnificationDesktopColorEffect(ptr)
@@ -823,7 +823,7 @@
 @ stdcall OpenThreadDesktop(long long long long)
 @ stdcall PackTouchHitTestingProximityEvaluation(ptr ptr)
 @ stdcall PaintMonitor(ptr ptr ptr) ;not-implemented
-@ stdcall PrivateRegisterICSProc(ptr) ;userbase.PrivateRegisterICSProc
+@ stdcall PrivateRegisterICSProc(ptr) userbase.PrivateRegisterICSProc
 @ stdcall PhysicalToLogicalPoint(ptr ptr)
 @ stdcall PhysicalToLogicalPointForPerMonitorDPI(ptr ptr)
 @ stdcall QueryDisplayConfig(long ptr ptr ptr ptr ptr)

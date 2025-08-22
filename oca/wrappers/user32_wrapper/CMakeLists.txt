@@ -19,10 +19,13 @@ elseif(ARCH STREQUAL "i386")
 endif()
 
 list(APPEND SOURCE
-	dib.c
+	clipboard.c
+	cursor.c
+	desktop.c
 	display.c
 	dpi.c
 	dwm.c
+	exticon.c
 	hooks.c
 	icon.c
 	input.c
@@ -30,7 +33,7 @@ list(APPEND SOURCE
     main.c
 	message.c
 	misc.c
-	paint.c
+	notification.c
 	process.c
 	shutdown.c
 	sysparams.c
@@ -42,9 +45,9 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/user32_wrapper.def)
 
 add_library(user32_wrapper SHARED ${SOURCE})
-set_module_type(user32_wrapper win32dll ENTRYPOINT 0)
+set_module_type(user32_wrapper win32dll ENTRYPOINT DllMain)
 
-target_link_libraries(user32_wrapper wine)
+target_link_libraries(user32_wrapper wine uuid)
 
 add_delay_importlibs(user32_wrapper libpng)
 
