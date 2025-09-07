@@ -19,6 +19,7 @@
 #include <accctrl.h>
 #include <aclapi.h>
 #include <winefs.h>
+#include <wct.h>
 
 #include <ntstatus.h>
 #define WIN32_NO_STATUS

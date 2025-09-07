@@ -1,5 +1,6 @@
 add_subdirectory(api-sets)
 add_subdirectory(aplications)
+add_subdirectory(appcompat)
 add_subdirectory(dependencies)
 add_subdirectory(directx)
 add_subdirectory(drivers)

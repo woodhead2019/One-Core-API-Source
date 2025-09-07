@@ -1,4 +1,5 @@
 add_subdirectory(comdlg32_wrapper)
+add_subdirectory(d3d9ex_wrapper)
 add_subdirectory(dwrite_wrapper)
 add_subdirectory(gdi32_wrapper)
 #add_subdirectory(iphlpapi_wrapper)
