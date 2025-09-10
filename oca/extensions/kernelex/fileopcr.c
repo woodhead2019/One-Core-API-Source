@@ -196,16 +196,19 @@ CreateFileTransactedW(
     LPSECURITY_ATTRIBUTES lpSecurityAttributes,
     DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes,
-    HANDLE hTemplateFile
+    HANDLE hTemplateFile,
+    HANDLE hTransaction,
+    PUSHORT pusMiniVersion,
+    PVOID lpExtendedParameter
 )
 {
-	return CreateFileW(lpFileName, 
-					   dwDesiredAccess, 
-					   dwShareMode, 
-					   lpSecurityAttributes, 
-					   dwCreationDisposition, 
-					   dwFlagsAndAttributes,
-					   hTemplateFile);
+    return CreateFileW(lpFileName, 
+                       dwDesiredAccess, 
+                       dwShareMode, 
+                       lpSecurityAttributes, 
+                       dwCreationDisposition, 
+                       dwFlagsAndAttributes,
+                       hTemplateFile);
 }
 
 HANDLE
@@ -217,16 +220,19 @@ CreateFileTransactedA(
     LPSECURITY_ATTRIBUTES lpSecurityAttributes,
     DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes,
-    HANDLE hTemplateFile
+    HANDLE hTemplateFile,
+    HANDLE hTransaction,
+    PUSHORT pusMiniVersion,
+    PVOID lpExtendedParameter
 )
 {
-	return CreateFileA(lpFileName, 
-					   dwDesiredAccess, 
-					   dwShareMode, 
-					   lpSecurityAttributes, 
-					   dwCreationDisposition, 
-					   dwFlagsAndAttributes,
-					   hTemplateFile);
+    return CreateFileA(lpFileName, 
+                       dwDesiredAccess, 
+                       dwShareMode, 
+                       lpSecurityAttributes, 
+                       dwCreationDisposition, 
+                       dwFlagsAndAttributes,
+                       hTemplateFile);
 }
 
 HANDLE WINAPI CreateFile2(

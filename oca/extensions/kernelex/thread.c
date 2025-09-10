@@ -558,7 +558,7 @@ FlsFree(DWORD dwFlsIndex)
  */
 PVOID
 WINAPI
-FlsGetValueInternal(DWORD dwFlsIndex)
+FlsGetValue(DWORD dwFlsIndex)
 {
     PRTL_FLS_DATA pFlsData;
 

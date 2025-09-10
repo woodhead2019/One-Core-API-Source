@@ -132,3 +132,7 @@ void WINAPI RegisterWaitChainCOMCallback(PCOGETCALLSTATE call_state_cb,
 {
     FIXME("%p, %p\n", call_state_cb, activation_state_cb);
 }
+
+void WINAPI CloseThreadWaitChainSession(HWCT handle){
+    FIXME("%p\n", handle);	
+}

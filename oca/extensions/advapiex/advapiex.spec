@@ -676,6 +676,7 @@
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
+@ stdcall CloseThreadWaitChainSession(ptr)
 @ stdcall CredFindBestCredentialA(str long long ptr) 
 @ stdcall CredFindBestCredentialW(wstr long long ptr)
 @ stdcall CredIsProtectedA(str ptr)
@@ -779,7 +780,6 @@
 ; @ stdcall AuditSetSecurity(ptr long)
 ; @ stdcall AuditSetSystemPolicy(ptr long)
 ; @ stdcall CheckAppInitBlockedServiceIdentity(long)
-; @ stdcall CloseThreadWaitChainSession(ptr)
 ; @ stdcall ControlServiceExA(ptr long long ptr)
 ; @ stdcall ControlServiceExW(ptr long long ptr)
 ; @ stdcall CredBackupCredentials(long ptr ptr long long)
