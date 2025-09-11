@@ -2070,3 +2070,21 @@ BOOL WINAPI SetProcessDefaultCpuSets(HANDLE process, const ULONG *cpu_set_ids, U
 BOOL WINAPI IsUserCetAvaliableInEnvironment(DWORD UserCetEnvironment) {
     return FALSE;
 }
+
+BOOL WINAPI IsProcessCritical(HANDLE proc, PBOOL Critical) {
+    ULONG isCritical;
+    NTSTATUS status;
+    if (!Critical) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    
+    status = NtQueryInformationProcess(proc, ProcessBreakOnTermination, &isCritical, sizeof(ULONG), NULL);
+    if (NT_SUCCESS(status)) {
+        *Critical = (isCritical != 0);
+        return TRUE;
+    }
+    
+    BaseSetLastNTError(status);
+    return FALSE;
+}

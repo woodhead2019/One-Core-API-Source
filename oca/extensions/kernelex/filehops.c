@@ -628,42 +628,45 @@ CancelIoEx(
 
 }
 
-/*
- * @implemented - new
- */
-BOOL 
-WINAPI 
-CancelSynchronousIo(
-	HANDLE hFile
-)
+BOOL WINAPI CancelSynchronousIo(HANDLE hThread)
 {
-  NTSTATUS status; // eax@3
-  BOOL result; // eax@4
-  IO_STATUS_BLOCK IoStatusBlock;
+    DWORD pid;
+	HANDLE hProcess;
+	BOOL result;
 
-  status = NtCancelIoFile(hFile, &IoStatusBlock);
-  if ( NT_SUCCESS(status))
-  {
-    SetLastError(status);
-    result = FALSE;
-  }
-  else
-  {
-    result = TRUE;
-  }
-  return result;
+    if (!hThread)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    pid = GetProcessIdOfThread(hThread);
+    if (!pid)
+        return FALSE;
+	
+	result = TerminateThread(hThread, (DWORD)-1);
+
+    hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+    if (!hProcess)
+        return FALSE;
+
+    result = TerminateProcess(hProcess, 1);
+    CloseHandle(hProcess);
+
+    return result;	
 }
 
-BOOL 
-WINAPI 
+BOOL  
+WINAPI  
 SetStdHandleEx(
   _In_ DWORD  nStdHandle,
   _In_ HANDLE hHandle,
-  _In_ HANDLE oldHandle  
+  _In_ PHANDLE oldHandle  
 )
 {
-	oldHandle = GetStdHandle(nStdHandle);
-	return SetStdHandle(nStdHandle, hHandle);
+    if (oldHandle)
+        *oldHandle = GetStdHandle(nStdHandle);
+    return SetStdHandle(nStdHandle, hHandle);
 }
 
 DWORD 

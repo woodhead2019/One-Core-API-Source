@@ -1058,8 +1058,8 @@
 @ stdcall CreateEventExW(ptr wstr ptr long) 
 @ stdcall CreateFileMappingNumaA(ptr ptr long long long str long)
 @ stdcall CreateFileMappingNumaW(ptr ptr long long long wstr long)
-@ stdcall CreateFileTransactedA(str long long ptr long long ptr ptr ptr ptr)
-@ stdcall CreateFileTransactedW(wstr long long ptr long long ptr ptr ptr ptr)
+@ stdcall CreateFileTransactedA(str long long ptr long long long ptr ptr ptr)
+@ stdcall CreateFileTransactedW(wstr long long ptr long long long ptr ptr ptr)
 @ stdcall CreateHardLinkTransactedA(str str ptr ptr)
 @ stdcall CreateHardLinkTransactedW(wstr wstr ptr ptr)
 @ stdcall CreateMutexExA(ptr str long long)
@@ -1466,6 +1466,7 @@
 #Win8.1 functions
 @ stdcall DiscardVirtualMemory(ptr long)
 @ stdcall FindPackagesByPackageFamily(wstr long ptr ptr ptr ptr ptr)
+@ stdcall IsProcessCritical(ptr ptr)
 @ stdcall GetPackageApplicationIds (ptr ptr ptr ptr)
 @ stdcall GetPackagePathByFullName(wstr ptr wstr)
 @ stdcall PssCaptureSnapshot(long long long ptr)
@@ -1611,8 +1612,8 @@
 @ stdcall RegEnumValueW(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegFlushKey(long) advapi32.RegFlushKey 
 @ stdcall RegGetKeySecurity(long long ptr ptr) advapi32.RegGetKeySecurity 
-@ stdcall RegGetValueA(long str str long ptr ptr ptr) advapi32.RegGetValueA 
-@ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
+@ stdcall RegGetValueA(long str str long ptr ptr ptr)
+@ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr)
 @ stdcall RegLoadAppKeyA(str ptr long long long)
 @ stdcall RegLoadAppKeyW(wstr ptr long long long)
 @ stdcall RegLoadKeyA(long str str) advapi32.RegLoadKeyA 

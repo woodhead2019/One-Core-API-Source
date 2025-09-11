@@ -737,14 +737,12 @@ HANDLE WINAPI LoadImageWHook( HINSTANCE hinst, LPCWSTR lpszName, UINT uType,
 		hIcon = LoadImageW( hinst, lpszName, uType, cxDesired, cyDesired, fuLoad );
 		
 		if(!hIcon){
-			DbgPrint("LoadImageWHook::LoadImageW failed. fuLoad is %d\n", fuLoad);
 			if (fuLoad & LR_LOADFROMFILE){
 				DbgPrint("\n");
 				hIcon = LoadImagePngFromFile(hinst, lpszName, uType, cxDesired, cyDesired, fuLoad);
 			}
 			else{	
 				depth = 1;
-				DbgPrint("LoadImageWHook::is not LR_LOADFROMFILE\n");
 				if (!(fuLoad & LR_MONOCHROME)) depth = get_display_bpp();	
 
 		

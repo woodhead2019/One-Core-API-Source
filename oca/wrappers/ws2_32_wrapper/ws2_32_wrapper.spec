@@ -4,7 +4,7 @@
 4   stdcall  connect(long ptr long)
 5   stdcall  getpeername(long ptr ptr)
 6   stdcall  getsockname(long ptr ptr)
-7   stdcall  getsockopt(long long long ptr ptr)
+7   stdcall  getsockopt(long long long ptr ptr) getsockoptInternal
 8   stdcall  htonl(long)
 9   stdcall  htons(long)
 10  stdcall  ioctlsocket(long long ptr)

@@ -1299,7 +1299,7 @@
 @ stdcall NtDeleteDriverEntry(long) ntdll.NtDeleteDriverEntry
 @ stdcall NtEnumerateDriverEntries(ptr ptr) ntdll.NtEnumerateDriverEntries
 @ stdcall NtGetCurrentProcessorNumber() ;5.2 and higher
-@ stdcall NtGetTickCount() ;RtlGetTickCount
+@ stdcall NtGetTickCount() RtlGetTickCount
 @ stdcall NtLoadKeyEx(ptr ptr long ptr) 
 @ stdcall NtQueryDriverEntryOrder(ptr ptr) ntdll.NtQueryDriverEntryOrder
 @ stdcall NtModifyDriverEntry(ptr) ntdll.NtModifyDriverEntry
