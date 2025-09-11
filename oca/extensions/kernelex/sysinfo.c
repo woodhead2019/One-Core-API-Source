@@ -102,6 +102,9 @@ SetSystemFileCacheSize(
 }
 
 // Required for Firefox 133.
+// On most systems, and under most conditions, each CPU Set ID will map directly to a single home logical processor.
+// This means that CPU sets can be partially emulated by it being a more complicated GetLogicalProcessorInformation.
+// Note that it does not support processor groups just yet.
 BOOL WINAPI GetSystemCpuSetInformation(
     PSYSTEM_CPU_SET_INFORMATION  Information,
     ULONG                        BufferLength,
@@ -109,11 +112,24 @@ BOOL WINAPI GetSystemCpuSetInformation(
     HANDLE                       Process,
     ULONG                        Flags
 ) {
-    
+    // Get the number of cores in the system.
+	PSYSTEM_CPU_SET_INFORMATION currentCpuSet;
+	SYSTEM_INFO sysInfo;
+	DWORD requiredLength;
+	KAFFINITY processAffinity;
+	KAFFINITY systemAffinity;
+	int i;
+	
+	GetSystemInfo(&sysInfo);
+	if (!GetProcessAffinityMask(Process, &processAffinity, &systemAffinity))
+		return FALSE;
+	
+	requiredLength = sizeof(SYSTEM_CPU_SET_INFORMATION) * sysInfo.dwNumberOfProcessors;
+	
     if (ReturnedLength)
-        *ReturnedLength = sizeof(SYSTEM_CPU_SET_INFORMATION);
+        *ReturnedLength = requiredLength;
     
-    if (BufferLength < sizeof(SYSTEM_CPU_SET_INFORMATION)) {
+    if (BufferLength < requiredLength) {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return FALSE;
     }
@@ -123,9 +139,38 @@ BOOL WINAPI GetSystemCpuSetInformation(
         return FALSE;
     }
     
-    // CPU Sets are not a thing prior to Windows 10. Pretend that there is only a single "CPU Set".
-    memset(Information, 0, sizeof(SYSTEM_CPU_SET_INFORMATION)); // already fills out all the fields we need anyway
-    Information->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+	memset(Information, 0, requiredLength);
+	
+	for (i = 0; i < sysInfo.dwNumberOfProcessors; i++) {
+        currentCpuSet = &Information[i];
+
+        currentCpuSet->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+        currentCpuSet->Type = CpuSetInformation;
+
+        currentCpuSet->CpuSet.Id                  = i;
+        currentCpuSet->CpuSet.Group               = 0;
+        currentCpuSet->CpuSet.LogicalProcessorIndex = (UCHAR)i;
+        currentCpuSet->CpuSet.CoreIndex           = (UCHAR)i;  // simplificado
+        currentCpuSet->CpuSet.LastLevelCacheIndex = 0;
+        currentCpuSet->CpuSet.NumaNodeIndex       = 0;
+        currentCpuSet->CpuSet.EfficiencyClass     = 0;
+
+        // Flags (bitfields + AllFlags union)
+        currentCpuSet->CpuSet.AllFlags = 0;
+
+        if ((systemAffinity & ((KAFFINITY)1 << i)) != 0)
+            currentCpuSet->CpuSet.Allocated = 1;
+
+        if ((processAffinity & ((KAFFINITY)1 << i)) != 0)
+            currentCpuSet->CpuSet.AllocatedToTargetProcess = 1;
+
+        // Exemplo: nunca setamos Parked ou RealTime aqui
+        currentCpuSet->CpuSet.Parked   = 0;
+        currentCpuSet->CpuSet.RealTime = 0;
+
+        currentCpuSet->CpuSet.AllocationTag = i;
+	}
+	
     return TRUE;
 }
 
