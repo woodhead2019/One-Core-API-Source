@@ -1,0 +1,9 @@
+// wrapper.def
+LIBRARY "mmdevapi.dll"
+
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE
+    DllRegisterServer PRIVATE
+    DllUnregisterServer PRIVATE
+    ActivateAudioInterfaceAsync @17 PRIVATE

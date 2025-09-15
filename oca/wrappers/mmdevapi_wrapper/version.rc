@@ -1,0 +1,28 @@
+#include <windows.h>
+
+1 VERSIONINFO
+ FILEVERSION 0,97
+ PRODUCTVERSION 0,97
+ FILEOS 0x40004
+ FILETYPE 0x2s
+{
+ BLOCK "StringFileInfo"
+ {
+  BLOCK "040904B0"
+  {
+   VALUE "CompanyName", "One-Core-API Project"
+   VALUE "FileDescription", "MMDevice API wrapper"
+   VALUE "FileVersion", "0.97"
+   VALUE "InternalName", "MMDeviceAPI"
+   VALUE "LegalCopyright", "Copyright 2008-2025 One-Core-API Project."
+   VALUE "OriginalFilename", "MMDevAPI.Dll"
+   VALUE "ProductName", "One-Core-API Project"
+   VALUE "ProductVersion", "0.97"
+  }
+ }
+
+ BLOCK "VarFileInfo"
+ {
+  VALUE "Translation", 0x0409, 0x04B0
+ }
+}
