@@ -594,18 +594,7 @@ LRESULT CLayerUIPropPage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	
 	HWND hDlg = this->m_hWnd;
 	
-	HTHEME hTheme;
-	
 	EnableThemeDialogTexture(hDlg, ETDT_ENABLETAB);
-	
-	SetWindowTheme(GetDlgItem(IDC_CHKRUNCOMPATIBILITY), L"Explorer", NULL);
-	
-	hTheme = OpenThemeData(hwndButton, L"BUTTON");
-	if (hTheme) {
-		DrawThemeBackground(hTheme, hdc, BP_PUSHBUTTON, PBS_NORMAL, &rc, NULL);
-		CloseThemeData(hTheme);
-	}	
-
 	
     for (size_t n = 0; g_CompatModes[n].Display; ++n)
         ComboBox_AddString(cboMode, g_CompatModes[n].Display);

@@ -23,6 +23,21 @@ END_OBJECT_MAP()
 
 CLayerUIPropPageModule gModule;
 
+HANDLE hActCtx = INVALID_HANDLE_VALUE;
+ULONG_PTR cookie = 0;
+
+void ActivateContext(void)
+{
+    ACTCTX act = { sizeof(act) };
+    act.dwFlags = ACTCTX_FLAG_RESOURCE_NAME_VALID;
+    act.lpSource = L"shell32.dll"; // ou seu próprio arquivo
+    act.lpResourceName = MAKEINTRESOURCE(123); // RT_MANIFEST embutido
+    
+    hActCtx = CreateActCtx(&act);
+    if (hActCtx != INVALID_HANDLE_VALUE)
+        ActivateActCtx(hActCtx, &cookie);
+}
+
 EXTERN_C
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 {
@@ -32,6 +47,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
         DisableThreadLibraryCalls(hInstance);
         g_hModule = hInstance;
         gModule.Init(ObjectMap, hInstance, NULL);
+		ActivateContext();
         break;
     case DLL_PROCESS_DETACH:
         gModule.Term();

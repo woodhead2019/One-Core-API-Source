@@ -264,7 +264,11 @@ HANDLE LoadImagePngFromFile(
     DWORD i, bestIndex = 0;
     DWORD bestScore = 0;
     LPBYTE lpRes;
-    DWORD dwSize;	
+    DWORD dwSize;
+	DWORD width;
+	DWORD height;
+	DWORD depth;
+	DWORD score;
 
     hFile = CreateFileW(lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -287,11 +291,11 @@ HANDLE LoadImagePngFromFile(
 
     for (i = 0; i < iconDir->idCount; ++i)
     {
-        DWORD width = entries[i].bWidth == 0 ? 256 : entries[i].bWidth;
-        DWORD height = entries[i].bHeight == 0 ? 256 : entries[i].bHeight;
-        DWORD depth = entries[i].wBitCount;
+        width = entries[i].bWidth == 0 ? 256 : entries[i].bWidth;
+        height = entries[i].bHeight == 0 ? 256 : entries[i].bHeight;
+        depth = entries[i].wBitCount;
 
-        DWORD score = width * height * depth;
+        score = width * height * depth;
         if (score > bestScore)
         {
             bestScore = score;
@@ -304,7 +308,7 @@ HANDLE LoadImagePngFromFile(
     dwSize = entries[bestIndex].dwBytesInRes;
 
     hIcon = CreateIconFromResourceExHook(lpRes, dwSize, TRUE, 0x00030000,
-                                     cxDesired, cyDesired, LR_DEFAULTCOLOR);
+                                     width, height, LR_DEFAULTCOLOR);
 
 cleanup:
     if (lpBase) UnmapViewOfFile(lpBase);
