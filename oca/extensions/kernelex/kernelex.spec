@@ -960,10 +960,10 @@
 @ stdcall ConvertThreadToFiberEx(ptr long)
 @ stdcall FindFirstStreamW(wstr ptr ptr long)
 @ stdcall FindNextStreamW(ptr ptr)
-@ stdcall FlsAlloc(ptr)
-@ stdcall FlsFree(long)
-@ stdcall FlsGetValue(long)
-@ stdcall FlsSetValue(long ptr)
+@ stdcall FlsAlloc(ptr) FlsAllocHook
+@ stdcall FlsFree(long) FlsFreeHook
+@ stdcall FlsGetValue(long) FlsGetValueHook
+@ stdcall FlsSetValue(long ptr) FlsSetValueHook
 @ stdcall GetLargePageMinimum()
 @ stdcall GetProcessIdOfThread(ptr)
 @ stdcall GetThreadId(ptr)

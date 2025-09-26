@@ -382,65 +382,12 @@ BaseRundownFls(_In_ PVOID FlsData)
     RtlFreeHeap(RtlGetProcessHeap(), 0, FlsData);
 }
 
-// /***********************************************************************
- // *           FlsAlloc   (KERNEL32.@) - For .Net 4.5.1 + Framework Support (native functions not work)
- // */
-// DWORD WINAPI FlsAlloc( PFLS_CALLBACK_FUNCTION lpCallback )
-// {
-	// if(isXPOrLower()){
-        // return TlsAlloc();				
-	// }else{
-		// DWORD index;		
-		// if (!set_ntstatus( RtlFlsAlloc( lpCallback, &index ))) return FLS_OUT_OF_INDEXES;
-		// return index;		
-	// }	
-// }
-
-// /***********************************************************************
- // *           FlsFree   (KERNEL32.@) - Framework Support (native functions not work)
- // */
-// BOOL WINAPI FlsFree( DWORD index )
-// {	
-	// if(isXPOrLower()){
-	    // return TlsFree(index); 	
-	// }else{
-		// return set_ntstatus( RtlFlsFree( index ));		
-	// }	
-// }
-
-// /***********************************************************************
- // *           FlsGetValue   (KERNEL32.@) - Framework Support (native functions not work)
- // */
-// PVOID WINAPI FlsGetValue( DWORD index )
-// {
-	// if(isXPOrLower()){
-	    // return TlsGetValue(index); 	
-	// }else{
-		// void *data;
-		// if (!set_ntstatus( RtlFlsGetValue( index, &data ))) return NULL;
-		// SetLastError( ERROR_SUCCESS );
-		// return data;	
-	// }		
-// }
-
-// /***********************************************************************
- // *           FlsSetValue   (KERNEL32.@) - Framework Support (native functions not work)
- // */
-// BOOL WINAPI FlsSetValue( DWORD index, PVOID lpFlsData )
-// {
-	// if(isXPOrLower()){
-	    // return TlsSetValue(index, lpFlsData);	
-	// }else{
-		// return set_ntstatus( RtlFlsSetValue( index, lpFlsData ));		
-	// }	
-// }
-
 /*
  * @implemented
  */
 DWORD
 WINAPI
-FlsAlloc(PFLS_CALLBACK_FUNCTION lpCallback)
+FlsAllocHook(PFLS_CALLBACK_FUNCTION lpCallback)
 {
     DWORD dwFlsIndex;
     PPEB Peb = NtCurrentPeb();
@@ -499,7 +446,7 @@ FlsAlloc(PFLS_CALLBACK_FUNCTION lpCallback)
  */
 BOOL
 WINAPI
-FlsFree(DWORD dwFlsIndex)
+FlsFreeHook(DWORD dwFlsIndex)
 {
     BOOL ret;
     PPEB Peb = NtCurrentPeb();
@@ -558,7 +505,7 @@ FlsFree(DWORD dwFlsIndex)
  */
 PVOID
 WINAPI
-FlsGetValue(DWORD dwFlsIndex)
+FlsGetValueHook(DWORD dwFlsIndex)
 {
     PRTL_FLS_DATA pFlsData;
 
@@ -579,7 +526,7 @@ FlsGetValue(DWORD dwFlsIndex)
  */
 BOOL
 WINAPI
-FlsSetValue(DWORD dwFlsIndex,
+FlsSetValueHook(DWORD dwFlsIndex,
             PVOID lpFlsData)
 {
     PRTL_FLS_DATA pFlsData;
@@ -1635,7 +1582,7 @@ LPVOID WINAPI TlsGetValue2( DWORD index )
 
 LPVOID WINAPI FlsGetValue2(DWORD dwFlsIndex) {
     DWORD LastError = RtlGetLastWin32Error();
-    LPVOID Result = FlsGetValue(dwFlsIndex);
+    LPVOID Result = FlsGetValue(dwFlsIndex); //Need be implemented on kernel32, don't use implementation from here!
     RtlSetLastWin32Error(LastError);
     return Result;
 }
