@@ -24,7 +24,6 @@
 
 #Vista Functions
 @ stdcall PowerDeterminePlatformRole()
-@ stdcall PowerDeterminePlatformRoleEx(long)
 @ stdcall PowerEnumerate(long ptr ptr long long ptr ptr)
 @ stdcall PowerGetActiveScheme(ptr ptr)
 @ stdcall PowerReadACValue(ptr ptr ptr ptr ptr ptr ptr)
@@ -40,6 +39,7 @@
 @ stdcall PowerWriteSettingAttributes(ptr ptr long)
 
 #Win8 Functions
+@ stdcall PowerDeterminePlatformRoleEx(long)
 @ stdcall PowerRegisterSuspendResumeNotification(long ptr ptr)
 @ stdcall PowerUnregisterSuspendResumeNotification(ptr)
 

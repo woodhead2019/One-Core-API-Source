@@ -779,6 +779,7 @@
 #@ stdcall DwmGetSurfaceData() userbase.DwmGetSurfaceData
 #@ stdcall DwmStartRedirection(ptr) userbase.DwmStartRedirection
 #@ stdcall DwmStopRedirection() userbase.DwmStopRedirection
+@ stdcall FrostCrashedWindow(ptr ptr)
 @ stdcall GetIconInfoExA(long ptr) GetIconInfoExW
 @ stdcall GetIconInfoExW(long ptr)
 @ stdcall GetPhysicalCursorPos(ptr)
@@ -832,7 +833,6 @@
 @ stdcall DisplayConfigSetDeviceInfo(ptr)
 @ stdcall EnableMouseInPointer(long)
 @ stdcall EvaluateProximityToRect(ptr ptr ptr)
-@ stdcall FrostCrashedWindow(ptr ptr)
 @ stub gapfnScSendMessage
 @ stdcall GetCIMSSM(ptr)
 @ stdcall GetDisplayConfigBufferSizes(long ptr ptr)

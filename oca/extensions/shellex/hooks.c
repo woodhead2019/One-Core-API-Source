@@ -36,8 +36,33 @@ Revision History:
 #define NDEBUG
 #include <debug.h>
 #include <main.h>
+
+#define shellName L"shell32.dll"
  
-WINE_DEFAULT_DEBUG_CHANNEL(shell);
+WINE_DEFAULT_DEBUG_CHANNEL(hooks);
+
+typedef HINSTANCE (WINAPI *PFNSHELLEXECUTEA)(
+	HWND hWnd, 
+	LPCSTR lpVerb, 
+	LPCSTR lpFile,
+    LPCSTR lpParameters, 
+	LPCSTR lpDirectory, 
+	INT iShowCmd
+);
+
+typedef BOOL (WINAPI *PFNSHELLEXECUTEEXA)(
+	SHELLEXECUTEINFOA *pExecInfo
+);
+
+typedef BOOL (WINAPI *PFNSHELLEXECUTEEXW)(
+	SHELLEXECUTEINFOW *pExecInfo
+);
+
+typedef HRESULT (WINAPI *PFNDLLGETCLASSOBJECT)(
+	REFCLSID rclsid, 
+	REFIID iid, 
+	LPVOID *ppv
+);
 
 HINSTANCE WINAPI ShellExecuteANative(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
                                LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd);
@@ -49,6 +74,66 @@ BOOL WINAPI ShellExecuteExANative(
 BOOL WINAPI ShellExecuteExWNative(
   SHELLEXECUTEINFOW *pExecInfo
 );
+
+/*************************************************************************
+ * ILLoadFromStream (SHELL32.26)
+ *
+ * NOTES
+ *   the first two bytes are the len, the pidl is following then
+ */
+HRESULT WINAPI ILLoadFromStream (IStream * pStream, LPITEMIDLIST * ppPidl)
+{
+    WORD        wLen = 0;
+    DWORD       dwBytesRead;
+    HRESULT     ret = E_FAIL;
+
+
+    //TRACE("%p %p\n", pStream ,  ppPidl);
+
+    SHFree(*ppPidl);
+    *ppPidl = NULL;
+
+    IStream_AddRef (pStream);
+
+    if (SUCCEEDED(IStream_Read(pStream, &wLen, 2, &dwBytesRead)))
+    {
+        //TRACE("PIDL length is %d\n", wLen);
+        if (wLen != 0)
+        {
+            *ppPidl = SHAlloc (wLen);
+            if (SUCCEEDED(IStream_Read(pStream, *ppPidl , wLen, &dwBytesRead)))
+            {
+                //TRACE("Stream read OK\n");
+                ret = S_OK;
+            }
+            else
+            {
+                //WARN("reading pidl failed\n");
+                SHFree(*ppPidl);
+                *ppPidl = NULL;
+            }
+        }
+        else
+        {
+            *ppPidl = NULL;
+            ret = S_OK;
+        }
+    }
+
+    /* we are not yet fully compatible */
+    if (*ppPidl && !pcheck(*ppPidl))
+    {
+        WARN("Check failed\n");
+#ifndef __REACTOS__ /* We don't know all pidl formats, must allow loading unknown */
+        SHFree(*ppPidl);
+        *ppPidl = NULL;
+#endif
+    }
+
+    IStream_Release (pStream);
+    TRACE("done\n");
+    return ret;
+}
 
 /**************************************************************************
  * Default ClassFactory types
@@ -64,25 +149,12 @@ static const struct {
 	{&CLSID_ApplicationAssociationRegistration, ApplicationAssociationRegistration_Constructor},
 	{&CLSID_ApplicationDestinations, ApplicationDestinations_Constructor},
 	{&CLSID_ApplicationDocumentLists, ApplicationDocumentLists_Constructor},
-	// {&CLSID_AutoComplete,   IAutoComplete_Constructor},
-	// {&CLSID_ControlPanel,	IControlPanel_Constructor},
-	// {&CLSID_DragDropHelper, IDropTargetHelper_Constructor},
-	// {&CLSID_FolderShortcut, FolderShortcut_Constructor},
-	// {&CLSID_MyComputer,	ISF_MyComputer_Constructor},
-	// {&CLSID_MyDocuments,    MyDocuments_Constructor},
-	// {&CLSID_NetworkPlaces,  ISF_NetworkPlaces_Constructor},
-	// {&CLSID_Printers,       Printers_Constructor},
 	{&CLSID_QueryAssociations, QueryAssociations_Constructor},
-	// {&CLSID_RecycleBin,     RecycleBin_Constructor},
-	// {&CLSID_ShellDesktop,	ISF_Desktop_Constructor},
-	// {&CLSID_ShellFSFolder,	IFSFolder_Constructor},
 	{&CLSID_ShellItem,	IShellItem_Constructor},
 	{&CLSID_ShellLink,	IShellLink_Constructor},
 	{&CLSID_ExplorerBrowser,ExplorerBrowser_Constructor},
 	{&CLSID_KnownFolderManager, KnownFolderManager_Constructor},
-	// {&CLSID_Shell,          IShellDispatch_Constructor},
 	{&CLSID_DestinationList, CustomDestinationList_Constructor},
-	// {&CLSID_ShellImageDataFactory, ShellImageDataFactory_Constructor},
 	{&CLSID_FileOperation, IFileOperation_Constructor},
 	{NULL, NULL}
 };		   
@@ -198,11 +270,13 @@ CheckIfIsOSExec(){
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
  */
-HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 {
 	IClassFactory * pcf = NULL;
 	HRESULT	hres;
 	int i;
+    PFNDLLGETCLASSOBJECT pDllGetClassObjectNative = NULL;
+    HMODULE hMod = NULL;
 	
 	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
@@ -229,8 +303,25 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	}		
 
     if (!pcf) {
+		hMod = GetModuleHandleW(shellName);
+			
+		if (!hMod)
+			hMod = LoadLibraryW(shellName);
+		
+		if(!hMod)
+			return S_OK;
+
+		if (hMod)
+			pDllGetClassObjectNative = (PFNDLLGETCLASSOBJECT)GetProcAddress(hMod, "DllGetClassObjectNative");
+		
+		if(!pDllGetClassObjectNative)
+			pDllGetClassObjectNative = (PFNDLLGETCLASSOBJECT)GetProcAddress(hMod, "DllGetClassObject");
+
+		if (!pDllGetClassObjectNative)
+			return S_OK; /* não encontrado */			
+
 	    //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
-	    return DllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
+	    return pDllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
 	}
 
 	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
@@ -640,66 +731,6 @@ WCHAR** WINAPI CommandLineToArgvWInternal(const WCHAR *cmdline, int *numargs)
     return argv;
 }
 
-/*************************************************************************
- * ILLoadFromStream (SHELL32.26)
- *
- * NOTES
- *   the first two bytes are the len, the pidl is following then
- */
-HRESULT WINAPI ILLoadFromStream (IStream * pStream, LPITEMIDLIST * ppPidl)
-{
-    WORD        wLen = 0;
-    DWORD       dwBytesRead;
-    HRESULT     ret = E_FAIL;
-
-
-    //TRACE("%p %p\n", pStream ,  ppPidl);
-
-    SHFree(*ppPidl);
-    *ppPidl = NULL;
-
-    IStream_AddRef (pStream);
-
-    if (SUCCEEDED(IStream_Read(pStream, &wLen, 2, &dwBytesRead)))
-    {
-        //TRACE("PIDL length is %d\n", wLen);
-        if (wLen != 0)
-        {
-            *ppPidl = SHAlloc (wLen);
-            if (SUCCEEDED(IStream_Read(pStream, *ppPidl , wLen, &dwBytesRead)))
-            {
-                //TRACE("Stream read OK\n");
-                ret = S_OK;
-            }
-            else
-            {
-                //WARN("reading pidl failed\n");
-                SHFree(*ppPidl);
-                *ppPidl = NULL;
-            }
-        }
-        else
-        {
-            *ppPidl = NULL;
-            ret = S_OK;
-        }
-    }
-
-    /* we are not yet fully compatible */
-    if (*ppPidl && !pcheck(*ppPidl))
-    {
-        WARN("Check failed\n");
-#ifndef __REACTOS__ /* We don't know all pidl formats, must allow loading unknown */
-        SHFree(*ppPidl);
-        *ppPidl = NULL;
-#endif
-    }
-
-    IStream_Release (pStream);
-    TRACE("done\n");
-    return ret;
-}
-
 void remove_extended_prefix(const char* input, char* output, size_t output_size) {
     const char* prefix = "\\\\?\\";
     size_t prefix_len = strlen(prefix);
@@ -774,10 +805,24 @@ BOOL WINAPI ShellExecuteExA(
   SHELLEXECUTEINFOA *pExecInfo
 )
 {
+    // static const char prefix[] = "\\\\?\\";
+    // char cleanPath[MAX_PATH];
+	
+	// //DbgPrint("ShellExecuteExAInternal called\n");
+
+    // if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
+		// DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
+        // strncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
+        // cleanPath[MAX_PATH - 1] = '\0';
+        // pExecInfo->lpFile = cleanPath;
+    // }	
+	
+	// return ShellExecuteExANative(pExecInfo);
+	
     static const char prefix[] = "\\\\?\\";
     char cleanPath[MAX_PATH];
-	
-	//DbgPrint("ShellExecuteExAInternal called\n");
+    PFNSHELLEXECUTEEXA pShellExecuteExANative = NULL;
+    HMODULE hMod = NULL;
 
     if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
@@ -786,7 +831,24 @@ BOOL WINAPI ShellExecuteExA(
         pExecInfo->lpFile = cleanPath;
     }	
 	
-	return ShellExecuteExANative(pExecInfo);
+	hMod = GetModuleHandleW(shellName);
+		
+    if (!hMod)
+        hMod = LoadLibraryW(shellName);
+	
+	if(!hMod)
+		return FALSE;
+
+    if (hMod)
+        pShellExecuteExANative = (PFNSHELLEXECUTEEXA)GetProcAddress(hMod, "ShellExecuteExWNative");
+	
+	if(!pShellExecuteExANative)
+		pShellExecuteExANative = (PFNSHELLEXECUTEEXA)GetProcAddress(hMod, "ShellExecuteExW");
+
+    if (!pShellExecuteExANative)
+        return FALSE; /* não encontrado */
+		
+	return pShellExecuteExANative(pExecInfo);	
 }
 
 //Intl.cpl require this hook with original name, don't accept alternate name
@@ -796,8 +858,8 @@ BOOL WINAPI ShellExecuteExW(
 {
     static const wchar_t prefix[] = L"\\\\?\\";
     wchar_t cleanPath[MAX_PATH];
-	
-	//DbgPrint("ShellExecuteExWInternal called\n");	
+    PFNSHELLEXECUTEEXW pShellExecuteExWNative = NULL;
+    HMODULE hMod = NULL;
 
     if (pExecInfo && pExecInfo->lpFile && wcsncmp(pExecInfo->lpFile, prefix, 4) == 0) {
 		DbgPrint("ShellExecuteExWInternal:: original file: %ws\n", pExecInfo->lpFile);			
@@ -806,5 +868,22 @@ BOOL WINAPI ShellExecuteExW(
         pExecInfo->lpFile = cleanPath;
     }
 	
-	return ShellExecuteExWNative(pExecInfo);
+	hMod = GetModuleHandleW(shellName);
+		
+    if (!hMod)
+        hMod = LoadLibraryW(shellName);
+	
+	if(!hMod)
+		return FALSE;
+
+    if (hMod)
+        pShellExecuteExWNative = (PFNSHELLEXECUTEEXW)GetProcAddress(hMod, "ShellExecuteExWNative");
+	
+	if(!pShellExecuteExWNative)
+		pShellExecuteExWNative = (PFNSHELLEXECUTEEXW)GetProcAddress(hMod, "ShellExecuteExW");
+
+    if (!pShellExecuteExWNative)
+        return FALSE; /* não encontrado */
+		
+	return pShellExecuteExWNative(pExecInfo);
 }
