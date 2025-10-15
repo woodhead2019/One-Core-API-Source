@@ -1513,12 +1513,12 @@ GetCalendarDateFormat(
 )
 {
   int result; // eax
-  WCHAR LCData; // [esp+Ch] [ebp-B0h]
+  WCHAR LCData[LOCALE_NAME_MAX_LENGTH]; // [esp+Ch] [ebp-B0h]
 
-  result = LCIDToLocaleName(lpszLocale, &LCData, 85, 0);
+  result = LCIDToLocaleName(lpszLocale, (LPWSTR)&LCData, sizeof(LCData) / sizeof(WCHAR), 0);
   
   if(result){
-	  return GetCalendarDateFormatEx(&LCData, dwFlags, lpCalDateTime, lpFormat, lpDateStr, cchDate);
+	  return GetCalendarDateFormatEx((LPCWSTR)&LCData, dwFlags, lpCalDateTime, lpFormat, lpDateStr, cchDate);
   }
   return result;
 }

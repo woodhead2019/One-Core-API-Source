@@ -126,7 +126,7 @@ HRESULT WINAPI SLLoadApplicationPolicies(const SLID *app, const SLID *product, D
 
 HRESULT WINAPI SLOpen(HSLC *handle)
 {
-    FIXME("(%p) stub\n", handle );
+    FIXME("SLOpen:: (%p) stub\n", handle );
 
     if (!handle)
         return E_INVALIDARG;
@@ -156,7 +156,7 @@ HRESULT WINAPI SLConsumeRight(HSLC handle, const SLID *app, const SLID *product,
 
 HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product, DWORD flags)
 {
-    FIXME("(%s,%s,%lx) stub\n", wine_dbgstr_guid(app), wine_dbgstr_guid(product), flags);
+    FIXME("SLPersistApplicationPolicies(%s,%s,%lx) stub\n", wine_dbgstr_guid(app), wine_dbgstr_guid(product), flags);
 
     if (!app)
         return E_INVALIDARG;
@@ -177,3 +177,31 @@ HRESULT WINAPI SLUnloadApplicationPolicies(HSLP handle, DWORD flags)
 
     return S_OK;
 }
+
+HRESULT
+WINAPI
+SLGetProductSkuInformation(
+    _In_                        HSLC                        hSLC,
+    _In_                        CONST SLID*                 pProductSkuId,
+    _In_                        PCWSTR                      pwszValueName,
+    _Out_opt_                   SLDATATYPE*                 peDataType,
+    _Out_                       UINT*                       pcbValue,
+    _Outptr_result_bytebuffer_(*pcbValue) PBYTE*            ppbValue
+    )
+{
+    return S_OK;
+}	
+
+HRESULT
+WINAPI
+SLInstallProofOfPurchase(
+    _In_                    HSLC                            hSLC,
+    _In_                    PCWSTR                          pwszPKeyAlgorithm,
+    _In_                    PCWSTR                          pwszPKeyString,
+    _In_                    UINT                            cbPKeySpecificData,
+    _In_reads_bytes_opt_(cbPKeySpecificData) PBYTE          pbPKeySpecificData,
+    _Out_                   SLID*                           pPkeyId
+    )
+{
+    return S_OK;
+}	

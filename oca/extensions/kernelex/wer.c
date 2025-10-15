@@ -34,9 +34,7 @@ GetApplicationRestartSettings(
   _Out_opt_  PDWORD pdwFlags
 )
 {
-	pwzCommandline = NULL;
-	pcchSize = 0;
-	return S_OK;
+    return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
 }
 
 /***********************************************************************

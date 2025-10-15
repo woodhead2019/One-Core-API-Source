@@ -135,29 +135,39 @@ GetConsoleHistoryInfo(
 BOOL 
 WINAPI 
 GetConsoleScreenBufferInfoEx(
-	HANDLE hConsoleOutput, 
-	CONSOLE_SCREEN_BUFFER_INFOEX *ConsoleScreenBufferInfoEx
+    HANDLE hConsoleOutput, 
+    CONSOLE_SCREEN_BUFFER_INFOEX *ConsoleScreenBufferInfoEx
 )
 {
-  BOOL result; 
   CONSOLE_SCREEN_BUFFER_INFO ConsoleScreenBufferInfo; 
+  BOOL isLonghorn;
+  if (!ConsoleScreenBufferInfoEx) {
+    SetLastError(ERROR_INVALID_PARAMETER);
+    return FALSE;
+  }
+  isLonghorn = ConsoleScreenBufferInfoEx->cbSize < sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
 
-  ConsoleScreenBufferInfoEx->cbSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
-  if ( GetConsoleScreenBufferInfo(hConsoleOutput, &ConsoleScreenBufferInfo) )
-  {
-    ConsoleScreenBufferInfoEx->dwSize.X = ConsoleScreenBufferInfo.dwSize.X;
-    ConsoleScreenBufferInfoEx->dwCursorPosition.X = ConsoleScreenBufferInfo.dwCursorPosition.X;
-    ConsoleScreenBufferInfoEx->wAttributes = ConsoleScreenBufferInfo.wAttributes;
-    ConsoleScreenBufferInfoEx->srWindow.Left = ConsoleScreenBufferInfo.srWindow.Left;
-    ConsoleScreenBufferInfoEx->srWindow.Right = ConsoleScreenBufferInfo.srWindow.Right;
-    ConsoleScreenBufferInfoEx->dwMaximumWindowSize.X = ConsoleScreenBufferInfo.dwMaximumWindowSize.X;
-    result = TRUE;
-  }
-  else
-  {
-    result = FALSE;
-  }
-  return result;
+  if (!GetConsoleScreenBufferInfo(hConsoleOutput, &ConsoleScreenBufferInfo))
+    return FALSE;
+  
+  ConsoleScreenBufferInfoEx->dwSize.X = ConsoleScreenBufferInfo.dwSize.X;
+  ConsoleScreenBufferInfoEx->dwSize.Y = ConsoleScreenBufferInfo.dwSize.Y;
+  ConsoleScreenBufferInfoEx->dwMaximumWindowSize.X = ConsoleScreenBufferInfo.dwMaximumWindowSize.X;
+  ConsoleScreenBufferInfoEx->dwMaximumWindowSize.Y = ConsoleScreenBufferInfo.dwMaximumWindowSize.Y;
+  ConsoleScreenBufferInfoEx->dwCursorPosition.X = ConsoleScreenBufferInfo.dwCursorPosition.X;
+  ConsoleScreenBufferInfoEx->dwCursorPosition.Y = ConsoleScreenBufferInfo.dwCursorPosition.Y;
+  ConsoleScreenBufferInfoEx->srWindow.Left = ConsoleScreenBufferInfo.srWindow.Left;
+  ConsoleScreenBufferInfoEx->srWindow.Right = ConsoleScreenBufferInfo.srWindow.Right;
+  ConsoleScreenBufferInfoEx->srWindow.Top = ConsoleScreenBufferInfo.srWindow.Top;
+  ConsoleScreenBufferInfoEx->srWindow.Bottom = ConsoleScreenBufferInfo.srWindow.Bottom;
+  ConsoleScreenBufferInfoEx->wAttributes = ConsoleScreenBufferInfo.wAttributes;
+  
+  // New attributes introduced in Vista:
+  ConsoleScreenBufferInfoEx->wPopupAttributes = ConsoleScreenBufferInfo.wAttributes;
+  if (!isLonghorn) // This attribute is only avaliable starting in Longhorn Post Reset
+    ConsoleScreenBufferInfoEx->bFullscreenSupported = TRUE;
+  
+  return TRUE;
 }
 
 /*--------------------------------------------------------------
@@ -165,45 +175,61 @@ GetConsoleScreenBufferInfoEx(
  *
  * @implemented - new
  */
-BOOL
-WINAPI
+ BOOL 
+WINAPI 
 SetConsoleScreenBufferInfoEx(
-	HANDLE hConsoleOutput, 
-	PCONSOLE_SCREEN_BUFFER_INFOEX lpConsoleScreenBufferInfoEx
+    HANDLE hConsoleOutput, 
+    CONSOLE_SCREEN_BUFFER_INFOEX *ConsoleScreenBufferInfoEx
 )
 {
-     CONSOLE_API_MESSAGE ApiMessage;
-     PCONSOLE_GETSCREENBUFFERINFO ScreenBufferInfoRequest = &ApiMessage.Data.ScreenBufferInfoRequest;
-	
-	  if ( lpConsoleScreenBufferInfoEx->cbSize != sizeof(CONSOLE_SCREEN_BUFFER_INFOEX) )
-	  {
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	  }	
-
-    ScreenBufferInfoRequest->ConsoleHandle = NtCurrentPeb()->ProcessParameters->ConsoleHandle;
-    ScreenBufferInfoRequest->OutputHandle  = hConsoleOutput;
-
-    ScreenBufferInfoRequest->ScreenBufferSize 	   = lpConsoleScreenBufferInfoEx->dwSize;
-    ScreenBufferInfoRequest->CursorPosition   	   = lpConsoleScreenBufferInfoEx->dwCursorPosition;
-    ScreenBufferInfoRequest->Attributes            = lpConsoleScreenBufferInfoEx->wAttributes;
-    ScreenBufferInfoRequest->ViewOrigin.X          = lpConsoleScreenBufferInfoEx->srWindow.Left;
-    ScreenBufferInfoRequest->ViewOrigin.Y          = lpConsoleScreenBufferInfoEx->srWindow.Top;
-    ScreenBufferInfoRequest->MaximumViewSize = lpConsoleScreenBufferInfoEx->dwMaximumWindowSize;
-	
-    CsrClientCallServer((PCSR_API_MESSAGE)&ApiMessage,
-                        NULL,
-                        (CSR_API_NUMBER)0x20258,//Hack because reactos doesn't have imlemented CSR_CREATE_API_NUMBER(CONSRV_SERVERDLL_INDEX, ConsolepSetScreenBufferInfo),
-                        sizeof(*ScreenBufferInfoRequest));	
-						
-    if (!NT_SUCCESS(ApiMessage.Status))
-    {
-        BaseSetLastNTError(ApiMessage.Status);
+    // The winsrv API only supports the SrvSetScreenBufferInfo opcode API starting from LH 5048.
+    // TODO: detect Longhorn 5048 winsrv and dynamically adapt.
+    if (!ConsoleScreenBufferInfoEx) {
+        SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
-    }						
-						
-    return TRUE; 
+    }
+    
+    if (!SetConsoleScreenBufferSize(hConsoleOutput, ConsoleScreenBufferInfoEx->dwSize))
+        return FALSE;
+    if (!SetConsoleWindowInfo(hConsoleOutput, TRUE, ConsoleScreenBufferInfoEx->srWindow))
+        return FALSE;
+    if (!SetConsoleTextAttribute(hConsoleOutput, ConsoleScreenBufferInfoEx->wAttributes))
+        return FALSE;
+    if (!SetConsoleCursorPosition(hConsoleOutput, ConsoleScreenBufferInfoEx->dwCursorPosition))
+        return FALSE;
+    
+    return TRUE;
 }
+// BOOL 
+// WINAPI 
+// SetConsoleScreenBufferInfoEx(
+    // HANDLE hConsoleOutput, 
+    // CONSOLE_SCREEN_BUFFER_INFOEX *lpConsoleScreenBufferInfoEx
+// )
+// {
+  // // CONSOLE_SCREEN_BUFFER_INFO ConsoleScreenBufferInfo; 
+  // // if (!ConsoleScreenBufferInfoEx) {
+    // // SetLastError(ERROR_INVALID_PARAMETER);
+    // // return FALSE;
+  // // }
+  
+  // // ConsoleScreenBufferInfo.dwSize.X = ConsoleScreenBufferInfoEx->dwSize.X;
+  // // ConsoleScreenBufferInfo.dwSize.Y = ConsoleScreenBufferInfoEx->dwSize.Y;
+  // // ConsoleScreenBufferInfo.dwMaximumWindowSize.X = ConsoleScreenBufferInfoEx->dwMaximumWindowSize.X;
+  // // ConsoleScreenBufferInfo.dwMaximumWindowSize.Y = ConsoleScreenBufferInfoEx->dwMaximumWindowSize.Y;
+  // // ConsoleScreenBufferInfo.dwCursorPosition.X = ConsoleScreenBufferInfoEx->dwCursorPosition.X;
+  // // ConsoleScreenBufferInfo.dwCursorPosition.Y = ConsoleScreenBufferInfoEx->dwCursorPosition.Y;
+  // // ConsoleScreenBufferInfo.srWindow.Left = ConsoleScreenBufferInfoEx->srWindow.Left;
+  // // ConsoleScreenBufferInfo.srWindow.Right = ConsoleScreenBufferInfoEx->srWindow.Right;
+  // // ConsoleScreenBufferInfo.srWindow.Top = ConsoleScreenBufferInfoEx->srWindow.Top;
+  // // ConsoleScreenBufferInfo.srWindow.Bottom = ConsoleScreenBufferInfoEx->srWindow.Bottom;
+  // // ConsoleScreenBufferInfo.wAttributes = ConsoleScreenBufferInfoEx->wAttributes;
+  
+  // // return SetConsoleScreenBufferInfo(hConsoleOutput, &ConsoleScreenBufferInfo);
+    // DbgPrint("SetConsoleScreenBufferInfoEx(0x%p, 0x%p) UNIMPLEMENTED!\n", hConsoleOutput, lpConsoleScreenBufferInfoEx);
+    // SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+    // return FALSE;  
+// }
 
 DWORD 
 WINAPI 

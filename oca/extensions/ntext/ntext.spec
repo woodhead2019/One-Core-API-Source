@@ -1530,6 +1530,7 @@
 @ stdcall LdrLoadAlternateResourceModuleEx(long ptr ptr)
 @ stdcall LdrQueryModuleServiceTags(ptr ptr long)
 @ stdcall LdrRegisterDllNotification(long ptr ptr ptr) ;broken minichrome (chromium fork)
+@ stdcall LdrResSearchResource(ptr ptr long long ptr ptr ptr ptr)
 @ stdcall LdrUnregisterDllNotification(ptr) ;broken minichrome, high cpu usage
 @ stdcall NtAlpcAcceptConnectPort(ptr ptr long ptr ptr ptr ptr ptr long) 
 @ stdcall NtAlpcCancelMessage(ptr long ptr)	

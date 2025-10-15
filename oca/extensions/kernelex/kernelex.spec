@@ -1909,3 +1909,5 @@
 
 
 @ stdcall -stub QueryWin31IniFilesMappedToRegistry(long wstr long ptr)
+
+@ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10

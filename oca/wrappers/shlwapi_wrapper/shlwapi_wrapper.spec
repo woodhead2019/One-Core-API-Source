@@ -869,7 +869,6 @@
 576 stdcall -arch=x86_64 ColorAdjustLuma(long long long)
 577 stdcall -arch=x86_64 ColorHLSToRGB(long long long)
 578 stdcall -arch=x86_64 ColorRGBToHLS(long ptr ptr ptr)
-#579 stdcall -arch=x86_64 -private DllGetVersion(ptr)
 580 stdcall -arch=x86_64 GetMenuPosFromID(ptr long)
 581 stdcall -arch=x86_64 HashData(ptr long ptr long)
 582 stdcall -arch=x86_64 IntlStrEqWorkerA(long str str long) StrIsIntlEqualA
@@ -1151,6 +1150,8 @@
 861 varargs -arch=x86_64 wnsprintfW(ptr long wstr)
 862 stdcall -arch=x86_64 wvnsprintfA(ptr long str ptr)
 863 stdcall -arch=x86_64 wvnsprintfW(ptr long wstr ptr)
+
+@ stdcall -private DllGetVersion(ptr)
 
 #Missing WinXP SP1
 742 stdcall -i386 SHRegGetValueA(long str str long ptr ptr ptr) advapi32.RegGetValueA

@@ -232,8 +232,8 @@
 237 stdcall NdrNonEncapsulatedUnionMarshall(ptr ptr ptr)
 238 stdcall NdrNonEncapsulatedUnionMemorySize(ptr ptr)
 239 stdcall NdrNonEncapsulatedUnionUnmarshall(ptr ptr ptr long)
-240 stub NdrNsGetBuffer
-241 stub NdrNsSendReceive
+240 stdcall -stub NdrNsGetBuffer(ptr long ptr)
+241 stdcall -stub NdrNsSendReceive(ptr ptr ptr)
 242 stdcall NdrOleAllocate(long)
 243 stdcall NdrOleFree(ptr)
 244 stub NdrOutInit

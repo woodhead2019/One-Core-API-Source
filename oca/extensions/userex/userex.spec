@@ -797,7 +797,6 @@
 @ stdcall MBToWCSEx(long str long wstr long long)
 @ stdcall OpenThreadDesktop(long long long long)
 @ stdcall PaintMonitor(ptr ptr ptr) ;not-implemented
-@ stdcall PrivateRegisterICSProc(ptr) userbase.PrivateRegisterICSProc
 @ stdcall PhysicalToLogicalPoint(ptr ptr)
 @ stdcall RegisterErrorReportingDialog(ptr long)
 @ stdcall RegisterFrostWindow(ptr long)

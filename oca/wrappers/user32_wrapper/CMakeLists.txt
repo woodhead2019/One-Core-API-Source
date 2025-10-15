@@ -1,4 +1,3 @@
-
 add_definitions(-D__WINESRC__)
 remove_definitions(-D_WIN32_WINNT=0x502)
 add_definitions(-D_WIN32_WINNT=0x602)	
@@ -19,27 +18,9 @@ elseif(ARCH STREQUAL "i386")
 endif()
 
 list(APPEND SOURCE
-	clipboard.c
-	cursor.c
-	desktop.c
-	display.c
-	dpi.c
-	dwm.c
 	exticon.c
 	hooks.c
 	icon.c
-	input.c
-	magnification
-    main.c
-	message.c
-	misc.c
-	notification.c
-	process.c
-	shutdown.c
-	sysparams.c
-	timer.c
-	touch.c
-	window.c
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/user32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/user32_wrapper.def)
@@ -47,7 +28,7 @@ list(APPEND SOURCE
 add_library(user32_wrapper SHARED ${SOURCE})
 set_module_type(user32_wrapper win32dll ENTRYPOINT DllMain)
 
-target_link_libraries(user32_wrapper wine uuid)
+target_link_libraries(user32_wrapper wine uuid user_shared ${PSEH_LIB})
 
 add_delay_importlibs(user32_wrapper libpng)
 

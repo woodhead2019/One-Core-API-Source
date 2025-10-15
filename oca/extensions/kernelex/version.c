@@ -1684,3 +1684,43 @@ GetVersionExW(IN LPOSVERSIONINFOW lpVersionInformation)
     lpVersionInformation->dwPlatformId        = VER_PLATFORM_WIN32_NT;
 	return TRUE;
 }
+
+/*
+ * @implemented
+ */
+BOOL
+WINAPI
+GetVersionExL(IN LPOSVERSIONINFOW lpVersionInformation)
+{
+    OSVERSIONINFOEXW VersionInformation;
+    LPOSVERSIONINFOEXW lpVersionInformationEx;
+
+    if ((lpVersionInformation->dwOSVersionInfoSize != sizeof(OSVERSIONINFOW)) &&
+        (lpVersionInformation->dwOSVersionInfoSize != sizeof(OSVERSIONINFOEXW)))
+    {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return FALSE;
+    }
+
+    VersionInformation.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+
+    if (!GetVersionExW((LPOSVERSIONINFOW)&VersionInformation)) return FALSE;
+
+    /* Copy back fields that match both supported structures */
+    lpVersionInformation->dwMajorVersion = 5;
+    lpVersionInformation->dwMinorVersion = 1;
+    lpVersionInformation->dwBuildNumber = 2600;
+    lpVersionInformation->dwPlatformId = VersionInformation.dwPlatformId;
+
+    if (lpVersionInformation->dwOSVersionInfoSize == sizeof(OSVERSIONINFOEXA))
+    {
+        lpVersionInformationEx = (PVOID)lpVersionInformation;
+        lpVersionInformationEx->wServicePackMajor = VersionInformation.wServicePackMajor;
+        lpVersionInformationEx->wServicePackMinor = VersionInformation.wServicePackMinor;
+        lpVersionInformationEx->wSuiteMask = VersionInformation.wSuiteMask;
+        lpVersionInformationEx->wProductType = VersionInformation.wProductType;
+        lpVersionInformationEx->wReserved = VersionInformation.wReserved;
+    }
+
+    return TRUE;
+}

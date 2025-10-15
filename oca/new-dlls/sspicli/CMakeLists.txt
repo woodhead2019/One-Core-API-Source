@@ -14,5 +14,5 @@ list(APPEND SOURCE
 add_library(sspicli SHARED ${SOURCE})
 set_module_type(sspicli win32dll)
 target_link_libraries(sspicli wine)
-add_importlibs(sspicli advapi32 secur32 msvcrt kernel32 ntext)
+add_importlibs(sspicli advapi32 secur32 msvcrt netapi32 kernel32 ntext)
 add_cd_file(TARGET sspicli DESTINATION reactos/system32 FOR all)

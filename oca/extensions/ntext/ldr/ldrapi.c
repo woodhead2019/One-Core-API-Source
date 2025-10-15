@@ -599,3 +599,86 @@ LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
         }
     }
 }
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+LdrResSearchResource(
+    _In_ PVOID File,
+    _In_ CONST ULONG_PTR* ResIds,
+    _In_ ULONG ResIdCount,
+    _In_ ULONG Flags,
+    _Out_ LPVOID *Resource,
+    _Out_ ULONG_PTR *Size,
+    _In_opt_ USHORT *FoundLanguage,
+    _In_opt_ ULONG *FoundLanguageLength)
+{
+    LDR_RESOURCE_INFO info;
+    PIMAGE_RESOURCE_DATA_ENTRY pResDataEntry = NULL;
+    PVOID dataPtr = NULL;
+    ULONG dataSize = 0;
+    NTSTATUS status;
+
+    /* Validações básicas */
+    if (File == NULL || ResIds == NULL || ResIdCount == 0 || ResIdCount > 3)
+        return STATUS_INVALID_PARAMETER;
+
+    /* ao menos um dos out params deve ser válido para que façamos algo útil */
+    if (Resource == NULL && Size == NULL && FoundLanguage == NULL && FoundLanguageLength == NULL)
+        return STATUS_INVALID_PARAMETER;
+
+    /* Preenche info com zeros e depois com os IDs fornecidos */
+    info.Type = 0;
+    info.Name = 0;
+    info.Language = 0;
+
+    if (ResIdCount >= 1) info.Type = (ULONG)ResIds[0];
+    if (ResIdCount >= 2) info.Name = (ULONG)ResIds[1];
+    if (ResIdCount >= 3) info.Language = (ULONG)ResIds[2];
+
+    /* Flags são atualmente ignorados; estenda conforme necessário */
+
+    /* Chama LdrFindResource_U para localizar o IMAGE_RESOURCE_DATA_ENTRY */
+    status = LdrFindResource_U(File, &info, ResIdCount, &pResDataEntry);
+    if (!NT_SUCCESS(status)) {
+        return status; /* recurso não encontrado ou erro */
+    }
+
+    /* Se o chamador quer apenas o tamanho e pResDataEntry já tem 'Size', evitamos LdrAccessResource
+       — porém para compatibilidade, vou preferir usar LdrAccessResource se o ponteiro for necessário. */
+
+    if (Resource == NULL) {
+        /* Só precisa do tamanho (ou linguagem) — retornamos a partir de pResDataEntry se possível */
+        if (Size) {
+            *Size = (ULONG_PTR)(pResDataEntry->Size);
+        }
+        if (FoundLanguage) {
+            *FoundLanguage = (USHORT)info.Language;
+        }
+        if (FoundLanguageLength) {
+            *FoundLanguageLength = sizeof(USHORT);
+        }
+        return STATUS_SUCCESS;
+    }
+
+    /* Acesse os dados reais do recurso (ponteiro + tamanho) */
+    status = LdrAccessResource(File, pResDataEntry, &dataPtr, &dataSize);
+    if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    /* Preenche parâmetros de saída */
+    if (Resource)
+        *Resource = dataPtr;
+    if (Size)
+        *Size = (ULONG_PTR)dataSize;
+
+    if (FoundLanguage) {
+        *FoundLanguage = (USHORT)info.Language;
+    }
+    if (FoundLanguageLength) {
+        *FoundLanguageLength = sizeof(USHORT);
+    }
+
+    return STATUS_SUCCESS;
+}

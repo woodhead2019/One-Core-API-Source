@@ -752,38 +752,38 @@
 @ stdcall -stub CloseTouchInputHandle(ptr)
 @ stdcall -stub DisplayConfigGetDeviceInfo(ptr)
 @ stdcall -stub GetDisplayConfigBufferSizes(long ptr ptr)
-744 stub QueryDisplayConfig
-745 stub CreateWindowInBand
-746 stub GetWindowBand
-747 stub RegisterSessionPort
-748 stub EnableMouseInPointer
-750 stub GetCurrentInputMessageSource
-751 stub GetPhysicalCursorPos
-752 stub SetPhysicalCursorPos
-753 stub GetWindowDisplayAffinity
-754 stub LogicalToPhysicalPoint
-755 stub SetWindowDisplayAffinity
-756 stub GetGestureConfig
-757 stub GetGestureInfo
-758 stub GetTouchInputInfo
-759 stub IsTouchWindow
-760 stub SetCoalescableTimer
-761 stub ShutdownBlockReasonCreate
-762 stub ShutdownBlockReasonDestroy
-763 stub IsProcessDPIAware
-@ stdcall -stub RegisterPowerSettingNotification(ptr ptr long)
-@ stdcall -stub RegisterTouchWindow(ptr)
-@ stdcall -stub SetGestureConfig(ptr long long ptr long)
-764 stub SetProcessDPIAware
-765 stub SetWindowCompositionAttribute
-766 stdcall GetDpiForMonitorInternal(long long ptr ptr)
-767 stdcall GetProcessDpiAwarenessInternal(long ptr)
-768 stdcall SetProcessDpiAwarenessInternal(long)
-@ stdcall -stub SetThreadDpiAwarenessContext(ptr)
-@ stdcall -stub CloseGestureInfoHandle(ptr)
-@ stdcall -stub DisplayConfigSetDeviceInfo(ptr)
-@ stdcall -stub UnregisterPowerSettingNotification(ptr)
-@ stdcall -stub UnregisterTouchWindow(ptr)
-@ stdcall -stub GetPointerDevice(long ptr)
-@ stdcall -stub GetPointerDevices(ptr ptr)
-@ stdcall -stub RegisterPointerDeviceNotifications(ptr long)
+; 744 stub QueryDisplayConfig
+; 745 stub CreateWindowInBand
+; 746 stub GetWindowBand
+; 747 stub RegisterSessionPort
+; 748 stub EnableMouseInPointer
+; 750 stub GetCurrentInputMessageSource
+; 751 stub GetPhysicalCursorPos
+; 752 stub SetPhysicalCursorPos
+; 753 stub GetWindowDisplayAffinity
+; 754 stub LogicalToPhysicalPoint
+; 755 stub SetWindowDisplayAffinity
+; 756 stub GetGestureConfig
+; 757 stub GetGestureInfo
+; 758 stub GetTouchInputInfo
+; 759 stub IsTouchWindow
+; 760 stub SetCoalescableTimer
+; 761 stub ShutdownBlockReasonCreate
+; 762 stub ShutdownBlockReasonDestroy
+; 763 stub IsProcessDPIAware
+; @ stdcall -stub RegisterPowerSettingNotification(ptr ptr long)
+; @ stdcall -stub RegisterTouchWindow(ptr)
+; @ stdcall -stub SetGestureConfig(ptr long long ptr long)
+; 764 stub SetProcessDPIAware
+; 765 stub SetWindowCompositionAttribute
+; 766 stdcall GetDpiForMonitorInternal(long long ptr ptr)
+; 767 stdcall GetProcessDpiAwarenessInternal(long ptr)
+; 768 stdcall SetProcessDpiAwarenessInternal(long)
+; @ stdcall -stub SetThreadDpiAwarenessContext(ptr)
+; @ stdcall -stub CloseGestureInfoHandle(ptr)
+; @ stdcall -stub DisplayConfigSetDeviceInfo(ptr)
+; @ stdcall -stub UnregisterPowerSettingNotification(ptr)
+; @ stdcall -stub UnregisterTouchWindow(ptr)
+; @ stdcall -stub GetPointerDevice(long ptr)
+; @ stdcall -stub GetPointerDevices(ptr ptr)
+; @ stdcall -stub RegisterPointerDeviceNotifications(ptr long)

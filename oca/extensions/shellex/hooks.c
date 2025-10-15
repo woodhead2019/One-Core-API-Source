@@ -50,18 +50,14 @@ typedef HINSTANCE (WINAPI *PFNSHELLEXECUTEA)(
 	INT iShowCmd
 );
 
-typedef BOOL (WINAPI *PFNSHELLEXECUTEEXA)(
-	SHELLEXECUTEINFOA *pExecInfo
-);
+typedef BOOL (WINAPI *PFN_ShellExecuteExA_Native)(SHELLEXECUTEINFOA *pExecInfo);
 
-typedef BOOL (WINAPI *PFNSHELLEXECUTEEXW)(
-	SHELLEXECUTEINFOW *pExecInfo
-);
+typedef BOOL (WINAPI *PFN_ShellExecuteExW_Native)(SHELLEXECUTEINFOW *pExecInfo);
 
-typedef HRESULT (WINAPI *PFNDLLGETCLASSOBJECT)(
-	REFCLSID rclsid, 
-	REFIID iid, 
-	LPVOID *ppv
+typedef HRESULT (WINAPI *PFN_DllGetClassObject_Native)(
+    REFCLSID rclsid,
+    REFIID   riid,
+    LPVOID  *ppv
 );
 
 HINSTANCE WINAPI ShellExecuteANative(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
@@ -270,65 +266,76 @@ CheckIfIsOSExec(){
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
  */
-HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+HRESULT WINAPI DllGetClassObject(
+    REFCLSID rclsid,
+    REFIID iid,
+    LPVOID *ppv
+)
 {
-	IClassFactory * pcf = NULL;
-	HRESULT	hres;
-	int i;
-    PFNDLLGETCLASSOBJECT pDllGetClassObjectNative = NULL;
-    HMODULE hMod = NULL;
-	
-	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
+    static PFN_DllGetClassObject_Native pfnNative = NULL;
+    HMODULE hShell32 = NULL;
+    HRESULT hres;
+    IClassFactory *pcf = NULL;
+    int i;
 
-	if (!ppv) return E_INVALIDARG;
-	*ppv = NULL;
+    if (!ppv)
+        return E_INVALIDARG;
 
-	/* search our internal interface table */
-	for(i=0;InterfaceTable[i].clsid;i++) {
-	    if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
-	        //TRACE("index[%u]\n", i);
-			if(IsEqualIID(&CLSID_ShellLink, rclsid))
-			{
-				if(!CheckIfIsOSExec()){
-					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-					break;
-				}else{
-					continue;
-				}				
-			}else{
-				pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-				break;				
-			}
-	    }			
-	}		
+    *ppv = NULL;
 
-    if (!pcf) {
-		hMod = GetModuleHandleW(shellName);
-			
-		if (!hMod)
-			hMod = LoadLibraryW(shellName);
-		
-		if(!hMod)
-			return S_OK;
+    /* Primeiro tenta localizar a CLSID na tabela interna */
+    for (i = 0; InterfaceTable[i].clsid; i++) {
+        if (IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
 
-		if (hMod)
-			pDllGetClassObjectNative = (PFNDLLGETCLASSOBJECT)GetProcAddress(hMod, "DllGetClassObjectNative");
-		
-		if(!pDllGetClassObjectNative)
-			pDllGetClassObjectNative = (PFNDLLGETCLASSOBJECT)GetProcAddress(hMod, "DllGetClassObject");
+            /* Caso especial: CLSID_ShellLink e checagem de OS */
+            if (IsEqualIID(&CLSID_ShellLink, rclsid)) {
+                if (!CheckIfIsOSExec()) {
+                    pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+                    break;
+                } else {
+                    continue;
+                }
+            } else {
+                pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+                break;
+            }
+        }
+    }
 
-		if (!pDllGetClassObjectNative)
-			return S_OK; /* não encontrado */			
+    /* Se encontrou na tabela interna, usa o factory interno */
+    if (pcf) {
+        hres = IClassFactory_QueryInterface(pcf, iid, ppv);
+        IClassFactory_Release(pcf);
+        return hres;
+    }
 
-	    //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
-	    return pDllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
-	}
+    /* Senão, tenta chamar dinamicamente o DllGetClassObject nativo */
+    if (pfnNative == NULL) {
+        hShell32 = GetModuleHandleW(L"shell32.dll");
+        if (!hShell32)
+            hShell32 = LoadLibraryW(L"shell32.dll");
 
-	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
-	IClassFactory_Release(pcf);
+        if (hShell32) {
+            FARPROC proc;
+            proc = GetProcAddress(hShell32, "DllGetClassObjectNative");
+            if (proc)
+                pfnNative = (PFN_DllGetClassObject_Native)proc;
+            else {
+                /* fallback: função padrão */
+                proc = GetProcAddress(hShell32, "DllGetClassObject");
+                if (proc)
+                    pfnNative = (PFN_DllGetClassObject_Native)proc;
+            }
+        }
 
-	//TRACE("-- pointer to class factory: %p\n",*ppv);
-	return hres;
+        if (pfnNative == NULL) {
+            OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
+            return CLASS_E_CLASSNOTAVAILABLE;
+        }
+    }
+
+    /* Chama o DllGetClassObject real da shell32 */
+    return pfnNative(rclsid, iid, ppv);
 }
 
 /**************************************************************************
@@ -802,88 +809,155 @@ void remove_extended_prefix_w(LPCWSTR input, LPWSTR output, size_t output_size) 
 // }
 
 BOOL WINAPI ShellExecuteExA(
-  SHELLEXECUTEINFOA *pExecInfo
+    SHELLEXECUTEINFOA *pExecInfo
 )
 {
-    // static const char prefix[] = "\\\\?\\";
-    // char cleanPath[MAX_PATH];
-	
-	// //DbgPrint("ShellExecuteExAInternal called\n");
+    static PFN_ShellExecuteExA_Native pfnNative = NULL;
+    HMODULE hShell32 = NULL;
+    FARPROC proc = NULL;
+    BOOL result = FALSE;
+    const char prefix[] = "\\\\?\\";
+    const char *originalFile = NULL;
+    char *heapCleanPath = NULL;
 
-    // if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
-		// DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
-        // strncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
-        // cleanPath[MAX_PATH - 1] = '\0';
-        // pExecInfo->lpFile = cleanPath;
-    // }	
-	
-	// return ShellExecuteExANative(pExecInfo);
-	
-    static const char prefix[] = "\\\\?\\";
-    char cleanPath[MAX_PATH];
-    PFNSHELLEXECUTEEXA pShellExecuteExANative = NULL;
-    HMODULE hMod = NULL;
+    if (!pExecInfo) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
 
-    if (pExecInfo && pExecInfo->lpFile && strncmp(pExecInfo->lpFile, prefix, 4) == 0) {
-		DbgPrint("ShellExecuteExAInternal:: original file: %s\n", pExecInfo->lpFile);		
-        strncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
-        cleanPath[MAX_PATH - 1] = '\0';
-        pExecInfo->lpFile = cleanPath;
-    }	
-	
-	hMod = GetModuleHandleW(shellName);
-		
-    if (!hMod)
-        hMod = LoadLibraryW(shellName);
-	
-	if(!hMod)
-		return FALSE;
+    /* Se a função nativa ainda não foi resolvida, tenta resolver agora */
+    if (pfnNative == NULL) {
+        /* Primeiro tenta obter o módulo já carregado */
+        hShell32 = GetModuleHandleA("shell32.dll");
+        if (hShell32) {
+            proc = GetProcAddress(hShell32, "ShellExecuteExANative");
+            if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
+        }
 
-    if (hMod)
-        pShellExecuteExANative = (PFNSHELLEXECUTEEXA)GetProcAddress(hMod, "ShellExecuteExWNative");
-	
-	if(!pShellExecuteExANative)
-		pShellExecuteExANative = (PFNSHELLEXECUTEEXA)GetProcAddress(hMod, "ShellExecuteExW");
+        /* Se não encontrou, tenta carregar shell32 e resolver */
+        if (pfnNative == NULL) {
+            hShell32 = LoadLibraryA("shell32.dll");
+            if (hShell32) {
+                proc = GetProcAddress(hShell32, "ShellExecuteExANative");
+                if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
+                /* Note: não liberamos o module handle carregado com LoadLibrary
+                   porque a shell32 é uma dll de sistema — deixar o refcount
+                   não causa problema em geral. Se quiser, pode FreeLibrary aqui,
+                   mas então o ponteiro seria inválido. */
+            }
+        }
 
-    if (!pShellExecuteExANative)
-        return FALSE; /* não encontrado */
-		
-	return pShellExecuteExANative(pExecInfo);	
+        /* Se não conseguiu resolver, falha com erro apropriado */
+        if (pfnNative == NULL) {
+            /* Não foi possível achar a implementação nativa */
+            /* Para depuração: */
+            OutputDebugStringA("ShellExecuteExA: não encontrou ShellExecuteExANative em shell32.dll\n");
+            SetLastError(ERROR_PROC_NOT_FOUND);
+            return FALSE;
+        }
+    }
+
+    /* Se houver path com prefixo \\?\ - aloca um buffer em heap e usa-o */
+    originalFile = pExecInfo->lpFile;
+    if (originalFile && lstrlenA(originalFile) >= 4 && strncmp(originalFile, prefix, 4) == 0) {
+        SIZE_T needed = (lstrlenA(originalFile + 4) + 1);
+        heapCleanPath = (char *)HeapAlloc(GetProcessHeap(), 0, needed);
+        if (heapCleanPath == NULL) {
+            SetLastError(ERROR_OUTOFMEMORY);
+            return FALSE;
+        }
+        /* copia a versão "limpa" para o heap */
+        lstrcpyA(heapCleanPath, originalFile + 4);
+        /* aponta para o buffer alocado */
+        pExecInfo->lpFile = heapCleanPath;
+        /* opcional para debug */
+        // OutputDebugStringA("ShellExecuteExA: usando caminho limpo alocado no heap\n");
+    }
+
+    /* Chama a função nativa */
+    result = pfnNative(pExecInfo);
+
+    /* Restaura e libera o buffer heap se tivermos alocado */
+    if (heapCleanPath) {
+        /* restaura o ponteiro original para não mudar o comportamento do chamador */
+        pExecInfo->lpFile = originalFile;
+        HeapFree(GetProcessHeap(), 0, heapCleanPath);
+    }
+
+    return result;
 }
 
 //Intl.cpl require this hook with original name, don't accept alternate name
 BOOL WINAPI ShellExecuteExW(
-  SHELLEXECUTEINFOW *pExecInfo
+    SHELLEXECUTEINFOW *pExecInfo
 )
 {
-    static const wchar_t prefix[] = L"\\\\?\\";
-    wchar_t cleanPath[MAX_PATH];
-    PFNSHELLEXECUTEEXW pShellExecuteExWNative = NULL;
-    HMODULE hMod = NULL;
+    static PFN_ShellExecuteExW_Native pfnNative = NULL;
+    HMODULE hShell32 = NULL;
+    FARPROC proc = NULL;
+    BOOL result = FALSE;
+    const wchar_t prefix[] = L"\\\\?\\";
+    const wchar_t *originalFile = NULL;
+    wchar_t *heapCleanPath = NULL;
 
-    if (pExecInfo && pExecInfo->lpFile && wcsncmp(pExecInfo->lpFile, prefix, 4) == 0) {
-		DbgPrint("ShellExecuteExWInternal:: original file: %ws\n", pExecInfo->lpFile);			
-        wcsncpy(cleanPath, pExecInfo->lpFile + 4, MAX_PATH - 1);
-        cleanPath[MAX_PATH - 1] = L'\0';
-        pExecInfo->lpFile = cleanPath;
+    if (!pExecInfo) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
     }
-	
-	hMod = GetModuleHandleW(shellName);
-		
-    if (!hMod)
-        hMod = LoadLibraryW(shellName);
-	
-	if(!hMod)
-		return FALSE;
 
-    if (hMod)
-        pShellExecuteExWNative = (PFNSHELLEXECUTEEXW)GetProcAddress(hMod, "ShellExecuteExWNative");
-	
-	if(!pShellExecuteExWNative)
-		pShellExecuteExWNative = (PFNSHELLEXECUTEEXW)GetProcAddress(hMod, "ShellExecuteExW");
+    /* Resolver função nativa uma única vez */
+    if (pfnNative == NULL) {
+        hShell32 = GetModuleHandleW(L"shell32.dll");
+        if (hShell32) {
+            proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
+            if (proc) pfnNative = (PFN_ShellExecuteExW_Native)proc;
+        }
 
-    if (!pShellExecuteExWNative)
-        return FALSE; /* não encontrado */
-		
-	return pShellExecuteExWNative(pExecInfo);
+        if (pfnNative == NULL) {
+            if (!hShell32)
+                hShell32 = LoadLibraryW(L"shell32.dll");
+            if (hShell32) {
+                proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
+                if (proc)
+                    pfnNative = (PFN_ShellExecuteExW_Native)proc;
+                else {
+                    /* Fallback para ShellExecuteExW normal */
+                    proc = GetProcAddress(hShell32, "ShellExecuteExW");
+                    if (proc)
+                        pfnNative = (PFN_ShellExecuteExW_Native)proc;
+                }
+            }
+        }
+
+        if (pfnNative == NULL) {
+            OutputDebugStringW(L"ShellExecuteExW: não encontrou ShellExecuteExWNative em shell32.dll\n");
+            SetLastError(ERROR_PROC_NOT_FOUND);
+            return FALSE;
+        }
+    }
+
+    /* Limpa o prefixo \\?\ se presente */
+    originalFile = pExecInfo->lpFile;
+    if (originalFile && wcsncmp(originalFile, prefix, 4) == 0) {
+        SIZE_T needed = (lstrlenW(originalFile + 4) + 1) * sizeof(wchar_t);
+        heapCleanPath = (wchar_t *)HeapAlloc(GetProcessHeap(), 0, needed);
+        if (!heapCleanPath) {
+            SetLastError(ERROR_OUTOFMEMORY);
+            return FALSE;
+        }
+        lstrcpyW(heapCleanPath, originalFile + 4);
+        pExecInfo->lpFile = heapCleanPath;
+        // OutputDebugStringW(L"ShellExecuteExW: usando caminho limpo no heap\n");
+    }
+
+    /* Chama a função real */
+    result = pfnNative(pExecInfo);
+
+    /* Restaura e libera */
+    if (heapCleanPath) {
+        pExecInfo->lpFile = originalFile;
+        HeapFree(GetProcessHeap(), 0, heapCleanPath);
+    }
+
+    return result;
 }

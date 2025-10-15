@@ -10,6 +10,7 @@
 @ stdcall -stub ChangeAccountPasswordW(wstr wstr wstr wstr wstr long long ptr)
 @ stdcall CompleteAuthToken(ptr ptr) secur32.CompleteAuthToken
 @ stdcall CredMarshalTargetInfo(ptr ptr ptr) secur32.CredMarshalTargetInfo
+@ stdcall CredParseUserNameWithType(wstr ptr ptr long)
 @ stdcall CredUnmarshalTargetInfo(long long long long) secur32.CredUnmarshalTargetInfo
 @ stdcall DecryptMessage(ptr ptr long ptr) secur32.DecryptMessage
 @ stdcall DeleteSecurityContext(ptr) secur32.DeleteSecurityContext

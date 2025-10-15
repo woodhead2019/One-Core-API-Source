@@ -79,7 +79,7 @@
 @ stub I_NetLogonSendToSam
 @ stub I_NetLogonUasLogoff
 @ stub I_NetLogonUasLogon
-@ stdcall -stub I_NetNameCanonicalize(wstr wstr wstr long long long)
+@ stdcall I_NetNameCanonicalize(wstr wstr wstr long long long)
 @ stdcall I_NetNameCompare(ptr wstr wstr ptr ptr)
 @ stdcall I_NetNameValidate(ptr wstr ptr ptr)
 @ stub I_NetPathCanonicalize

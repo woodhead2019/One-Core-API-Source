@@ -85,7 +85,7 @@
 @ stdcall ChangeAccountPasswordW(wstr wstr wstr wstr wstr long long ptr) sspicli.ChangeAccountPasswordW
 #@ stdcall CloseLsaPerformanceData()
 #@ stdcall CollectLsaPerformanceData(wstr ptr ptr ptr)
-#@ stdcall CredParseUserNameWithType(wstr ptr ptr long)
+@ stdcall CredParseUserNameWithType(wstr ptr ptr long)
 #@ stdcall OpenLsaPerformanceData(ptr)
 @ stdcall SeciAllocateAndSetCallFlags(ptr long) sspicli.SeciAllocateAndSetCallFlags
 @ stdcall SeciAllocateAndSetIPAddress(ptr long long) sspicli.SeciAllocateAndSetIPAddress

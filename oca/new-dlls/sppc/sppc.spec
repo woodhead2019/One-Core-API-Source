@@ -43,11 +43,11 @@
 @ stub SLGetPKeyInformation
 @ stdcall SLGetPolicyInformation(ptr wstr ptr ptr ptr)
 @ stdcall SLGetPolicyInformationDWORD(ptr wstr ptr)
-@ stub SLGetProductSkuInformation
+@ stdcall SLGetProductSkuInformation(ptr ptr wstr ptr ptr ptr)
 @ stdcall SLGetSLIDList(ptr long ptr long ptr ptr)
 @ stub SLGetServiceInformation
 @ stdcall SLInstallLicense(ptr long ptr ptr)
-@ stub SLInstallProofOfPurchase
+@ stdcall SLInstallProofOfPurchase(ptr wstr wstr long ptr ptr)
 @ stub SLInstallProofOfPurchaseEx
 @ stub SLIsGenuineLocalEx
 @ stdcall SLLoadApplicationPolicies(ptr ptr long ptr)

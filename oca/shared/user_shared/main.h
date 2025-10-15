@@ -68,10 +68,17 @@
 #define SPI_SETDOCKMOVING  0x0091
 #define SPI_SETSNAPSIZING  0x008F
 #define SPI_SETWINARRANGING  0x0083
+#define ZBID_DEFAULT 0
+#define ZBID_DESKTOP 1
 
-typedef void *(WINAPI *RegisterCallback)(SIZE_T sizeOne, SIZE_T sizeTwo, int flags);
+#define SPI_GETDISABLEOVERLAPPEDCONTENT 0x1040
+#define SPI_SETDISABLEOVERLAPPEDCONTENT 0x1041
+#define SPI_GETCLIENTAREAANIMATION 0x1042
+#define SPI_SETCLIENTAREAANIMATION 0x1043
 
-static RegisterCallback gpICSProc = NULL;
+typedef LPBITMAPINFOHEADER(*PCONVERT_TO_DIB_PROC)(LPBITMAPINFOHEADER lpPngData, DWORD dwSize);
+
+static PCONVERT_TO_DIB_PROC gpICSProc = NULL;
 
 static BOOL gfdDPIProcess = FALSE;
 
@@ -106,6 +113,8 @@ PRTL_CRITICAL_SECTION gcsHdc;
 LPCRITICAL_SECTION lpCriticalSection;
 
 HANDLE pUserHeap;
+
+BOOL IsNativePNGConversor;
 
 typedef struct tagMAGCOLOREFFECT;
 
@@ -218,9 +227,9 @@ typedef enum tagINPUT_MESSAGE_ORIGIN_ID {
 } INPUT_MESSAGE_ORIGIN_ID;
 
 typedef struct tagINPUT_MESSAGE_SOURCE {
-  INPUT_MESSAGE_DEVICE_TYPE deviceType;
-  INPUT_MESSAGE_ORIGIN_ID   originId;
-} INPUT_MESSAGE_SOURCE;
+  INPUT_MESSAGE_DEVICE_TYPE DeviceType;
+  INPUT_MESSAGE_ORIGIN_ID   OriginId;
+} INPUT_MESSAGE_SOURCE, *PINPUT_MESSAGE_SOURCE;
 
 typedef struct tagCHANGEFILTERSTRUCT {
   DWORD cbSize;
@@ -456,8 +465,7 @@ typedef struct _WINCOMPATTRDATA
 BOOL 
 WINAPI 
 GetCurrentInputMessageSource(
-	INPUT_MESSAGE_DEVICE_TYPE *this, 
-	BOOL otherParamter
+	PINPUT_MESSAGE_SOURCE this
 );
 
 #define POINTER_DEVICE_PRODUCT_STRING_MAX 520
@@ -638,14 +646,145 @@ typedef struct tagNONCLIENTMETRICSW_VISTA {
     int iPaddedBorderWidth;
 } NONCLIENTMETRICSW_VISTA, *PNONCLIENTMETRICSW_VISTA,*LPNONCLIENTMETRICSW_VISTA;
 
+typedef enum tagPROCESS_UICONTEXT {
+    PROCESS_UICONTEXT_DESKTOP = 0,
+    PROCESS_UICONTEXT_IMMERSIVE = 1,
+    PROCESS_UICONTEXT_IMMERSIVE_BROKER = 2,
+    PROCESS_UICONTEXT_IMMERSIVE_BROWSER = 3
+} PROCESS_UICONTEXT;
+
+typedef enum tagPROCESS_UI_FLAGS {
+    PROCESS_UIF_NONE = 0,
+    PROCESS_UIF_AUTHORING_MODE = 1,
+    PROCESS_UIF_RESTRICTIONS_DISABLED = 2
+} PROCESS_UI_FLAGS;
+
+typedef struct tagPROCESS_UICONTEXT_INFORMATION {
+    DWORD UIContext; //PROCESS_UICONTEXT
+    DWORD dwFlags; //PROCESS_UI_FLAGS
+} PROCESS_UICONTEXT_INFORMATION, * PPROCESS_UICONTEXT_INFORMATION;
+
+struct cursoricon_frame
+{
+    UINT     width;    /* frame-specific width */
+    UINT     height;   /* frame-specific height */
+    HBITMAP  color;    /* color bitmap */
+    HBITMAP  alpha;    /* pre-multiplied alpha bitmap for 32-bpp icons */
+    HBITMAP  mask;     /* mask bitmap (followed by color for 1-bpp icons) */
+    POINT    hotspot;
+};
+
 struct user_object
 {
     HANDLE             handle;
     enum user_obj_type type;
 };
 
-void USER_Lock(void);
-void USER_Unlock(void);
+struct cursoricon_object
+{
+    struct user_object      obj;        /* object header */
+    struct list             entry;      /* entry in shared icons list */
+    ULONG_PTR               param;      /* opaque param used by 16-bit code */
+    HMODULE                 module;     /* module for icons loaded from resources */
+    LPWSTR                  resname;    /* resource name for icons loaded from resources */
+    HRSRC                   rsrc;       /* resource for shared icons */
+    BOOL                    is_icon;    /* whether icon or cursor */
+    BOOL                    is_ani;     /* whether this object is a static cursor or an animated cursor */
+    UINT                    delay;      /* delay between this frame and the next (in jiffies) */
+    POINT                   hotspot;
+};
+
+struct cursoricon_desc
+{
+    UINT flags;
+    UINT num_steps;
+    UINT num_frames;
+    UINT delay;
+    struct cursoricon_frame *frames;
+    DWORD *frame_seq;
+    DWORD *frame_rates;
+    HRSRC rsrc;
+};
+
+typedef struct
+{
+    BYTE   bWidth;
+    BYTE   bHeight;
+    BYTE   bColorCount;
+    BYTE   bReserved;
+} ICONRESDIR;
+
+typedef struct
+{
+    WORD   wWidth;
+    WORD   wHeight;
+} CURSORDIR;
+
+typedef struct
+{   union
+    { ICONRESDIR icon;
+      CURSORDIR  cursor;
+    } ResInfo;
+    WORD   wPlanes;
+    WORD   wBitCount;
+    DWORD  dwBytesInRes;
+    WORD   wResId;
+} CURSORICONDIRENTRY;
+
+typedef struct
+{
+    WORD                idReserved;
+    WORD                idType;
+    WORD                idCount;
+    CURSORICONDIRENTRY  idEntries[1];
+} CURSORICONDIR;
+
+// typedef struct _CURSORICONFILEDIRENTRY
+// {
+    // BYTE bWidth;
+    // BYTE bHeight;
+    // BYTE bColorCount;
+    // BYTE bReserved;
+    // union
+    // {
+        // WORD wPlanes; /* For icons */
+        // WORD xHotspot; /* For cursors */
+    // };
+    // union
+    // {
+        // WORD wBitCount; /* For icons */
+        // WORD yHotspot; /* For cursors */
+    // };
+    // DWORD dwDIBSize;
+    // DWORD dwDIBOffset;
+// } CURSORICONFILEDIRENTRY;
+
+// typedef struct _CURSORICONFILEDIR
+// {
+    // WORD idReserved;
+    // WORD idType;
+    // WORD idCount;
+    // CURSORICONFILEDIRENTRY idEntries[1];
+// } CURSORICONFILEDIR;
+
+typedef struct
+{
+    WORD idReserved;   // Sempre 0
+    WORD idType;       // 1 para ícone
+    WORD idCount;      // Número de imagens
+} ICONDIR;
+
+typedef struct
+{
+    BYTE  bWidth;
+    BYTE  bHeight;
+    BYTE  bColorCount;
+    BYTE  bReserved;
+    WORD  wPlanes;
+    WORD  wBitCount;
+    DWORD dwBytesInRes;
+    DWORD dwImageOffset;
+} ICONDIRENTRY;
 
 BOOL 
 WINAPI 
@@ -657,57 +796,78 @@ SystemParametersInfoWInternal(
 	UINT uiAction,
 	UINT uiParam,
 	PVOID pvParam,
-	UINT fWinIni);
+	UINT fWinIni
+);
+	
+HICON WINAPI CreateIconFromResourceExHook(
+  _In_  PBYTE pbIconBits,
+  _In_  DWORD cbIconBits,
+  _In_  BOOL fIcon,
+  _In_  DWORD dwVersion,
+  _In_  int cxDesired,
+  _In_  int cyDesired,
+  _In_  UINT uFlags
+);	
 
-// // Definitions of prototype functions for get address
-	
-// typedef BOOL (WINAPI *AddClipboardFormatListenerFuncPtr)(
-    // HWND);	
-	
-// typedef BOOL (WINAPI *CalculatePopupWindowPositionFuncPtr)(
-    // const POINT *,
-	// const SIZE  *,
-	// UINT,
-	// RECT *,
-	// RECT *);	
+PVOID 
+TryGetProcedure(
+	char* procedureName
+);
 
-// typedef BOOL (WINAPI *CancelShutdownFuncPtr)(
-    // VOID);
+// Definitions of prototype functions for get address
+	
+typedef BOOL (WINAPI *AddClipboardFormatListenerFuncPtr)(
+    HWND);	
+	
+typedef BOOL (WINAPI *CalculatePopupWindowPositionFuncPtr)(
+    const POINT *,
+	const SIZE  *,
+	UINT,
+	RECT *,
+	RECT *);	
 
-// typedef BOOL (WINAPI *ChangeWindowMessageFilterFuncPtr)(
-    // UINT,
-	// DWORD);
-	
-// typedef BOOL (WINAPI *ChangeWindowMessageFilterExFuncPtr)(
-    // HWND,
-	// UINT,
-	// DWORD,
-	// PCHANGEFILTERSTRUCT);
-	
-// typedef NTSTATUS (WINAPI *CheckDesktopByThreadIdFuncPtr)(
-    // ULONG);	
-	
-// typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
-    // HWND,
-	// DWORD,
-	// ULONG);	
-	
-// typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
-    // HWND,
-	// DWORD,
-	// ULONG);
-	
-// typedef BOOL (WINAPI *CloseGestureInfoHandleFuncPtr)(
-    // HGESTUREINFO);
+typedef BOOL (WINAPI *CancelShutdownFuncPtr)(
+    VOID);
 
-// typedef BOOL (WINAPI *CloseTouchInputHandleFuncPtr)(
-    // HTOUCHINPUT);
+typedef BOOL (WINAPI *ChangeWindowMessageFilterFuncPtr)(
+    UINT,
+	DWORD);
 	
-// typedef BOOL (WINAPI *ConsoleControlFuncPtr)(
-    // CONSOLECONTROL,
-	// PVOID,
-	// ULONG);
+typedef BOOL (WINAPI *ChangeWindowMessageFilterExFuncPtr)(
+    HWND,
+	UINT,
+	DWORD,
+	PCHANGEFILTERSTRUCT);
 	
-// typedef BOOL (WINAPI *ControlMagnificationFuncPtr)(
-    // BOOL,
-	// PVOID);	
+typedef NTSTATUS (WINAPI *CheckDesktopByThreadIdFuncPtr)(
+    ULONG);	
+	
+typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
+    HWND,
+	DWORD,
+	ULONG);	
+	
+typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
+    HWND,
+	DWORD,
+	ULONG);
+	
+typedef BOOL (WINAPI *CloseGestureInfoHandleFuncPtr)(
+    HGESTUREINFO);
+
+typedef BOOL (WINAPI *CloseTouchInputHandleFuncPtr)(
+    HTOUCHINPUT);
+	
+typedef BOOL (WINAPI *ConsoleControlFuncPtr)(
+    CONSOLECONTROL,
+	PVOID,
+	ULONG);
+	
+typedef BOOL (WINAPI *ControlMagnificationFuncPtr)(
+    BOOL,
+	PVOID);	
+	
+typedef BOOL (WINAPI *PrivateRegisterICSProcFuncPtr)(
+    PCONVERT_TO_DIB_PROC);		
+	
+static PrivateRegisterICSProcFuncPtr PrivateRegisterICSProcAddr;

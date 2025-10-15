@@ -28,6 +28,16 @@
 #include <secext.h>
 #include <security.h>
 #include <stdio.h>
+#include <windows.h>
+#include <ntstatus.h>
+#include <ntsecapi.h>
+#include <wincred.h>
+#include <winnetwk.h>
+#include <rtlfuncs.h>
+
+// You can disable the warning for the function.
+#pragma warning( push )
+#pragma warning( disable : 4047 )
 
 DWORD SecTlsIP;
 DWORD state;
@@ -35,6 +45,19 @@ state = 0;
 SecTlsIP = 0;
 
 WINE_DEFAULT_DEBUG_CHANNEL(bcrypt);
+
+//
+// Possible forms of the username returned from CredMan
+//
+
+typedef enum _CredParsedUserNameType
+{
+    parsedUsernameInvalid = 0,
+    parsedUsernameUpn,
+    parsedUsernameNt4Style,
+    parsedUsernameCertificate,
+    parsedUsernameNonQualified
+} CredParsedUserNameType;
 
 typedef SECURITY_STATUS (WINAPI *SASL_GET_CONTEXT_OPTION)(
     PCtxtHandle,
@@ -121,4 +144,87 @@ SaslGetContextOption(
 									Size,
 									Needed);
 	}	    
+}
+
+NTSTATUS
+WINAPI
+I_NetNameCanonicalize(
+    IN  LPTSTR  ServerName OPTIONAL,
+    IN  LPTSTR  Name,
+    OUT LPTSTR  Outbuf,
+    IN  DWORD   OutbufLen,
+    IN  DWORD   NameType,
+    IN  DWORD   Flags
+    );
+
+BOOL NetpIsUserNameValid(LPWSTR *UserName)
+{
+  LPTSTR Outbuf[129]; // [esp+0h] [ebp-208h] BYREF
+
+  return UserName
+      && *UserName
+      && I_NetNameCanonicalize(0, UserName, Outbuf, 0x202u, 1u, 0) == 0;
+}
+
+NTSTATUS WINAPI CredParseUserNameWithType(
+        LPWSTR *UserName,
+        PUNICODE_STRING pUserName,
+        PUNICODE_STRING pDomainName,
+        DWORD *pParseType)
+{
+    LPWSTR DomainName = NULL;
+    DWORD ParsedType;
+    CRED_MARSHAL_TYPE MarshaledCredential;
+    PVOID IgnoredCredential = NULL;
+    
+    if (!UserName || wcslen(UserName) > CREDUI_MAX_USERNAME_LENGTH)
+        return STATUS_INVALID_ACCOUNT_NAME;
+    
+    DomainName = wcsrchr(UserName, L'\\');
+    if (DomainName) {
+        *DomainName = L'\0';
+        DomainName++;
+        ParsedType = 2;
+        goto Finish;
+    }
+    
+    if (wcsrchr(UserName, L'@')) {
+        PWSTR Terminator = UserName;
+        ParsedType = 1;
+        
+        while (*Terminator != 0)
+            Terminator++;
+        
+        if ((Terminator - UserName) >= 4) {
+            if (UserName[0] == L'@' && UserName[1] == L'@') {
+                Terminator = wcsrchr(UserName + 2, L'@');
+                if (Terminator != NULL) {
+                    *Terminator = L'\0';
+                    DomainName = Terminator + 1;
+                }
+            }
+        }        
+        
+        goto Finish;
+    }
+    
+    if (!NetpIsUserNameValid(UserName))
+        return STATUS_INVALID_ACCOUNT_NAME;
+    
+    ParsedType = 4;
+Finish:
+    if (CredUnmarshalCredentialW(UserName, &MarshaledCredential, &IgnoredCredential)) {
+        if (MarshaledCredential == CertCredential)
+            ParsedType = 3;
+        if (IgnoredCredential)
+            CredFree(IgnoredCredential);
+    }
+    
+    if (pUserName)
+        RtlInitUnicodeString(pUserName, UserName);
+    if (pDomainName)
+        RtlInitUnicodeString(pDomainName, DomainName);
+    
+    *pParseType = ParsedType;
+    return STATUS_SUCCESS;
 }

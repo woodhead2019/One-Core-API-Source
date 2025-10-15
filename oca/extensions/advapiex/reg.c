@@ -1298,10 +1298,27 @@ cleanup:
  * RegRenameKey [ADVAPI32.@]
  *
  */
-LSTATUS WINAPI RegRenameKey( HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpNewName )
+// If the NtRenameKey syscall isn't avaliable, this won't work.
+LSTATUS WINAPI RegRenameKey( HKEY hkey, LPCWSTR subkey_name, LPCWSTR new_name )
 {
-    FIXME("(%p,%s,%s): stub\n", hkey, debugstr_w(lpSubKey), debugstr_w(lpNewName));
-    return ERROR_CALL_NOT_IMPLEMENTED;
+    UNICODE_STRING str;
+    LSTATUS ret;
+    HKEY subkey;
+
+    TRACE("%p, %s, %s.\n", hkey, debugstr_w(subkey_name), debugstr_w(new_name));
+
+    RtlInitUnicodeString(&str, new_name);
+
+    if (!subkey_name)
+        return RtlNtStatusToDosError( NtRenameKey( hkey, &str ));
+
+    if ((ret = RegOpenKeyExW( hkey, subkey_name, 0, KEY_WRITE, &subkey )))
+        return ret;
+
+    ret = RtlNtStatusToDosError( NtRenameKey( subkey, &str ));
+    RegCloseKey( subkey );
+
+    return ret;
 }
 
 /******************************************************************************
@@ -1835,27 +1852,33 @@ RegConnectRegistryExA(
 LONG 
 WINAPI 
 RegConnectRegistryExW(
-	LPCWSTR lpMachineName,
-	HKEY hKey,
-	ULONG Flags,
-	PHKEY phkResult
+    LPCWSTR lpMachineName,
+    HKEY hKey,
+    ULONG Flags,
+    PHKEY phkResult
 )
 {
-	REG_CONNECT_REGISTRY_EX_W regConnectRegistryExW;
+    REG_CONNECT_REGISTRY_EX_W regConnectRegistryExW;
     regConnectRegistryExW = (REG_CONNECT_REGISTRY_EX_W) GetProcAddress(
-                            GetModuleHandle(TEXT("advapibase.dll")),
-                            "RegConnectRegistryExW");	
-	if(regConnectRegistryExW == NULL){
-		FIXME("RegConnectRegistryExW UNIMPLEMENTED!\n");
-		return ERROR_CALL_NOT_IMPLEMENTED;
-	}else{
-		return regConnectRegistryExW(lpMachineName,
-									 hKey,
-									 Flags,
-									 phkResult);
-	} 	
-}
+                            GetModuleHandle(TEXT("advapi32.dll")),
+                            "RegConnectRegistryExW");    
+    if (regConnectRegistryExW) {
+        return regConnectRegistryExW(lpMachineName,
+                                     hKey,
+                                     Flags,
+                                     phkResult);
+    }
+    // Fallback implementation.
+    
+    if (Flags & ~REG_SECURE_CONNECTION)
+        return ERROR_INVALID_PARAMETER;
+    
+    // REG_SECURE_CONNECTION indicates the caller wants to establish a secure connection, so this is easily ignorable.
+    if (Flags & REG_SECURE_CONNECTION)
+        FIXME("RegConnectRegisterExW: REG_SECURE_CONNECTION flag called.\n");
 
+    return RegConnectRegistryW(lpMachineName, hKey, phkResult);
+}
 
 /******************************************************************************
  * RegpApplyRestrictions   [internal]

@@ -44,41 +44,77 @@ GetPhysicallyInstalledSystemMemory(
 	return TRUE;
 }
 
+// BOOL 
+// WINAPI 
+// AllocateUserPhysicalPagesNuma(
+	// HANDLE hProcess, 
+	// PULONG_PTR NumberOfPages, 
+	// PULONG_PTR PageArray, 
+	// DWORD nndPreferred
+// )
+// {
+  // DWORD_PTR ThreadAffinitiyMask;
+  // NTSTATUS Status; 
+  // HANDLE CurrentThread; 
+  // ULONGLONG ProcessorMask; 
+  
+  // DbgPrint("AllocateUserPhysicalPagesNuma called\n");
+
+  // ThreadAffinitiyMask = 0;
+  // if ( nndPreferred != -1 )
+  // {
+    // if ( !GetNumaNodeProcessorMask(nndPreferred, &ProcessorMask) )
+      // return AllocateUserPhysicalPages(hProcess, NumberOfPages, PageArray);
+    // ThreadAffinitiyMask = ProcessorMask;
+    // CurrentThread = GetCurrentThread();
+    // ThreadAffinitiyMask = SetThreadAffinityMask(CurrentThread, ThreadAffinitiyMask);
+    // if ( !ThreadAffinitiyMask )
+      // return FALSE;
+  // }
+  // Status = NtAllocateUserPhysicalPages(hProcess, NumberOfPages, PageArray);
+  // if ( ThreadAffinitiyMask )
+  // {
+    // CurrentThread = GetCurrentThread();
+    // SetThreadAffinityMask(CurrentThread, ThreadAffinitiyMask);
+  // }
+  // if ( NT_SUCCESS(Status) )
+    // return TRUE;
+  // BaseSetLastNTError(Status);
+  // return FALSE;
+// }
+
 BOOL 
 WINAPI 
 AllocateUserPhysicalPagesNuma(
-	HANDLE hProcess, 
-	PULONG_PTR NumberOfPages, 
-	PULONG_PTR PageArray, 
-	DWORD nndPreferred
+    HANDLE hProcess, 
+    PULONG_PTR NumberOfPages, 
+    PULONG_PTR PageArray, 
+    DWORD nndPreferred
 )
 {
-  DWORD_PTR ThreadAffinitiyMask;
+  DWORD_PTR AffinityMask = 0;
   NTSTATUS Status; 
-  HANDLE CurrentThread; 
   ULONGLONG ProcessorMask; 
-  
-  DbgPrint("AllocateUserPhysicalPagesNuma called\n");
 
-  ThreadAffinitiyMask = 0;
-  if ( nndPreferred != -1 )
+  if (nndPreferred != NUMA_NO_PREFERRED_NODE)
   {
-    if ( !GetNumaNodeProcessorMask(nndPreferred, &ProcessorMask) )
-      return AllocateUserPhysicalPages(hProcess, NumberOfPages, PageArray);
-    ThreadAffinitiyMask = ProcessorMask;
-    CurrentThread = GetCurrentThread();
-    ThreadAffinitiyMask = SetThreadAffinityMask(CurrentThread, ThreadAffinitiyMask);
-    if ( !ThreadAffinitiyMask )
+    DbgPrint("AllocateUserPhysicalPagesNuma called on NUMA node %i\n", nndPreferred);
+    if (!GetNumaNodeProcessorMask(nndPreferred, &ProcessorMask))
+        return AllocateUserPhysicalPages(hProcess, NumberOfPages, PageArray);
+    
+    AffinityMask = SetThreadAffinityMask(GetCurrentThread(), ProcessorMask);
+    if (!AffinityMask)
       return FALSE;
   }
+  
   Status = NtAllocateUserPhysicalPages(hProcess, NumberOfPages, PageArray);
-  if ( ThreadAffinitiyMask )
-  {
-    CurrentThread = GetCurrentThread();
-    SetThreadAffinityMask(CurrentThread, ThreadAffinitiyMask);
-  }
-  if ( NT_SUCCESS(Status) )
+  
+  if (AffinityMask)
+    SetThreadAffinityMask(GetCurrentThread(), AffinityMask);
+  
+  if (NT_SUCCESS(Status))
     return TRUE;
+  
   BaseSetLastNTError(Status);
   return FALSE;
 }
