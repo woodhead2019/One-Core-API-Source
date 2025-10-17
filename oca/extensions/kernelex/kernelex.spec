@@ -1028,6 +1028,8 @@
 @ stdcall AllocateUserPhysicalPagesNuma(ptr ptr ptr long) 
 @ stdcall ApplicationRecoveryFinished(long)
 @ stdcall ApplicationRecoveryInProgress(ptr)
+@ stub BaseThreadInitThunk
+@ stdcall CheckForReadOnlyResource(ptr) BasepCheckForReadOnlyResource
 @ stdcall CallbackMayRunLong(ptr)
 @ stdcall CancelIoEx(long ptr)
 @ stdcall CancelSynchronousIo(ptr)
@@ -1197,6 +1199,8 @@
 @ stdcall LeaveCriticalSectionWhenCallbackReturns(ptr ptr) ntext.TpCallbackLeaveCriticalSectionOnCompletion
 @ stdcall LCMapStringEx(wstr long wstr long ptr long ptr ptr long)
 @ stdcall LCIDToLocaleName(long ptr long long)
+@ stdcall LoadStringBaseExW(long long wstr long long)
+# @ stub LoadStringBaseW
 @ stdcall LocaleNameToLCID(wstr long)
 @ stdcall MapViewOfFileExNuma(ptr long long long long ptr long)
 @ stdcall MoveFileTransactedA(str str ptr ptr long ptr)
@@ -1281,8 +1285,6 @@
 @ stdcall Basep8BitStringToDynamicUnicodeString(wstr str)
 @ stdcall BasepMapModuleHandle(ptr long)
 @ stdcall BaseSetLastNTError(long)
-@ stub BaseThreadInitThunk
-@ stdcall CheckForReadOnlyResource(ptr) BasepCheckForReadOnlyResource
 @ stdcall CopyContext(ptr long ptr)
 @ stdcall CreateRemoteThreadEx(long ptr long ptr long long ptr ptr)
 @ stdcall -arch=x86_64 CreateUmsCompletionList(ptr)
@@ -1299,10 +1301,9 @@
 @ stdcall -arch=x86_64 GetCurrentUmsThread()
 @ stdcall -ret64 -arch=i386,x86_64 GetEnabledXStateFeatures()
 @ stub GetEraNameCountedString
+@ stdcall GetLogicalProcessorInformationEx(long ptr ptr)
 @ stdcall GetMaximumProcessorCount(long)
 @ stdcall GetMaximumProcessorGroupCount()
-@ stdcall GetTimeFormatWWorker(long long ptr wstr ptr long) GetTimeFormatW
-@ stdcall GetLogicalProcessorInformationEx(long ptr ptr)
 @ stdcall -arch=x86_64 GetNextUmsListItem(ptr)
 @ stdcall GetNumaAvailableMemoryNodeEx(long ptr)
 @ stdcall GetNumaNodeProcessorMaskEx(long ptr)
@@ -1310,15 +1311,12 @@
 @ stdcall GetNumaProximityNodeEx(long ptr)
 @ stdcall GetProcessGroupAffinity(long ptr ptr)
 @ stdcall GetProcessPreferredUILanguages(long ptr wstr ptr)
+@ stdcall GetTimeFormatWWorker(long long ptr wstr ptr long) GetTimeFormatW
 @ stdcall GetThreadGroupAffinity(long ptr)
 @ stdcall GetThreadIdealProcessorEx(ptr ptr)
 @ stdcall -arch=x86_64 GetUmsCompletionListEvent(ptr ptr)
 @ stdcall -arch=i386,x86_64 GetXStateFeaturesMask(ptr ptr)
 @ stdcall -arch=i386,x86_64 InitializeContext(ptr long ptr ptr)
-@ stdcall LoadStringBaseExW(long long wstr long long)
-@ stub LoadStringByReference
-# @ stub LoadStringBaseW
-@ stdcall -arch=i386,x86_64 LocateXStateFeature(ptr long ptr)
 @ stdcall K32EmptyWorkingSet(ptr) EmptyWorkingSet
 @ stdcall K32EnumDeviceDrivers(ptr long ptr) EnumDeviceDrivers
 @ stdcall K32EnumPageFilesA(ptr ptr) EnumPageFilesA
@@ -1346,6 +1344,8 @@
 @ stdcall K32InitializeProcessForWsWatch(ptr) InitializeProcessForWsWatch
 @ stdcall K32QueryWorkingSet(ptr ptr long) QueryWorkingSet
 @ stdcall K32QueryWorkingSetEx(ptr ptr long) QueryWorkingSetEx
+@ stub LoadStringByReference
+@ stdcall -arch=i386,x86_64 LocateXStateFeature(ptr long ptr)
 @ stdcall LoadAppInitDlls()
 @ stdcall PowerClearRequest(ptr ptr)
 @ stdcall PowerCreateRequest(ptr)
