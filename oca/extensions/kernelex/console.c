@@ -191,7 +191,7 @@ SetConsoleScreenBufferInfoEx(
     
     if (!SetConsoleScreenBufferSize(hConsoleOutput, ConsoleScreenBufferInfoEx->dwSize))
         return FALSE;
-    if (!SetConsoleWindowInfo(hConsoleOutput, TRUE, ConsoleScreenBufferInfoEx->srWindow))
+    if (!SetConsoleWindowInfo(hConsoleOutput, TRUE, &ConsoleScreenBufferInfoEx->srWindow))
         return FALSE;
     if (!SetConsoleTextAttribute(hConsoleOutput, ConsoleScreenBufferInfoEx->wAttributes))
         return FALSE;

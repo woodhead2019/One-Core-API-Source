@@ -50,6 +50,8 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#define NUMA_NO_PREFERRED_NODE ((DWORD) -1)
+
 #define PROCESS_DEP_ENABLE 0x00000001
 #define PROCESS_DEP_DISABLE_ATL_THUNK_EMULATION 0x00000002
 
