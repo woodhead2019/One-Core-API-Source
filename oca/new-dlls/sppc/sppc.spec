@@ -24,7 +24,7 @@
 @ stub SLDepositOfflineConfirmationIdEx
 @ stub SLDepositStoreToken
 @ stub SLFireEvent
-@ stub SLGatherMigrationBlob
+@ stdcall SLGatherMigrationBlob(long wstr ptr)
 @ stub SLGatherMigrationBlobEx
 @ stub SLGenerateOfflineInstallationId
 @ stub SLGenerateOfflineInstallationIdEx
@@ -34,7 +34,7 @@
 @ stub SLGetAuthenticationResult
 @ stub SLGetEncryptedPIDEx
 @ stub SLGetGenuineInformation
-@ stub SLGetInstalledProductKeyIds
+@ stdcall SLGetInstalledProductKeyIds(ptr ptr ptr ptr)
 @ stub SLGetLicense
 @ stub SLGetLicenseFileId
 @ stub SLGetLicenseInformation
@@ -60,8 +60,8 @@
 @ stdcall SLSetAuthenticationData(ptr ptr ptr)
 @ stub SLSetCurrentProductKey
 @ stub SLSetGenuineInformation
-@ stub SLUninstallLicense
-@ stub SLUninstallProofOfPurchase
+@ stdcall SLUninstallLicense(ptr ptr)
+@ stdcall SLUninstallProofOfPurchase(ptr ptr)
 @ stdcall SLUnloadApplicationPolicies(ptr long)
 @ stub SLUnregisterEvent
 @ stub SLUnregisterPlugin

@@ -205,3 +205,37 @@ SLInstallProofOfPurchase(
 {
     return S_OK;
 }	
+
+
+HRESULT WINAPI SLGatherMigrationBlob(
+	BOOL bMigratableOnly, 
+	LPCWSTR pwszEncryptorUri, 
+	HANDLE hFile)
+{
+	return S_OK;
+}
+
+HRESULT WINAPI SLUninstallProofOfPurchase(
+	HSLC hSLC, 
+	const SLID *pPKeyId)
+{
+	return S_OK;
+}
+
+HRESULT WINAPI SLUninstallLicense(
+	HSLC hSLC, 
+	const SLID *pLicenseFileId
+)
+{
+	return S_OK;
+}
+
+HRESULT WINAPI SLGetInstalledProductKeyIds(
+	HSLC hSLC, 
+	const SLID *pProductSkuId, 
+	UINT *pnProductKeyIds, 
+	SLID **ppProductKeyIds
+)
+{
+	return S_OK;
+}
