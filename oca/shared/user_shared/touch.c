@@ -361,3 +361,8 @@ HRESULT WINAPI PackTouchHitTestingProximityEvaluation(const TOUCH_HIT_TESTING_IN
     result = (proximityDistance & 0x3FF) + (((proximityEval & 0x3FF) + (pProximityEval->score << 10)) << 10);
   return result;
 }
+
+BOOL WINAPI IsMouseInPointerEnabled()
+{
+	return FALSE;
+}

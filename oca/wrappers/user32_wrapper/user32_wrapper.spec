@@ -905,6 +905,7 @@
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
 @ stdcall GetProcessUIContextInformation(long ptr)
 @ stdcall IsImmersiveProcess(long)
+@ stdcall IsMouseInPointerEnabled()
 @ stdcall RegisterSuspendResumeNotification(long long)
 @ stdcall SetProcessDpiAwarenessContext(ptr)
 @ stdcall SetProcessDpiAwarenessInternal(long)
