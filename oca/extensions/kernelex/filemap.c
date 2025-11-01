@@ -22,6 +22,22 @@ Revision History:
 
 typedef BOOLEAN (WINAPI *pRtlGenRandomPtr)(PVOID RandomBuffer, ULONG RandomBufferLength);
 
+/* typedef do ponteiro da função CreateFileMappingW */
+typedef HANDLE (WINAPI *PFN_CreateFileMappingW)(
+    HANDLE hFile,
+    LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+    DWORD flProtect,
+    DWORD dwMaximumSizeHigh,
+    DWORD dwMaximumSizeLow,
+    LPCWSTR lpName
+);
+
+/* ponteiro para a implementação original */
+static PFN_CreateFileMappingW orig_CreateFileMappingW = NULL;
+
+/* handle de kernel32 mantido para evitar unload acidental */
+static HMODULE hKernel32 = NULL;
+
 #define ConvertAnsiToUnicodePrologue                                            \
 {                                                                               \
     NTSTATUS Status;                                                            \
@@ -96,12 +112,9 @@ LPWSTR CreateNewFallbackMappingName() {
     return res;
 }
 
-/*
- * @implemented
- */
 HANDLE
 WINAPI
-CreateFileMappingW(HANDLE hFile,
+CreateFileMappingWInternal(HANDLE hFile,
                    LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
                    DWORD flProtect,
                    DWORD dwMaximumSizeHigh,
@@ -117,20 +130,7 @@ CreateFileMappingW(HANDLE hFile,
     LARGE_INTEGER LocalSize;
     PLARGE_INTEGER SectionSize = NULL;
     ULONG Attributes;
-	LPCWSTR newName;
 	
-	//Hack for chrome 110+ work
-	if(hFile == INVALID_HANDLE_VALUE && 
-	   lpFileMappingAttributes != NULL &&
-	   flProtect == PAGE_READWRITE &&
-	   dwMaximumSizeHigh == 0 &&
-	   lpName == NULL)
-	{
-		newName = CreateNewFallbackMappingName();
-		lpName = newName;
-		//HeapFree(GetProcessHeap(), 0, newName);	
-	}	
-
     /* Set default access */
     DesiredAccess = STANDARD_RIGHTS_REQUIRED | SECTION_QUERY | SECTION_MAP_READ;
 
@@ -223,7 +223,68 @@ CreateFileMappingW(HANDLE hFile,
     }
 
     /* Return the section */
-    return SectionHandle;
+    return SectionHandle;	
+}
+
+/*
+ * @implemented
+ */
+HANDLE
+WINAPI
+CreateFileMappingW(HANDLE hFile,
+                   LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+                   DWORD flProtect,
+                   DWORD dwMaximumSizeHigh,
+                   DWORD dwMaximumSizeLow,
+                   LPCWSTR lpName)
+{
+	LPCWSTR newName;
+    FARPROC proc;	
+	
+	//Hack for chrome 110+ work
+	if(hFile == INVALID_HANDLE_VALUE && 
+	   lpFileMappingAttributes != NULL &&
+	   flProtect == PAGE_READWRITE &&
+	   dwMaximumSizeHigh == 0 &&
+	   lpName == NULL)
+	{
+		newName = CreateNewFallbackMappingName();
+		lpName = newName;
+		//HeapFree(GetProcessHeap(), 0, newName);	
+	}	
+
+    /* tenta obter handle já carregado, se não existir carrega */
+    hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (hKernel32 == NULL) {
+        hKernel32 = LoadLibraryW(L"kernel32.dll");
+        if (hKernel32 == NULL) {
+            /* falha ao carregar kernel32 (muito improvável) */
+            goto implDefault;
+        }
+    }
+
+    proc = GetProcAddress(hKernel32, "CreateFileMappingWNative");
+    if (proc) {
+		orig_CreateFileMappingW = (PFN_CreateFileMappingW)proc;	
+		return orig_CreateFileMappingW(
+			hFile,
+			lpFileMappingAttributes,
+			flProtect,
+			dwMaximumSizeHigh,
+			dwMaximumSizeLow,
+			lpName
+		);		
+	}else{
+		goto implDefault;
+	}	
+	
+implDefault:
+    return CreateFileMappingWInternal(hFile, 
+									  lpFileMappingAttributes,
+									  flProtect,
+									  dwMaximumSizeHigh,
+									  dwMaximumSizeLow,
+									  lpName);
 }
 
 /*

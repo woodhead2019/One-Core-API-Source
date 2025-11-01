@@ -524,11 +524,11 @@
 @ stdcall SHCreateItemFromFolderID(ptr ptr ptr) SHCreateItemFromIDList;Redirected to Longhorn shell
 
 #Hooks
-@ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
-@ stdcall DllGetClassObject(ptr ptr ptr) #DllGetClassObjectInternal
+@ stdcall CommandLineToArgvW(wstr ptr)
+@ stdcall DllGetClassObject(ptr ptr ptr)
 @ stdcall ShellExecuteA(long str str str str long) ;ShellExecuteAInternal
-@ stdcall ShellExecuteEx(ptr) #ShellExecuteExA #ShellExecuteExAInternal
-@ stdcall ShellExecuteExA(ptr) #ShellExecuteExAInternal
+@ stdcall ShellExecuteEx(ptr)
+@ stdcall ShellExecuteExA(ptr)
 @ stdcall ShellExecuteExW(ptr)
 @ stdcall ShellExecuteW(long wstr wstr wstr wstr long) ;ShellExecuteWInternal
 @ stdcall Shell_NotifyIcon(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell

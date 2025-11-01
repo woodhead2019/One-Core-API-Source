@@ -67,6 +67,8 @@
 #define NONAMELESSUNION
 #include "propsys.h"
 
+#define shellName L"shell32.dll"
+
 #define IDD_ICON                0x4300
 #define IDD_MESSAGE             0x4301
 
@@ -200,3 +202,41 @@ DWORD WINAPI GetModuleFileNameExW(
   LPWSTR lpFilename,
   DWORD nSize
 );
+
+typedef HINSTANCE (WINAPI *PFNSHELLEXECUTEA)(
+	HWND hWnd, 
+	LPCSTR lpVerb, 
+	LPCSTR lpFile,
+    LPCSTR lpParameters, 
+	LPCSTR lpDirectory, 
+	INT iShowCmd
+);
+
+typedef BOOL (WINAPI *PFN_ShellExecuteExA_Native)(SHELLEXECUTEINFOA *pExecInfo);
+
+typedef BOOL (WINAPI *PFN_ShellExecuteExW_Native)(SHELLEXECUTEINFOW *pExecInfo);
+
+typedef HRESULT (WINAPI *PFN_DllGetClassObject_Native)(
+    REFCLSID rclsid,
+    REFIID   riid,
+    LPVOID  *ppv
+);
+
+/* protótipo de DllGetClassObject */
+typedef HRESULT (WINAPI *PFNDllGetClassObject)(
+    REFCLSID rclsid,
+    REFIID riid,
+    LPVOID *ppv
+);
+
+static PFN_DllGetClassObject_Native pfnDllGetClassObjectNative;
+
+void remove_extended_prefix(const char* input, char* output, size_t output_size);
+
+void remove_extended_prefix_w(LPCWSTR input, LPWSTR output, size_t output_size);
+
+typedef HRESULT (CALLBACK *LPFNCREATEINSTANCE)(IUnknown* pUnkOuter, REFIID riid, LPVOID* ppvObject);
+
+IClassFactory * IDefClF_fnConstructor(LPFNCREATEINSTANCE lpfnCI, PLONG pcRefDll, REFIID riidInst);
+
+HRESULT GetDllGetClassObjectProc();

@@ -1,40 +1,22 @@
-/*
- *	ShellView
- *
- *	Copyright 1998,1999	<juergen.schmied@debitel.net>
- *
- * This is the view visualizing the data provided by the shellfolder.
- * No direct access to data from pidls should be done from here.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * FIXME: The order by part of the background context menu should be
- * built according to the columns shown.
- *
- * FIXME: Load/Save the view state from/into the stream provided by
- * the ShellBrowser
- *
- * FIXME: CheckToolbar: handle the "new folder" and "folder up" button
- *
- * FIXME: ShellView_FillList: consider sort orders
- *
- * FIXME: implement the drag and drop in the old (msg-based) way
- *
- * FIXME: when the ShellView_WndProc gets a WM_NCDESTROY should we do a
- * Release() ???
- */
+/*++
+
+Copyright (c) 2025  Shorthorn Project
+
+Module Name:
+
+    misc.c
+
+Abstract:
+
+    This module implements file shell folder view functions for Shell. 
+
+Author:
+
+    Skulltrail 31-October-2025
+
+Revision History:
+
+--*/
 
 #include <stdarg.h>
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-/*++
+/*
 
 Copyright (c) 2017 Shorthorn Project
 
@@ -31,6 +31,70 @@ WINE_DEFAULT_DEBUG_CHANNEL(process);
 #define LTP_PC_SMT 0x1
 
 UNICODE_STRING NoDefaultCurrentDirectoryInExePath = RTL_CONSTANT_STRING(L"NoDefaultCurrentDirectoryInExePath");
+
+static const WCHAR nosandboxW[] = {' ','-','-','n','o','-','s','a','n','d','b','o','x',0};
+
+typedef BOOL (WINAPI *PFN_CreateProcessInternalW)(
+    HANDLE hUserToken,
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation,
+    PHANDLE hNewToken
+);
+
+/* Typedefs */
+typedef BOOL (WINAPI *PFN_CreateProcessA)(
+    LPCSTR lpApplicationName,
+    LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFOA lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+);
+
+typedef BOOL (WINAPI *PFN_CreateProcessW)(
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+);
+
+typedef BOOL (WINAPI *PFN_CreateProcessInternalA)(
+    HANDLE hUserToken,
+    LPCSTR lpApplicationName,
+    LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFOA lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation,
+    PHANDLE hNewToken
+);
+
+/* Ponteiro para a função original */
+static PFN_CreateProcessInternalW CreateProcessInternalWNative = NULL;
+static PFN_CreateProcessA CreateProcessANative = NULL;
+static PFN_CreateProcessW CreateProcessWNative = NULL;
 
 typedef struct _PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY {
   union {
@@ -76,7 +140,6 @@ GetProcessImageFileNameA(
   _Out_ LPTSTR lpImageFileName,
   _In_  DWORD  nSize
 );
-
 
 /******************************************************************
  *		QueryFullProcessImageNameW (KERNEL32.@)
@@ -2087,4 +2150,308 @@ BOOL WINAPI IsProcessCritical(HANDLE proc, PBOOL Critical) {
     
     BaseSetLastNTError(status);
     return FALSE;
+}
+
+BOOL HasExportedFunction(LPCWSTR filePath, LPCSTR targetFunction) {
+    HANDLE hFile;
+    HANDLE hMapping;
+    LPVOID baseAddress;
+    PIMAGE_NT_HEADERS nt_headers;
+    ULONG exportSize;
+    PIMAGE_EXPORT_DIRECTORY exportDir;
+    DWORD *nameRVAs;
+    DWORD i;
+	DWORD NumberOfNames;
+    PIMAGE_DOS_HEADER dos_header;
+    WORD machine;
+
+    // Verifica extensão ".exe"
+    {
+        const WCHAR *ext = wcsrchr(filePath, L'.');
+        if (!ext || lstrcmpiW(ext, L".exe") != 0) {
+            return FALSE;
+        }
+    }
+
+    hFile = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return FALSE;
+    }
+
+    hMapping = CreateFileMappingW(hFile, NULL, PAGE_READONLY | SEC_IMAGE, 0, 0, NULL);
+    if (!hMapping) {
+        CloseHandle(hFile);
+        return FALSE;
+    }
+
+    baseAddress = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
+    if (!baseAddress) {
+        CloseHandle(hMapping);
+        CloseHandle(hFile);
+        return FALSE;
+    }
+
+    // Verifica assinatura do DOS Header
+    dos_header = (PIMAGE_DOS_HEADER)baseAddress;
+    if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
+        goto cleanup;
+    }
+
+    // Verifica assinatura do NT Header
+    nt_headers = (PIMAGE_NT_HEADERS)RtlImageNtHeader(baseAddress);
+    if (!nt_headers || nt_headers->Signature != IMAGE_NT_SIGNATURE) {
+        goto cleanup;
+    }
+
+    machine = nt_headers->FileHeader.Machine;
+    if (machine != IMAGE_FILE_MACHINE_I386 && machine != IMAGE_FILE_MACHINE_AMD64) {
+        goto cleanup;
+    }
+
+    exportSize = 0;
+    exportDir = (PIMAGE_EXPORT_DIRECTORY)RtlImageDirectoryEntryToData(
+        baseAddress, TRUE, IMAGE_DIRECTORY_ENTRY_EXPORT, &exportSize);
+
+    if (!exportDir || exportSize == 0) {
+        goto cleanup;
+    }
+
+    nameRVAs = (DWORD *)((BYTE *)baseAddress + exportDir->AddressOfNames);
+	_try{
+		NumberOfNames = exportDir->NumberOfNames;
+		if(NumberOfNames > 0){
+			for (i = 0; i < NumberOfNames; i++) {
+				char *funcName = (char *)((BYTE *)baseAddress + nameRVAs[i]);
+				if (lstrcmpiA(funcName, targetFunction) == 0) {
+					UnmapViewOfFile(baseAddress);
+					CloseHandle(hMapping);
+					CloseHandle(hFile);
+					return TRUE;
+				}
+			}
+		}
+	}__except ( EXCEPTION_EXECUTE_HANDLER ) {
+		return FALSE;
+	}
+
+cleanup:
+    UnmapViewOfFile(baseAddress);
+    CloseHandle(hMapping);
+    CloseHandle(hFile);
+    return FALSE;
+}
+
+BOOL 
+CheckIsChromiumBasedExe(
+	LPCWSTR lpApplicationName
+){
+	if (wcsstr(lpApplicationName, L"Skype") || 
+		wcsstr(lpApplicationName, L"explorer") || 
+		wcsstr(lpApplicationName, L"svchost") || 
+		wcsstr(lpApplicationName, L"userinit") || 
+		wcsstr(lpApplicationName, L"wininit") || 
+		wcsstr(lpApplicationName, L"smss") || 
+		wcsstr(lpApplicationName, L"winlogon"))
+	{
+		return FALSE;
+	}
+	
+	if(HasExportedFunction(lpApplicationName, "IsSandboxedProcess") && HasExportedFunction(lpApplicationName, "GetHandleVerifier") && !HasExportedFunction(lpApplicationName, "g_originals")){
+		return TRUE;
+	}	
+
+	return FALSE;
+}
+
+BOOL
+WINAPI
+CreateProcessInternalW(IN HANDLE hUserToken,
+                       IN LPCWSTR lpApplicationName,
+                       IN LPWSTR lpCommandLine,
+                       IN LPSECURITY_ATTRIBUTES lpProcessAttributes,
+                       IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                       IN BOOL bInheritHandles,
+                       IN DWORD dwCreationFlags,
+                       IN LPVOID lpEnvironment,
+                       IN LPCWSTR lpCurrentDirectory,
+                       IN LPSTARTUPINFOW lpStartupInfo,
+                       IN LPPROCESS_INFORMATION lpProcessInformation,
+                       OUT PHANDLE hNewToken)
+{
+    HMODULE hKernel32;
+
+    hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (!hKernel32)
+        return FALSE;
+
+    /* Obtém o endereço original da função */
+    CreateProcessInternalWNative = (PFN_CreateProcessInternalW)
+        GetProcAddress(hKernel32, "CreateProcessInternalWNative");
+
+    /* Chama a função original */
+    if (CreateProcessInternalWNative)
+    {
+		/* work around problems hooking our ntdll exports. */
+		if(lpApplicationName){
+			if (CheckIsChromiumBasedExe(lpApplicationName) && wcsstr(lpCommandLine, L"-enable-sandbox") == NULL)
+			{
+				LPWSTR new_command_line;
+
+				new_command_line = RtlAllocateHeap(RtlProcessHeap(), 0,
+					sizeof(WCHAR) * (wcslen(lpCommandLine) + wcslen(nosandboxW) + 1));
+
+				if (!new_command_line) return FALSE;
+
+				wcscpy(new_command_line, lpCommandLine);
+				wcscat(new_command_line, nosandboxW);
+
+				if (lpCommandLine != lpCommandLine){
+					RtlFreeHeap( GetProcessHeap(), 0, lpCommandLine );
+				}
+				lpCommandLine = new_command_line;
+				
+				// //"Hack" to make Chrome work on XP/2003, because new versions create a stack with initial size below than 256kb - Still needed by Visual Code 1.53 		
+				// if(ImageInformation.CommittedStackSize <= 256 * 1024)
+				// {
+	// #if defined(_X86_)				
+					// ImageInformation.CommittedStackSize = 512 * 1024;
+	// #else
+					// ImageInformation.CommittedStackSize = 768 * 1024;
+	// #endif	
+				// }					
+			}		
+		}				
+		
+        return CreateProcessInternalWNative(
+            hUserToken,
+            lpApplicationName,
+            lpCommandLine,
+            lpProcessAttributes,
+            lpThreadAttributes,
+            bInheritHandles,
+            dwCreationFlags,
+            lpEnvironment,
+            lpCurrentDirectory,
+            lpStartupInfo,
+            lpProcessInformation,
+            hNewToken
+        );
+	}
+	
+	return FALSE;
+}
+
+BOOL WINAPI CreateProcessA(
+    LPCSTR lpApplicationName,
+    LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFOA lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+)
+{
+    HMODULE hKernel32;
+
+    hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (!hKernel32)
+        return FALSE;
+
+    /* Obtém o endereço original da função */
+    CreateProcessANative = (PFN_CreateProcessA)
+        GetProcAddress(hKernel32, "CreateProcessANative");
+		
+    /* aqui chamamos o hook (poderia chamar CreateProcessANative diretamente) */
+	if(CreateProcessANative){
+		return CreateProcessANative(
+			lpApplicationName,
+			lpCommandLine,
+			lpProcessAttributes,
+			lpThreadAttributes,
+			bInheritHandles,
+			dwCreationFlags,
+			lpEnvironment,
+			lpCurrentDirectory,
+			lpStartupInfo,
+			lpProcessInformation
+		);
+	}
+	
+	return FALSE;
+}
+
+BOOL WINAPI CreateProcessW(
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+)
+{
+    HMODULE hKernel32;
+
+    hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (!hKernel32)
+        return FALSE;
+
+    /* Obtém o endereço original da função */
+    CreateProcessWNative = (PFN_CreateProcessW)
+        GetProcAddress(hKernel32, "CreateProcessWNative");
+		
+    /* aqui chamamos o hook (poderia chamar CreateProcessWNative diretamente) */
+	if(CreateProcessWNative){
+		/* work around problems hooking our ntdll exports. */
+		if(lpApplicationName){
+			if (CheckIsChromiumBasedExe(lpApplicationName) && wcsstr(lpCommandLine, L"-enable-sandbox") == NULL)
+			{
+				LPWSTR new_command_line;
+
+				new_command_line = RtlAllocateHeap(RtlProcessHeap(), 0,
+					sizeof(WCHAR) * (wcslen(lpCommandLine) + wcslen(nosandboxW) + 1));
+
+				if (!new_command_line) return FALSE;
+
+				wcscpy(new_command_line, lpCommandLine);
+				wcscat(new_command_line, nosandboxW);
+
+				if (lpCommandLine != lpCommandLine){
+					RtlFreeHeap( GetProcessHeap(), 0, lpCommandLine );
+				}
+				lpCommandLine = new_command_line;
+				
+				// //"Hack" to make Chrome work on XP/2003, because new versions create a stack with initial size below than 256kb - Still needed by Visual Code 1.53 		
+				// if(ImageInformation.CommittedStackSize <= 256 * 1024)
+				// {
+	// #if defined(_X86_)				
+					// ImageInformation.CommittedStackSize = 512 * 1024;
+	// #else
+					// ImageInformation.CommittedStackSize = 768 * 1024;
+	// #endif	
+				// }					
+			}		
+		}			
+		
+		return CreateProcessWNative(
+			lpApplicationName,
+			lpCommandLine,
+			lpProcessAttributes,
+			lpThreadAttributes,
+			bInheritHandles,
+			dwCreationFlags,
+			lpEnvironment,
+			lpCurrentDirectory,
+			lpStartupInfo,
+			lpProcessInformation
+		);
+	}
+	
+	return FALSE;
 }

@@ -36,29 +36,10 @@ Revision History:
 #define NDEBUG
 #include <debug.h>
 #include <main.h>
-
-#define shellName L"shell32.dll"
  
 WINE_DEFAULT_DEBUG_CHANNEL(hooks);
 
-typedef HINSTANCE (WINAPI *PFNSHELLEXECUTEA)(
-	HWND hWnd, 
-	LPCSTR lpVerb, 
-	LPCSTR lpFile,
-    LPCSTR lpParameters, 
-	LPCSTR lpDirectory, 
-	INT iShowCmd
-);
-
-typedef BOOL (WINAPI *PFN_ShellExecuteExA_Native)(SHELLEXECUTEINFOA *pExecInfo);
-
-typedef BOOL (WINAPI *PFN_ShellExecuteExW_Native)(SHELLEXECUTEINFOW *pExecInfo);
-
-typedef HRESULT (WINAPI *PFN_DllGetClassObject_Native)(
-    REFCLSID rclsid,
-    REFIID   riid,
-    LPVOID  *ppv
-);
+static PFN_DllGetClassObject_Native pfnDllGetClassObjectNative = NULL;
 
 HINSTANCE WINAPI ShellExecuteANative(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
                                LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd);
@@ -134,8 +115,6 @@ HRESULT WINAPI ILLoadFromStream (IStream * pStream, LPITEMIDLIST * ppPidl)
 /**************************************************************************
  * Default ClassFactory types
  */
-typedef HRESULT (CALLBACK *LPFNCREATEINSTANCE)(IUnknown* pUnkOuter, REFIID riid, LPVOID* ppvObject);
-static IClassFactory * IDefClF_fnConstructor(LPFNCREATEINSTANCE lpfnCI, PLONG pcRefDll, REFIID riidInst);
 /* this table contains all CLSIDs of shell32 objects */
 static const struct {
 	REFIID			clsid;
@@ -145,8 +124,8 @@ static const struct {
 	{&CLSID_ApplicationAssociationRegistration, ApplicationAssociationRegistration_Constructor},
 	{&CLSID_ApplicationDestinations, ApplicationDestinations_Constructor},
 	{&CLSID_ApplicationDocumentLists, ApplicationDocumentLists_Constructor},
-	{&CLSID_QueryAssociations, QueryAssociations_Constructor},
-	{&CLSID_ShellItem,	IShellItem_Constructor},
+	// {&CLSID_QueryAssociations, QueryAssociations_Constructor},
+	//{&CLSID_ShellItem,	IShellItem_Constructor},
 	{&CLSID_ShellLink,	IShellLink_Constructor},
 	{&CLSID_ExplorerBrowser,ExplorerBrowser_Constructor},
 	{&CLSID_KnownFolderManager, KnownFolderManager_Constructor},
@@ -154,88 +133,6 @@ static const struct {
 	{&CLSID_FileOperation, IFileOperation_Constructor},
 	{NULL, NULL}
 };		   
-
-// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
-    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
-        // NOTIFYICONDATAW lpXPData;
-        // memcpy(&lpXPData, lpData, NOTIFYICONDATAW_V3_SIZE);
-        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
-        // // Remove Vista flags.
-        // if (lpXPData.uFlags & 0x80) // NIF_SHOWTIP
-            // lpXPData.uFlags ^= 0x80;
-        // if (lpXPData.uFlags & 0x40) // NIF_REALTIME
-            // lpXPData.uFlags ^= 0x40;
-        // if (lpXPData.uFlags & 0x20) // NIF_GUID
-            // lpXPData.uFlags ^= 0x20;
-        
-        // // & 0x20 is "reserved", we do not want to mess with it normally, but since this is conditionally defined, it's fair game.
-        // if (lpXPData.dwInfoFlags & 0x20) {
-            // // I hope it picks the right icon.
-            // lpXPData.dwInfoFlags ^= 0x20;
-        // }
-        // if (lpXPData.dwInfoFlags & 0x80) {
-            // lpXPData.dwInfoFlags ^= 0x80;
-        // }
-        // if (lpXPData.uVersion > 3)
-            // lpXPData.uVersion = 3;
-        // memset(&(lpXPData.guidItem), 0, sizeof(GUID));
-        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
-    // }
-    // return Shell_NotifyIconWNative(dwMessage, lpData);
-// }
-
-// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
-    // // Verifica se a estrutura é válida e se é de uma versão superior à V3
-    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
-        // // Faz uma cópia para manipulação, sem afetar a original
-        // NOTIFYICONDATAW lpXPData = {0};
-        // memcpy(&lpXPData, lpData, sizeof(NOTIFYICONDATAW));
-        
-        // // Corrige a cbSize para V3
-        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
-
-        // // Remove flags específicas do Vista que não existem na V3
-        // lpXPData.uFlags &= ~(0x80 | 0x40 | 0x20); // NIF_SHOWTIP, NIF_REALTIME, NIF_GUID
-        // lpXPData.dwInfoFlags &= ~(0x20 | 0x80);   // Valores específicos que causam problemas
-        // lpXPData.uVersion = min(lpXPData.uVersion, 3);
-
-        // // Zera GUID para evitar uso incorreto (já que o campo foi removido)
-        // ZeroMemory(&(lpXPData.guidItem), sizeof(GUID));
-
-        // // Chama a versão nativa com a estrutura compatível
-        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
-    // }
-
-    // // Estrutura compatível, pode chamar diretamente
-    // return Shell_NotifyIconWNative(dwMessage, lpData);
-// }
-
-
-// BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
-    // // // if (lpData->cbSize > NOTIFYICONDATAA_V2_SIZE) {
-        // // // NOTIFYICONDATAA lpXPData;
-        // // // memcpy(&lpXPData, lpData, NOTIFYICONDATAA_V2_SIZE);
-        // // // lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
-        // // // // Remove Vista flags.
-        // // // if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
-            // // // lpXPData.uFlags ^= 0x80;
-        // // // }
-        // // // if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
-            // // // lpXPData.uFlags ^= 0x40;
-        // // // }
-        // // // if (lpXPData.dwInfoFlags & 0x20) {
-            // // // // I hope it picks the right icon.
-            // // // lpXPData.dwInfoFlags ^= 0x20;
-        // // // }
-        // // // if (lpXPData.dwInfoFlags & 0x80) {
-            // // // lpXPData.dwInfoFlags ^= 0x80;
-        // // // }
-        // // // if (lpXPData.uVersion > 3)
-            // // // lpXPData.uVersion = 3;
-        // // // return Shell_NotifyIconANative(dwMessage, &lpXPData);
-    // // // }
-    // return Shell_NotifyIconA(dwMessage, lpData);
-// }
 
 BOOLEAN 
 CheckIfIsOSExec(){
@@ -255,231 +152,106 @@ CheckIfIsOSExec(){
     }
 
     // Compare executable name with "explorer.exe"
-    if ((wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) || wcsicmp(PathFindFileNameW(exePath), L"MSIEXEC.EXE") == 0  || wcsicmp(PathFindFileNameW(exePath), L"Rundll32.EXE") == 0 || wcsicmp(PathFindFileNameW(exePath), L"SYSOCMGR.EXE") == 0) {
+    if ((wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) 
+		// || wcsicmp(PathFindFileNameW(exePath), L"MSIEXEC.EXE") == 0  
+		// || wcsicmp(PathFindFileNameW(exePath), L"Rundll32.EXE") == 0 
+		// || wcsicmp(PathFindFileNameW(exePath), L"SYSOCMGR.EXE") == 0
+		) {
         return TRUE;
     } else {
 		return FALSE;
     }	
 }
 
+/* Função auxiliar para verificar se é Windows 7+ */
+BOOL GetCurrentProcessImageVersion(WORD *pMajor, WORD *pMinor)
+{
+    HMODULE hModule;
+    PIMAGE_DOS_HEADER dos;
+    PIMAGE_NT_HEADERS nt;
+
+    if (!pMajor || !pMinor)
+        return FALSE;
+
+    *pMajor = 0;
+    *pMinor = 0;
+
+    /* Endereço base do executável principal */
+    hModule = GetModuleHandleW(NULL);
+    if (!hModule)
+        return FALSE;
+
+    dos = (PIMAGE_DOS_HEADER)hModule;
+
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE)
+        return FALSE;
+
+    nt = (PIMAGE_NT_HEADERS)((BYTE*)hModule + dos->e_lfanew);
+
+    if (nt->Signature != IMAGE_NT_SIGNATURE)
+        return FALSE;
+
+    *pMajor = nt->OptionalHeader.MajorImageVersion;
+    *pMinor = nt->OptionalHeader.MinorImageVersion;
+
+    return TRUE;
+}
+
 /*************************************************************************
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
  */
-HRESULT WINAPI DllGetClassObject(
-    REFCLSID rclsid,
-    REFIID iid,
-    LPVOID *ppv
-)
+HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 {
-    static PFN_DllGetClassObject_Native pfnNative = NULL;
-    HMODULE hShell32 = NULL;
-    HRESULT hres;
-    IClassFactory *pcf = NULL;
-    int i;
+	IClassFactory * pcf = NULL;
+	HRESULT	hres;
+	int i;
+    HMODULE hShell32 = NULL;	
+    PFNDllGetClassObject pfnDllGetClassObject;	
+	
+	// TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
-    if (!ppv)
-        return E_INVALIDARG;
+	if (!ppv) return E_INVALIDARG;
+	*ppv = NULL;
 
-    *ppv = NULL;
+	if(!CheckIfIsOSExec()){ //Avoid Explorer
+		/* search our internal interface table */
+		for(i=0;InterfaceTable[i].clsid;i++) {
+			if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
+				//TRACE("index[%u]\n", i);
+				pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+			}			
+		}
+	}	
 
-    /* Primeiro tenta localizar a CLSID na tabela interna */
-    for (i = 0; InterfaceTable[i].clsid; i++) {
-        if (IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
+    if (!pcf) {
+		hShell32 = GetModuleHandleW(shellName);
+		if (!hShell32){
+			hShell32 = LoadLibraryW(shellName);
+			if (!hShell32)
+			{
+				return HRESULT_FROM_WIN32(GetLastError());
+			}					
+		}	
 
-            /* Caso especial: CLSID_ShellLink e checagem de OS */
-            if (IsEqualIID(&CLSID_ShellLink, rclsid)) {
-                if (!CheckIfIsOSExec()) {
-                    pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-                    break;
-                } else {
-                    continue;
-                }
-            } else {
-                pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-                break;
-            }
-        }
-    }
-
-    /* Se encontrou na tabela interna, usa o factory interno */
-    if (pcf) {
-        hres = IClassFactory_QueryInterface(pcf, iid, ppv);
-        IClassFactory_Release(pcf);
-        return hres;
-    }
-
-    /* Senão, tenta chamar dinamicamente o DllGetClassObject nativo */
-    if (pfnNative == NULL) {
-        hShell32 = GetModuleHandleW(L"shell32.dll");
-        if (!hShell32)
-            hShell32 = LoadLibraryW(L"shell32.dll");
-
-        if (hShell32) {
-            FARPROC proc;
-            proc = GetProcAddress(hShell32, "DllGetClassObjectNative");
-            if (proc)
-                pfnNative = (PFN_DllGetClassObject_Native)proc;
-            else {
-                /* fallback: função padrão */
-                proc = GetProcAddress(hShell32, "DllGetClassObject");
-                if (proc)
-                    pfnNative = (PFN_DllGetClassObject_Native)proc;
-            }
-        }
-
-        if (pfnNative == NULL) {
-            OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
-            return CLASS_E_CLASSNOTAVAILABLE;
-        }
-    }
-
-    /* Chama o DllGetClassObject real da shell32 */
-    return pfnNative(rclsid, iid, ppv);
-}
-
-/**************************************************************************
- * Default ClassFactory Implementation
- *
- * SHCreateDefClassObject
- *
- * NOTES
- *  Helper function for dlls without their own classfactory.
- *  A generic classfactory is returned.
- *  When the CreateInstance of the cf is called the callback is executed.
- */
-
-typedef struct
-{
-    IClassFactory               IClassFactory_iface;
-    LONG                        ref;
-    CLSID			*rclsid;
-    LPFNCREATEINSTANCE		lpfnCI;
-    const IID *			riidInst;
-    LONG *			pcRefDll; /* pointer to refcounter in external dll (ugrrr...) */
-} IDefClFImpl;
-
-static inline IDefClFImpl *impl_from_IClassFactory(IClassFactory *iface)
-{
-	return CONTAINING_RECORD(iface, IDefClFImpl, IClassFactory_iface);
-}
-
-static const IClassFactoryVtbl dclfvt;
-
-/**************************************************************************
- *  IDefClF_fnConstructor
- */
-
-static IClassFactory * IDefClF_fnConstructor(LPFNCREATEINSTANCE lpfnCI, PLONG pcRefDll, REFIID riidInst)
-{
-	IDefClFImpl* lpclf;
-
-	lpclf = malloc(sizeof(*lpclf));
-	lpclf->ref = 1;
-	lpclf->IClassFactory_iface.lpVtbl = &dclfvt;
-	lpclf->lpfnCI = lpfnCI;
-	lpclf->pcRefDll = pcRefDll;
-
-	if (pcRefDll) InterlockedIncrement(pcRefDll);
-	lpclf->riidInst = riidInst;
-
-	TRACE("(%p)%s\n",lpclf, shdebugstr_guid(riidInst));
-	return &lpclf->IClassFactory_iface;
-}
-/**************************************************************************
- *  IDefClF_fnQueryInterface
- */
-static HRESULT WINAPI IDefClF_fnQueryInterface(
-  LPCLASSFACTORY iface, REFIID riid, LPVOID *ppvObj)
-{
-	IDefClFImpl *This = impl_from_IClassFactory(iface);
-
-	TRACE("(%p)->(%s)\n",This,shdebugstr_guid(riid));
-
-	*ppvObj = NULL;
-
-	if(IsEqualIID(riid, &IID_IUnknown) || IsEqualIID(riid, &IID_IClassFactory)) {
-	  *ppvObj = This;
-	  InterlockedIncrement(&This->ref);
-	  return S_OK;
+		pfnDllGetClassObject = (PFNDllGetClassObject)
+			GetProcAddress(hShell32, "DllGetClassObjectNative");
+		if (!pfnDllGetClassObject)
+		{
+			OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
+			return E_FAIL;
+		}
+				
+		return pfnDllGetClassObject(rclsid, iid, ppv); 
+				
 	}
 
-	TRACE("-- E_NOINTERFACE\n");
-	return E_NOINTERFACE;
+	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
+	IClassFactory_Release(pcf);
+
+	//TRACE("-- pointer to class factory: %p\n",*ppv);
+	return hres;
 }
-/******************************************************************************
- * IDefClF_fnAddRef
- */
-static ULONG WINAPI IDefClF_fnAddRef(LPCLASSFACTORY iface)
-{
-	IDefClFImpl *This = impl_from_IClassFactory(iface);
-	ULONG refCount = InterlockedIncrement(&This->ref);
-
-	TRACE("(%p)->(count=%lu)\n", This, refCount - 1);
-
-	return refCount;
-}
-/******************************************************************************
- * IDefClF_fnRelease
- */
-static ULONG WINAPI IDefClF_fnRelease(LPCLASSFACTORY iface)
-{
-	IDefClFImpl *This = impl_from_IClassFactory(iface);
-	ULONG refCount = InterlockedDecrement(&This->ref);
-
-	TRACE("(%p)->(count=%lu)\n", This, refCount + 1);
-
-	if (!refCount)
-	{
-	  if (This->pcRefDll) InterlockedDecrement(This->pcRefDll);
-
-	  TRACE("-- destroying IClassFactory(%p)\n",This);
-	  free(This);
-	}
-
-	return refCount;
-}
-/******************************************************************************
- * IDefClF_fnCreateInstance
- */
-static HRESULT WINAPI IDefClF_fnCreateInstance(
-  LPCLASSFACTORY iface, LPUNKNOWN pUnkOuter, REFIID riid, LPVOID *ppvObject)
-{
-	IDefClFImpl *This = impl_from_IClassFactory(iface);
-
-	TRACE("%p->(%p,%s,%p)\n",This,pUnkOuter,shdebugstr_guid(riid),ppvObject);
-
-	*ppvObject = NULL;
-
-	if ( This->riidInst==NULL ||
-	     IsEqualCLSID(riid, This->riidInst) ||
-	     IsEqualCLSID(riid, &IID_IUnknown) )
-	{
-	  return This->lpfnCI(pUnkOuter, riid, ppvObject);
-	}
-
-	ERR("unknown IID requested %s\n",shdebugstr_guid(riid));
-	return E_NOINTERFACE;
-}
-/******************************************************************************
- * IDefClF_fnLockServer
- */
-static HRESULT WINAPI IDefClF_fnLockServer(LPCLASSFACTORY iface, BOOL fLock)
-{
-	IDefClFImpl *This = impl_from_IClassFactory(iface);
-	TRACE("%p->(0x%x), not implemented\n",This, fLock);
-	return E_NOTIMPL;
-}
-
-static const IClassFactoryVtbl dclfvt =
-{
-  IDefClF_fnQueryInterface,
-  IDefClF_fnAddRef,
-  IDefClF_fnRelease,
-  IDefClF_fnCreateInstance,
-  IDefClF_fnLockServer
-};
-
 
 /*************************************************************************
  * CommandLineToArgvW            [SHCORE.@]
@@ -508,7 +280,7 @@ static const IClassFactoryVtbl dclfvt =
  * - in unquoted strings, the first quote opens the quoted string and the
  *   remaining consecutive quotes follow the above rule.
  */
-WCHAR** WINAPI CommandLineToArgvWInternal(const WCHAR *cmdline, int *numargs)
+WCHAR** WINAPI CommandLineToArgvW(const WCHAR *cmdline, int *numargs)
 {
     int qcount, bcount;
     const WCHAR *s;
@@ -738,76 +510,6 @@ WCHAR** WINAPI CommandLineToArgvWInternal(const WCHAR *cmdline, int *numargs)
     return argv;
 }
 
-void remove_extended_prefix(const char* input, char* output, size_t output_size) {
-    const char* prefix = "\\\\?\\";
-    size_t prefix_len = strlen(prefix);
-
-    if (strncmp(input, prefix, prefix_len) == 0) {
-        // Remove o prefixo
-        strncpy(output, input + prefix_len, output_size - 1);
-        output[output_size - 1] = '\0'; // Garantir terminação nula
-    } else {
-        // Copia normalmente se não tiver o prefixo
-        strncpy(output, input, output_size - 1);
-        output[output_size - 1] = '\0';
-    }
-}
-
-void remove_extended_prefix_w(LPCWSTR input, LPWSTR output, size_t output_size) {
-    const LPCWSTR prefix = L"\\\\?\\";
-    const size_t prefix_len = 4;
-    const LPCWSTR unc_prefix = L"UNC\\";
-
-    if (wcsncmp(input, prefix, prefix_len) == 0) {
-        // Trata caso \\?\UNC\... → \\server\share
-        if (wcsncmp(input + prefix_len, unc_prefix, 4) == 0) {
-            // Copia "\\server\share" (começando após "UNC\")
-            wcsncpy(output, L"\\\\", output_size - 1);
-            output[output_size - 1] = L'\0';
-            wcsncat(output, input + prefix_len + 4, output_size - wcslen(output) - 1);
-        } else {
-            // Caminho normal: apenas pula o \\?\
-            wcsncpy(output, input + prefix_len, output_size - 1);
-            output[output_size - 1] = L'\0';
-        }
-    } else {
-        // Sem prefixo, copia normalmente
-        wcsncpy(output, input, output_size - 1);
-        output[output_size - 1] = L'\0';
-    }
-}
-
-// /*************************************************************************
- // * ShellExecuteA            [SHELL32.290]
- // */
-// HINSTANCE WINAPI ShellExecuteAInternal(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
-                               // LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd)
-// {
-	// // char converted[MAX_PATH];
-	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
-	// // remove_extended_prefix(lpFile, converted ,MAX_PATH);
-	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
-	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
-	// return ShellExecuteANative(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, iShowCmd);
-// }
-
-// /*************************************************************************
- // * ShellExecuteW			[SHELL32.294]
- // * from shellapi.h
- // * WINSHELLAPI HINSTANCE APIENTRY ShellExecuteW(HWND hwnd, LPCWSTR lpVerb,
- // * LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
- // */
-// HINSTANCE WINAPI ShellExecuteWInternal(HWND hwnd, LPCWSTR lpVerb, LPCWSTR lpFile,
-                               // LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
-// {
-	// // wchar_t converted[MAX_PATH];
-	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
-	// // remove_extended_prefix_w(lpFile, converted ,MAX_PATH);
-	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
-	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
-	// return ShellExecuteWNative(hwnd, lpVerb, lpFile, lpParameters, lpDirectory, nShowCmd);
-// }
-
 BOOL WINAPI ShellExecuteExA(
     SHELLEXECUTEINFOA *pExecInfo
 )
@@ -828,7 +530,7 @@ BOOL WINAPI ShellExecuteExA(
     /* Se a função nativa ainda não foi resolvida, tenta resolver agora */
     if (pfnNative == NULL) {
         /* Primeiro tenta obter o módulo já carregado */
-        hShell32 = GetModuleHandleA("shell32.dll");
+        hShell32 = GetModuleHandleW(shellName);
         if (hShell32) {
             proc = GetProcAddress(hShell32, "ShellExecuteExANative");
             if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
@@ -836,7 +538,7 @@ BOOL WINAPI ShellExecuteExA(
 
         /* Se não encontrou, tenta carregar shell32 e resolver */
         if (pfnNative == NULL) {
-            hShell32 = LoadLibraryA("shell32.dll");
+            hShell32 = LoadLibraryW(shellName);
             if (hShell32) {
                 proc = GetProcAddress(hShell32, "ShellExecuteExANative");
                 if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
@@ -907,7 +609,7 @@ BOOL WINAPI ShellExecuteExW(
 
     /* Resolver função nativa uma única vez */
     if (pfnNative == NULL) {
-        hShell32 = GetModuleHandleW(L"shell32.dll");
+        hShell32 = GetModuleHandleW(shellName);
         if (hShell32) {
             proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
             if (proc) pfnNative = (PFN_ShellExecuteExW_Native)proc;
@@ -915,7 +617,7 @@ BOOL WINAPI ShellExecuteExW(
 
         if (pfnNative == NULL) {
             if (!hShell32)
-                hShell32 = LoadLibraryW(L"shell32.dll");
+                hShell32 = LoadLibraryW(shellName);
             if (hShell32) {
                 proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
                 if (proc)
@@ -961,3 +663,116 @@ BOOL WINAPI ShellExecuteExW(
 
     return result;
 }
+
+// /*************************************************************************
+ // * ShellExecuteA            [SHELL32.290]
+ // */
+// HINSTANCE WINAPI ShellExecuteAInternal(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
+                               // LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd)
+// {
+	// // char converted[MAX_PATH];
+	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
+	// // remove_extended_prefix(lpFile, converted ,MAX_PATH);
+	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
+	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
+	// return ShellExecuteANative(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, iShowCmd);
+// }
+
+// /*************************************************************************
+ // * ShellExecuteW			[SHELL32.294]
+ // * from shellapi.h
+ // * WINSHELLAPI HINSTANCE APIENTRY ShellExecuteW(HWND hwnd, LPCWSTR lpVerb,
+ // * LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
+ // */
+// HINSTANCE WINAPI ShellExecuteWInternal(HWND hwnd, LPCWSTR lpVerb, LPCWSTR lpFile,
+                               // LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
+// {
+	// // wchar_t converted[MAX_PATH];
+	// // //PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
+	// // remove_extended_prefix_w(lpFile, converted ,MAX_PATH);
+	// // DbgPrint("ShellExecuteWInternal:: original file: %ws\n", lpFile);
+	// // DbgPrint("ShellExecuteWInternal:: converted file: %ws\n", converted);
+	// return ShellExecuteWNative(hwnd, lpVerb, lpFile, lpParameters, lpDirectory, nShowCmd);
+// }
+
+// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
+    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
+        // NOTIFYICONDATAW lpXPData;
+        // memcpy(&lpXPData, lpData, NOTIFYICONDATAW_V3_SIZE);
+        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
+        // // Remove Vista flags.
+        // if (lpXPData.uFlags & 0x80) // NIF_SHOWTIP
+            // lpXPData.uFlags ^= 0x80;
+        // if (lpXPData.uFlags & 0x40) // NIF_REALTIME
+            // lpXPData.uFlags ^= 0x40;
+        // if (lpXPData.uFlags & 0x20) // NIF_GUID
+            // lpXPData.uFlags ^= 0x20;
+        
+        // // & 0x20 is "reserved", we do not want to mess with it normally, but since this is conditionally defined, it's fair game.
+        // if (lpXPData.dwInfoFlags & 0x20) {
+            // // I hope it picks the right icon.
+            // lpXPData.dwInfoFlags ^= 0x20;
+        // }
+        // if (lpXPData.dwInfoFlags & 0x80) {
+            // lpXPData.dwInfoFlags ^= 0x80;
+        // }
+        // if (lpXPData.uVersion > 3)
+            // lpXPData.uVersion = 3;
+        // memset(&(lpXPData.guidItem), 0, sizeof(GUID));
+        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
+    // }
+    // return Shell_NotifyIconWNative(dwMessage, lpData);
+// }
+
+// BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
+    // // Verifica se a estrutura é válida e se é de uma versão superior à V3
+    // if (lpData != NULL && lpData->cbSize > NOTIFYICONDATAW_V3_SIZE) {
+        // // Faz uma cópia para manipulação, sem afetar a original
+        // NOTIFYICONDATAW lpXPData = {0};
+        // memcpy(&lpXPData, lpData, sizeof(NOTIFYICONDATAW));
+        
+        // // Corrige a cbSize para V3
+        // lpXPData.cbSize = NOTIFYICONDATAW_V3_SIZE;
+
+        // // Remove flags específicas do Vista que não existem na V3
+        // lpXPData.uFlags &= ~(0x80 | 0x40 | 0x20); // NIF_SHOWTIP, NIF_REALTIME, NIF_GUID
+        // lpXPData.dwInfoFlags &= ~(0x20 | 0x80);   // Valores específicos que causam problemas
+        // lpXPData.uVersion = min(lpXPData.uVersion, 3);
+
+        // // Zera GUID para evitar uso incorreto (já que o campo foi removido)
+        // ZeroMemory(&(lpXPData.guidItem), sizeof(GUID));
+
+        // // Chama a versão nativa com a estrutura compatível
+        // return Shell_NotifyIconWNative(dwMessage, &lpXPData);
+    // }
+
+    // // Estrutura compatível, pode chamar diretamente
+    // return Shell_NotifyIconWNative(dwMessage, lpData);
+// }
+
+
+// BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
+    // // // if (lpData->cbSize > NOTIFYICONDATAA_V2_SIZE) {
+        // // // NOTIFYICONDATAA lpXPData;
+        // // // memcpy(&lpXPData, lpData, NOTIFYICONDATAA_V2_SIZE);
+        // // // lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
+        // // // // Remove Vista flags.
+        // // // if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
+            // // // lpXPData.uFlags ^= 0x80;
+        // // // }
+        // // // if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
+            // // // lpXPData.uFlags ^= 0x40;
+        // // // }
+        // // // if (lpXPData.dwInfoFlags & 0x20) {
+            // // // // I hope it picks the right icon.
+            // // // lpXPData.dwInfoFlags ^= 0x20;
+        // // // }
+        // // // if (lpXPData.dwInfoFlags & 0x80) {
+            // // // lpXPData.dwInfoFlags ^= 0x80;
+        // // // }
+        // // // if (lpXPData.uVersion > 3)
+            // // // lpXPData.uVersion = 3;
+        // // // return Shell_NotifyIconANative(dwMessage, &lpXPData);
+    // // // }
+    // return Shell_NotifyIconA(dwMessage, lpData);
+// }

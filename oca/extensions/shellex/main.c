@@ -1,21 +1,22 @@
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
+/*++
+
+Copyright (c) 2025  Shorthorn Project
+
+Module Name:
+
+    main.c
+
+Abstract:
+
+    This module main functions for Shell. 
+
+Author:
+
+    Skulltrail 31-October-2025
+
+Revision History:
+
+--*/
 
 #include "main.h"
  
@@ -25,12 +26,44 @@ HINSTANCE shell32_hInstance = 0;
 
 WNDPROC lpPrevWndFunc;
 
+// HRESULT GetDllGetClassObjectProc(){
+    // HMODULE hShell32 = NULL;	
+	
+	// if (pfnDllGetClassObjectNative == NULL) {
+		// hShell32 = GetModuleHandleW(shellName);
+		// if (!hShell32)
+			// hShell32 = LoadLibraryW(shellName);
+
+		// if (hShell32) {
+			// FARPROC proc;
+			// proc = GetProcAddress(hShell32, "DllGetClassObjectNative");
+			// if (proc)
+				// pfnDllGetClassObjectNative = (PFN_DllGetClassObject_Native)proc;
+			// else {
+				// /* fallback: função padrão */
+				// proc = GetProcAddress(hShell32, "DllGetClassObject");
+				// if (proc)
+					// pfnDllGetClassObjectNative = (PFN_DllGetClassObject_Native)proc;
+			// }
+		// }
+
+		// if (pfnDllGetClassObjectNative == NULL) {
+			// OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
+			// return CLASS_E_CLASSNOTAVAILABLE;
+		// }				
+				
+	// }
+	
+	// return S_OK;
+// }
+
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
     switch(fdwReason)
     {
         case DLL_PROCESS_ATTACH:
 			shell32_hInstance = hInstDLL;
+			//GetDllGetClassObjectProc();
 			DisableThreadLibraryCalls(shell32_hInstance);
             break;
     }
