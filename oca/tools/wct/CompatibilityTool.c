@@ -45,8 +45,10 @@ void WriteToRegistry(LPCTSTR, int);
 void DeleteRegistryKey(int);
 void HandleWindow(int, HWND, HWND, HWND, HWND, HWND);
 void ExitWindow(int);
+int ReadFromRegistry(void);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
     LPTSTR cmdLine = GetCommandLine();
 
     if (cmdLine[0] == _T('"')) {
@@ -129,16 +131,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             NULL, NULL, hInstance, NULL
         );
 
-        while (GetMessage(&msg, NULL, 0, 0)) {
+        while (GetMessage(&msg, NULL, 0, 0) > 0) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        return 0;
+        return (int)msg.wParam;
     }
 }
 
-// Function to enable or disable the window and its controls
+// Função auxiliar para (des)abilitar controles
 void HandleWindow(BOOL enable, HWND hComboBox, HWND hApplyButton, HWND hDeleteButton, HWND hCancelButton, HWND hwnd)
 {
     EnableWindow(hwnd, enable);
@@ -154,22 +156,72 @@ void HandleWindow(BOOL enable, HWND hComboBox, HWND hApplyButton, HWND hDeleteBu
         enable ? MF_BYCOMMAND | MF_ENABLED : MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
 }
 
+// =============================================================
+// Função para ler o valor do registro e retornar o índice correspondente
+// =============================================================
+int ReadFromRegistry(void)
+{
+    HKEY hKey;
+    TCHAR value[64];
+    DWORD size = sizeof(value);
+    LONG result;
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+#ifdef _M_AMD64
+    LONG resultWow64;
+    HKEY Wow64hKey;
+#endif
+
+    result = RegOpenKeyEx(
+        HKEY_LOCAL_MACHINE,
+        _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+        0, KEY_QUERY_VALUE, &hKey
+    );
+
+#ifdef _M_AMD64
+    resultWow64 = RegOpenKeyEx(
+        HKEY_LOCAL_MACHINE,
+        _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
+        0, KEY_QUERY_VALUE, &Wow64hKey
+    );
+#endif
+
+    if (result == ERROR_SUCCESS) {
+        result = RegQueryValueEx(hKey, _T("EmulatedVersion"), NULL, NULL, (LPBYTE)value, &size);
+        RegCloseKey(hKey);
+    }
+
+#ifdef _M_AMD64
+    if (result != ERROR_SUCCESS && resultWow64 == ERROR_SUCCESS) {
+        result = RegQueryValueEx(Wow64hKey, _T("EmulatedVersion"), NULL, NULL, (LPBYTE)value, &size);
+        RegCloseKey(Wow64hKey);
+    }
+#endif
+
+    if (result == ERROR_SUCCESS) {
+        int i;
+        for (i = 0; i < (int)(sizeof(versionValues) / sizeof(versionValues[0])); ++i) {
+            if (_tcscmp(value, versionValues[i]) == 0)
+                return i;
+        }
+    }
+
+    return 0; // padrão
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
     static HWND hComboBox, hApplyButton, hDeleteButton, hCancelButton;
     static HFONT hFont;
-	int i;
+    int i;
 
     switch (msg) {
         case WM_CREATE: {
-	        // Criar a fonte Arial
-	        hFont = CreateFont(
-	            20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-	            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-	            DEFAULT_PITCH | FF_SWISS, TEXT("Arial")
-	        );        	
-        	
-            // Dropdown List
+            hFont = CreateFont(
+                20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+                DEFAULT_PITCH | FF_SWISS, TEXT("Arial")
+            );
+
             hComboBox = CreateWindow(
                 WC_COMBOBOXW, NULL,
                 CBS_DROPDOWNLIST | WS_CHILD | WS_VISIBLE | WS_VSCROLL,
@@ -178,93 +230,67 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 GetModuleHandle(NULL), NULL
             );
 
-            // Adiciona as opções ao ComboBox
-            for (i = 0; i < sizeof(versions) / sizeof(versions[0]); ++i) {
+            for (i = 0; i < (int)(sizeof(versions) / sizeof(versions[0])); ++i)
                 SendMessage(hComboBox, CB_ADDSTRING, 0, (LPARAM)versions[i]);
-            }
-            
-            // Definir o índice padrão (por exemplo, 1 - "Item 2")
-            SendMessage(hComboBox, CB_SETCURSEL, 0, 0);
-            // Botão Aplicar
-            hApplyButton = CreateWindow(
-                _T("BUTTON"), _T("Apply"),
+
+            // seleciona última opção salva
+            i = ReadFromRegistry();
+            SendMessage(hComboBox, CB_SETCURSEL, i, 0);
+
+            hApplyButton = CreateWindow(_T("BUTTON"), _T("Apply"),
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
                 35, 80, 100, 30,
                 hwnd, (HMENU)IDC_APPLY_BUTTON,
-                GetModuleHandle(NULL), NULL
-            );
+                GetModuleHandle(NULL), NULL);
 
-            // Botão Deletar
-            hDeleteButton = CreateWindow(
-                _T("BUTTON"), _T("Delete"),
+            hDeleteButton = CreateWindow(_T("BUTTON"), _T("Delete"),
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD,
                 145, 80, 100, 30,
                 hwnd, (HMENU)IDC_DELETE_BUTTON,
-                GetModuleHandle(NULL), NULL
-            );
+                GetModuleHandle(NULL), NULL);
 
-            // Botão Cancelar
-            hCancelButton = CreateWindow(
-                _T("BUTTON"), _T("Cancel"),
+            hCancelButton = CreateWindow(_T("BUTTON"), _T("Cancel"),
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD,
                 255, 80, 100, 30,
                 hwnd, (HMENU)IDC_CANCEL_BUTTON,
-                GetModuleHandle(NULL), NULL
-            );
-            
-	        // Aplicar a fonte Arial a todos os controles
-	        SendMessage(hComboBox, WM_SETFONT, (WPARAM)hFont, TRUE);
-	        SendMessage(hApplyButton, WM_SETFONT, (WPARAM)hFont, TRUE);
-	        SendMessage(hDeleteButton, WM_SETFONT, (WPARAM)hFont, TRUE);
-	        SendMessage(hCancelButton, WM_SETFONT, (WPARAM)hFont, TRUE);            
+                GetModuleHandle(NULL), NULL);
+
+            SendMessage(hComboBox, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SendMessage(hApplyButton, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SendMessage(hDeleteButton, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SendMessage(hCancelButton, WM_SETFONT, (WPARAM)hFont, TRUE);
             break;
         }
 
-        case WM_COMMAND: {
-            if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBOBOX) {
-                // Seleção mudou no ComboBox
-            }
-
+        case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case IDC_APPLY_BUTTON: {
-                    // Obtém a seleção do ComboBox
-				    int idx = SendMessage(hComboBox, CB_GETCURSEL, 0, 0);
-                    // Disable the window
+                    int idx = SendMessage(hComboBox, CB_GETCURSEL, 0, 0);
                     HandleWindow(FALSE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
-				    if (idx != CB_ERR) {
-				        const TCHAR* selectedValue = versionValues[idx];
-				        WriteToRegistry(selectedValue, TRUE);
-				    } else {
-				        MessageBox(hwnd, _T("Please select a version."), _T("Error"), MB_OK | MB_ICONERROR);
-				    }
-                    // Enable the window
+                    if (idx != CB_ERR)
+                        WriteToRegistry(versionValues[idx], TRUE);
+                    else
+                        MessageBox(hwnd, _T("Please select a version."), _T("Error"), MB_OK | MB_ICONERROR);
                     HandleWindow(TRUE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
-				    break;
+                    break;
                 }
 
-                case IDC_DELETE_BUTTON: {
+                case IDC_DELETE_BUTTON:
                     SendMessage(hComboBox, CB_SETCURSEL, -1, 0);
-                    // Disable the window
                     HandleWindow(FALSE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
                     DeleteRegistryKey(TRUE);
-                    //MessageBox(hwnd, _T("Seleção deletada e chave de registro removida!"), _T("Deletar"), MB_OK | MB_ICONINFORMATION);
-                    // Enable the window
                     HandleWindow(TRUE, hComboBox, hApplyButton, hDeleteButton, hCancelButton, hwnd);
                     break;
-                }
 
-                case IDC_CANCEL_BUTTON: {
-                    PostQuitMessage(0);
+                case IDC_CANCEL_BUTTON:
+                    DestroyWindow(hwnd);
                     break;
-                }				
             }
             break;
-        }
 
-        case WM_DESTROY: {
+        case WM_DESTROY:
             PostQuitMessage(0);
             break;
-        }
 
         default:
             return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -272,137 +298,113 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
-void WriteToRegistry(const TCHAR* value, BOOL useMessageBox) {
+// =============================================================
+// Funções de manipulação de registro (iguais às anteriores)
+// =============================================================
+void WriteToRegistry(const TCHAR* value, BOOL useMessageBox)
+{
     HKEY hKey;
     int msgboxID;
     LONG result;
-#ifdef _M_AMD64      
+#ifdef _M_AMD64
     LONG resultWow64;
     HKEY Wow64hKey;
-#endif	    
-    
+#endif
+
     result = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
         0, KEY_SET_VALUE, &hKey
     );
-    
-#ifdef _M_AMD64     
+
+#ifdef _M_AMD64
     resultWow64 = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
         0, KEY_SET_VALUE, &Wow64hKey
-    );  
-#endif	  
+    );
+#endif
 
     if (result == ERROR_SUCCESS) {
-        RegSetValueEx(hKey, _T("EmulatedVersion"), 0, REG_SZ, (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
-#ifdef _M_AMD64 
-        if(resultWow64 == ERROR_SUCCESS){
-            RegSetValueEx(Wow64hKey, _T("EmulatedVersion"), 0, REG_SZ, (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));	
-		}
-#endif       
+        RegSetValueEx(hKey, _T("EmulatedVersion"), 0, REG_SZ,
+            (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
+#ifdef _M_AMD64
+        if (resultWow64 == ERROR_SUCCESS)
+            RegSetValueEx(Wow64hKey, _T("EmulatedVersion"), 0, REG_SZ,
+                (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
+#endif
         RegCloseKey(hKey);
-        if (useMessageBox)
-        {
-            msgboxID = MessageBox(NULL, _T("Value saved with success on registry!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
-
+#ifdef _M_AMD64
+        RegCloseKey(Wow64hKey);
+#endif
+        if (useMessageBox) {
+            msgboxID = MessageBox(NULL, _T("Value saved successfully!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
             ExitWindow(msgboxID);
-        }
-        else
-        {
-            PostQuitMessage(0);
-        }
+        } else PostQuitMessage(0);
     } else {
-        if (useMessageBox)
-        {
-            msgboxID = MessageBox(NULL, _T("Error while trying access the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
-			
-            ExitWindow(msgboxID);			
-        }
-        else
-        {
-            PostQuitMessage(1);
-        }
+        if (useMessageBox) {
+            msgboxID = MessageBox(NULL, _T("Error accessing registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+            ExitWindow(msgboxID);
+        } else PostQuitMessage(1);
     }
 }
 
-void DeleteRegistryKey(BOOL useMessageBox) {
+void DeleteRegistryKey(BOOL useMessageBox)
+{
     HKEY hKey;
-	LONG result;
-	int msgboxID;
-#ifdef _M_AMD64      
+    LONG result;
+    int msgboxID;
+#ifdef _M_AMD64
     LONG resultWow64;
     HKEY Wow64hKey;
-#endif	
+#endif
 
     result = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
         0, KEY_SET_VALUE, &hKey
     );
-	
-#ifdef _M_AMD64     
+
+#ifdef _M_AMD64
     resultWow64 = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
         0, KEY_SET_VALUE, &Wow64hKey
-    );  
-#endif	
+    );
+#endif
 
     if (result == ERROR_SUCCESS) {
         result = RegDeleteValue(hKey, _T("EmulatedVersion"));
-#ifdef _M_AMD64 
-        if(resultWow64 == ERROR_SUCCESS){
-            resultWow64 = RegDeleteValue(Wow64hKey, _T("EmulatedVersion"));	
-		}
-#endif 		
+#ifdef _M_AMD64
+        if (resultWow64 == ERROR_SUCCESS)
+            RegDeleteValue(Wow64hKey, _T("EmulatedVersion"));
+#endif
         RegCloseKey(hKey);
-#ifdef _M_AMD64 
+#ifdef _M_AMD64
         RegCloseKey(Wow64hKey);
-#endif		
+#endif
 
         if (result == ERROR_SUCCESS) {
-            if (useMessageBox)
-            {
-                msgboxID = MessageBox(NULL, _T("Registry Key removed with success!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
-                
-				ExitWindow(msgboxID);
-            }
-            else
-            {
-                PostQuitMessage(0);
-            }		
+            if (useMessageBox) {
+                msgboxID = MessageBox(NULL, _T("Registry key removed successfully!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
+                ExitWindow(msgboxID);
+            } else PostQuitMessage(0);
         } else {
-            if (useMessageBox)
-            {
-                msgboxID = MessageBox(NULL, _T("Error while trying remove the registry key value."), _T("Error"), MB_OK | MB_ICONERROR);
-				
-				ExitWindow(msgboxID);
-            }
-            else
-            {
-                PostQuitMessage(1);
-            }
+            if (useMessageBox) {
+                msgboxID = MessageBox(NULL, _T("Error removing registry value."), _T("Error"), MB_OK | MB_ICONERROR);
+                ExitWindow(msgboxID);
+            } else PostQuitMessage(1);
         }
     } else {
-        if (useMessageBox)
-        {
-            msgboxID = MessageBox(NULL, _T("Error trying open the registry key."), _T("Error"), MB_OK | MB_ICONERROR);
-			
-			ExitWindow(msgboxID);
-        }
-        else
-        {
-            PostQuitMessage(1);
-        }
+        if (useMessageBox) {
+            msgboxID = MessageBox(NULL, _T("Error opening registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+            ExitWindow(msgboxID);
+        } else PostQuitMessage(1);
     }
 }
 
-void ExitWindow(int msgboxID){
-	if (msgboxID == IDOK)
-    {
+void ExitWindow(int msgboxID)
+{
+    if (msgboxID == IDOK)
         PostQuitMessage(0);
-    }
 }
-
