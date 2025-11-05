@@ -106,6 +106,32 @@ SetSystemFileCacheSize(
 // This means that CPU sets can be partially emulated by it being a more complicated GetLogicalProcessorInformation.
 // Note that it does not support processor groups just yet.
 // Note that it does not support processor groups just yet.
+// BOOL WINAPI GetSystemCpuSetInformation(
+    // PSYSTEM_CPU_SET_INFORMATION  Information,
+    // ULONG                        BufferLength,
+    // PULONG                       ReturnedLength,
+    // HANDLE                       Process,
+    // ULONG                        Flags
+// ) {
+    
+    // if (ReturnedLength)
+        // *ReturnedLength = sizeof(SYSTEM_CPU_SET_INFORMATION);
+    
+    // if (BufferLength < sizeof(SYSTEM_CPU_SET_INFORMATION)) {
+        // SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        // return FALSE;
+    // }
+    
+    // if (!Information) {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    
+    // // CPU Sets are not a thing prior to Windows 10. Pretend that there is only a single "CPU Set".
+    // memset(Information, 0, sizeof(SYSTEM_CPU_SET_INFORMATION)); // already fills out all the fields we need anyway
+    // Information->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+    // return TRUE;
+// }
 BOOL WINAPI GetSystemCpuSetInformation(
     PSYSTEM_CPU_SET_INFORMATION  Information,
     ULONG                        BufferLength,
@@ -113,11 +139,20 @@ BOOL WINAPI GetSystemCpuSetInformation(
     HANDLE                       Process,
     ULONG                        Flags
 ) {
+    // Get the number of cores in the system.
+    PSYSTEM_CPU_SET_INFORMATION currentCpuSet;
+    DWORD processors = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    DWORD requiredLength;
+    USHORT numa;
+    PROCESSOR_NUMBER proc = { 0 };
+    int i;
+    
+    requiredLength = sizeof(SYSTEM_CPU_SET_INFORMATION) * processors;
     
     if (ReturnedLength)
-        *ReturnedLength = sizeof(SYSTEM_CPU_SET_INFORMATION);
+        *ReturnedLength = requiredLength;
     
-    if (BufferLength < sizeof(SYSTEM_CPU_SET_INFORMATION)) {
+    if (BufferLength < requiredLength) {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return FALSE;
     }
@@ -127,9 +162,32 @@ BOOL WINAPI GetSystemCpuSetInformation(
         return FALSE;
     }
     
-    // CPU Sets are not a thing prior to Windows 10. Pretend that there is only a single "CPU Set".
-    memset(Information, 0, sizeof(SYSTEM_CPU_SET_INFORMATION)); // already fills out all the fields we need anyway
-    Information->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+    memset(Information, 0, requiredLength);
+    
+    for (i = 0; i < processors; i++) {
+        currentCpuSet = &Information[i];
+                
+        currentCpuSet->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+        currentCpuSet->Type = CpuSetInformation;
+
+        currentCpuSet->CpuSet.Id                  = i + 1;
+        currentCpuSet->CpuSet.Group               = i >> 6;
+        currentCpuSet->CpuSet.LogicalProcessorIndex = i & 0x3F;
+        currentCpuSet->CpuSet.CoreIndex           = i & 0x3F;  // simplificado
+        currentCpuSet->CpuSet.LastLevelCacheIndex = 0;
+        currentCpuSet->CpuSet.EfficiencyClass     = 0;
+        
+        // Get NUMA node
+        proc.Group = i >> 6;
+        proc.Number = i & 0x3F;
+        GetNumaProcessorNodeEx(&proc, &numa);
+        
+        currentCpuSet->CpuSet.NumaNodeIndex     = (UCHAR)numa;
+        currentCpuSet->CpuSet.Allocated = 1;
+        currentCpuSet->CpuSet.AllocatedToTargetProcess = 1;
+        currentCpuSet->CpuSet.AllocationTag = i;
+    }
+    
     return TRUE;
 }
 

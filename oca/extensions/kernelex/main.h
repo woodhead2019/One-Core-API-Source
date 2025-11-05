@@ -1660,6 +1660,19 @@ GetNumaProcessorNode(
     OUT PUCHAR NodeNumber
 );
 
+DWORD 
+WINAPI 
+GetActiveProcessorCount(
+  WORD GroupNumber
+);
+
+BOOL 
+WINAPI 
+GetNumaProcessorNodeEx(
+  IN PPROCESSOR_NUMBER Processor,
+  OUT PUSHORT           NodeNumber
+);
+
 DECLSPEC_NORETURN
 VOID
 WINAPI
