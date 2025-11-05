@@ -612,7 +612,7 @@
 643 stdcall UnregisterTraceGuids(double) #ntdll.EtwUnregisterTraceGuids ; Windows XP doesn't have this function on Ntdll
 644 stdcall UpdateTraceA(double str ptr) #ntdll.EtwUpdateTraceA ; Windows XP doesn't have this function on Ntdll
 645 stdcall UpdateTraceW(double wstr ptr) #ntdll.EtwUpdateTraceW ; Windows XP doesn't have this function on Ntdll
-646 stdcall WdmWmiServiceMain(ptr long)
+646 stdcall WdmWmiServiceMain(ptr long) advapi32.WdmWmiServiceMain
 647 stdcall WmiCloseBlock(ptr)
 650 stdcall WmiDevInstToInstanceNameA(ptr long str long)
 651 stdcall WmiDevInstToInstanceNameW(ptr long wstr long)
@@ -622,8 +622,8 @@
 655 stdcall WmiFileHandleToInstanceNameA(long long ptr long)
 656 stdcall WmiFileHandleToInstanceNameW(long long ptr long)
 657 stdcall WmiFreeBuffer(ptr)
-658 stdcall WmiGetFirstTraceOffset(long long)
-660 stdcall WmiGetTraceHeader(long long long)
+658 stdcall WmiGetFirstTraceOffset(long long) advapi32.WmiGetFirstTraceOffset
+660 stdcall WmiGetTraceHeader(long long long) advapi32.WmiGetTraceHeader
 661 stdcall WmiMofEnumerateResourcesA(long long long)
 662 stdcall WmiMofEnumerateResourcesW(long long long)
 663 stdcall WmiNotificationRegistrationA(ptr long ptr long long) #ntdll.EtwNotificationRegistrationA ; Windows XP doesn't have this function on Ntdll
@@ -754,8 +754,10 @@
 @ stdcall SetUserFileEncryptionKeyEx(ptr long long ptr)
 @ stdcall TreeSetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr long)
 
-#Win7+
+#Win7 function
 @ stdcall EnableTraceEx2(int64 ptr long long int64 int64 long ptr)
+
+#Win8 functions
 @ stdcall EventSetInformation(ptr long ptr long) ntext.EtwEventSetInformation
 @ stdcall LsaLookupSids2(ptr long long ptr ptr ptr)
 
