@@ -122,14 +122,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         if (!RegisterClass(&wc)) return -1;
 
+        // Dimensões da janela
+        int width = 398;
+        int height = 165;
+
+        // Obtém tamanho da tela
+        int screenW = GetSystemMetrics(SM_CXSCREEN);
+        int screenH = GetSystemMetrics(SM_CYSCREEN);
+
+        // Calcula posição central
+        int posX = (screenW - width) / 2;
+        int posY = (screenH - height) / 2;
+
         hwnd = CreateWindowEx(
             WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_DLGMODALFRAME,
             _T("DropdownApp"),
             _T("Windows Compatibility Tool"),
             WS_VISIBLE | WS_BORDER | WS_SYSMENU | WS_MINIMIZEBOX,
-            CW_USEDEFAULT, CW_USEDEFAULT, 398, 165,
+            posX, posY, width, height,
             NULL, NULL, hInstance, NULL
         );
+
+        // Garante que a janela será mostrada no centro da tela
+        ShowWindow(hwnd, nCmdShow);
+        UpdateWindow(hwnd);
 
         while (GetMessage(&msg, NULL, 0, 0) > 0) {
             TranslateMessage(&msg);

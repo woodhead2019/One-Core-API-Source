@@ -139,8 +139,11 @@ cleanup:
 
 BOOL ShouldUseDWriteCore() {
 	PPEB Peb;
+	LPCWSTR lpApplicationName;
 	
 	Peb = NtCurrentPeb();	
+	
+	lpApplicationName = Peb->ProcessParameters->ImagePathName.Buffer;
 	
     if (!IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE)) {
         // A system without SSE2 can not use DirectWriteCore.
@@ -152,13 +155,9 @@ BOOL ShouldUseDWriteCore() {
         return TRUE;
     }
     
-    if (HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "IsSandboxedProcess") && HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "GetHandleVerifier")) {
-        if (!HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "g_originals")) {
-            return FALSE;
-        }
-        // Chromium application.
-        return TRUE;
-    }
+	if(HasExportedFunction(lpApplicationName, "IsSandboxedProcess") && HasExportedFunction(lpApplicationName, "GetHandleVerifier") && !HasExportedFunction(lpApplicationName, "g_originals")){
+		return TRUE;
+	}
     
     return FALSE;
 }
@@ -169,7 +168,7 @@ DWriteCreateFactory(DWRITE_FACTORY_TYPE factoryType, REFIID iid, IUnknown **fact
 	LPCWSTR dllName;
 	HANDLE hnd;
 	DirectWriteCreation api;
-
+    
 	if(ShouldUseDWriteCore()){
 		// Load dwritecore.dll, which will be used everywhere else.
 		dllName = L"dwritecore.dll";
@@ -178,7 +177,11 @@ DWriteCreateFactory(DWRITE_FACTORY_TYPE factoryType, REFIID iid, IUnknown **fact
 	}
 
 	// Try load the DLL.
-	hnd = LoadLibraryW(dllName);
+	hnd = GetModuleHandleW(dllName);
+	if(!hnd){
+		hnd = LoadLibraryW(dllName);
+	}
+	
 	if (!hnd) 
 		return HRESULT_FROM_WIN32(GetLastError());
 
