@@ -51,7 +51,7 @@ LdrInitialize(
         // LdrDisableThreadCalloutsForDll(hDll);
         //RtlpInitializeKeyedEvent();
         RtlpInitDeferredCriticalSection();
-		RtlpInitSRWLock(NtCurrentTeb()->ProcessEnvironmentBlock);
+		//RtlpInitSRWLock(NtCurrentTeb()->ProcessEnvironmentBlock);
 		RtlpInitConditionVariable(NtCurrentTeb()->ProcessEnvironmentBlock);
 		InitializeGlobalKeyedEventHandle();
 		if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors == 1)
