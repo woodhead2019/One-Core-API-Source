@@ -1861,7 +1861,7 @@ BOOL WINAPI UmsThreadYield(void *param)
  */
 BOOL WINAPI SetProcessMitigationPolicy(PROCESS_MITIGATION_POLICY policy, void *buffer, SIZE_T length)
 {
-    FIXME("(%d, %p, %lu): stub\n", policy, buffer, length);
+    //FIXME("(%d, %p, %lu): stub\n", policy, buffer, length);
 	
 	// if (policy == ProcessSystemCallDisablePolicy)
 		// globalPolicy = (PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY)(ULONG_PTR)buffer;
@@ -1877,7 +1877,7 @@ BOOL WINAPI GetProcessMitigationPolicy(HANDLE hProcess, PROCESS_MITIGATION_POLIC
     if (!buffer)
         return FALSE;
     memset(buffer, 0, length);
-    FIXME("(%p, %u, %p, %lu): stub\n", hProcess, policy, buffer, length);
+    //FIXME("(%p, %u, %p, %lu): stub\n", hProcess, policy, buffer, length);
 
     return TRUE;
 }
@@ -1911,7 +1911,7 @@ BOOL WINAPI GetProcessGroupAffinity(HANDLE hProcess, PUSHORT GroupCount, PUSHORT
 BOOL WINAPI DECLSPEC_HOTPATCH SetProcessGroupAffinity( HANDLE process, const GROUP_AFFINITY *new,
                                                        GROUP_AFFINITY *old )
 {
-    FIXME( "(%p,%p,%p): stub\n", process, new, old );
+    //FIXME( "(%p,%p,%p): stub\n", process, new, old );
     SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
     return TRUE;
 }
@@ -2125,7 +2125,7 @@ GetProcessInformation(HANDLE ProcessHandle, PROCESS_INFORMATION_CLASS ProcessInf
  */
 BOOL WINAPI SetProcessDefaultCpuSets(HANDLE process, const ULONG *cpu_set_ids, ULONG count)
 {
-    FIXME( "process %p, cpu_set_ids %p, count %lu stub.\n", process, cpu_set_ids, count );
+    //FIXME( "process %p, cpu_set_ids %p, count %lu stub.\n", process, cpu_set_ids, count );
 
     return TRUE;
 }

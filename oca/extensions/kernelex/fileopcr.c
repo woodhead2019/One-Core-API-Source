@@ -236,42 +236,44 @@ CreateFileTransactedA(
 }
 
 HANDLE WINAPI CreateFile2(
-	IN	PCWSTR								FileName,
-	IN	ULONG								DesiredAccess,
-	IN	ULONG								ShareMode,
-	IN	ULONG								CreationDisposition,
-	IN	PCREATEFILE2_EXTENDED_PARAMETERS	ExtendedParameters OPTIONAL)
+    IN    PCWSTR                                FileName,
+    IN    ULONG                                DesiredAccess,
+    IN    ULONG                                ShareMode,
+    IN    ULONG                                CreationDisposition,
+    IN    PCREATEFILE2_EXTENDED_PARAMETERS    ExtendedParameters OPTIONAL)
 {
-	if (ExtendedParameters) {
-		ULONG FlagsAndAttributes;
+    if (ExtendedParameters) {
+        ULONG FlagsAndAttributes;
 
-		if (ExtendedParameters->dwSize < sizeof(CREATEFILE2_EXTENDED_PARAMETERS)) {
-			BaseSetLastNTError(STATUS_INVALID_PARAMETER);
-			return INVALID_HANDLE_VALUE;
-		}
-
-		FlagsAndAttributes = ExtendedParameters->dwFileFlags |
-							 ExtendedParameters->dwSecurityQosFlags |
-							 ExtendedParameters->dwFileAttributes;
-
-		return CreateFileW(
-			FileName,
-			DesiredAccess,
-			ShareMode,
-			ExtendedParameters->lpSecurityAttributes,
-			CreationDisposition,
-			FlagsAndAttributes,
-			ExtendedParameters->hTemplateFile);
-	} else {
-		return CreateFileW(
-			FileName,
-			DesiredAccess,
-			ShareMode,
-			NULL,
-			CreationDisposition,
-			0,
-			NULL);
-	}
+        if (ExtendedParameters->dwSize < sizeof(CREATEFILE2_EXTENDED_PARAMETERS)) {
+            BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+            return INVALID_HANDLE_VALUE;
+        }
+        
+        FlagsAndAttributes = ExtendedParameters->dwFileFlags | ExtendedParameters->dwFileAttributes;
+        
+        // we need SECURITY_SQOS_PRESENT when dwSecurityQosFlags is present
+        if (ExtendedParameters->dwSecurityQosFlags != 0)
+            FlagsAndAttributes |= SECURITY_SQOS_PRESENT | ExtendedParameters->dwSecurityQosFlags;
+        
+        return CreateFileW(
+            FileName,
+            DesiredAccess,
+            ShareMode,
+            ExtendedParameters->lpSecurityAttributes,
+            CreationDisposition,
+            FlagsAndAttributes,
+            ExtendedParameters->hTemplateFile);
+    } else {
+        return CreateFileW(
+            FileName,
+            DesiredAccess,
+            ShareMode,
+            NULL,
+            CreationDisposition,
+            0,
+            NULL);
+    }
 }
 
 #define COPY_FILE_COPY_SYMLINK                  0x00000800
