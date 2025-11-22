@@ -7,23 +7,10 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/3rdparty/freetype/include)
 spec2def(dwrite_wrapper.dll dwrite_wrapper.spec)
 
+set(baseaddress_dwrite_wrapper     0x74D70000)
+
 list(APPEND SOURCE
-	# analyzer.c
-	# bidi.c
-	# bracket.c
-	# direction.c
-	# font.c
-	# #freetype.c
-	# gdiinterop.c
-	# layout.c
-	# linebreak.c
 	main.c
-	# mirror.c
-	# opentype.c
-	# scripts.c
-	# shape.c
-	# shapers/arabic.c
-	# shapers/arabic_table.c
 	dwrite_private.h
 	scripts.h
     version.rc
