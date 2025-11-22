@@ -1,4 +1,5 @@
 @ stdcall GetApplicationUserModelId(long ptr wstr) kernelex.GetApplicationUserModelId
+@ stdcall GetCurrentPackageFamilyName(ptr ptr) kernel32.GetCurrentPackageFamilyName
 @ stdcall GetCurrentPackageFullName(ptr ptr) kernel32.GetCurrentPackageFullName
 @ stdcall GetCurrentPackageInfo(long ptr ptr ptr) kernelex.GetCurrentPackageInfo
 @ stdcall GetCurrentPackagePath(ptr ptr) kernelex.GetCurrentPackagePath
