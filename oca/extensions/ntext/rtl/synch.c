@@ -2192,11 +2192,6 @@ static VOID NTAPI RtlpBackoffExp(ULONG* pCount)
     while (n--) YieldProcessor();
 }
 
-// static __forceinline BOOLEAN RtlpWaitCouldDeadlock(void)
-// {
-    // return FALSE;
-// }
-
 /* Helpers to test node attributes; avoid raw bit-twiddling at callsites. */
 static __forceinline BOOLEAN SrwNodeIsExclusive(const SRW_WAIT_NODE* n) { return (n->flags & NODEF_EXCL) != 0; }
 static __forceinline BOOLEAN SrwNodeIsSpinning(const SRW_WAIT_NODE* n)  { return (n->flags & NODEF_SPIN) != 0; }
