@@ -720,164 +720,166 @@ static HRESULT WINAPI IPersistStream_fnLoad(
     IPersistStream*  iface,
     IStream*         stm)
 {
-    // LINK_HEADER hdr;
-    // ULONG    dwBytesRead;
-    // BOOL     unicode;
-    // HRESULT  r;
-    // DWORD    zero;
+    LINK_HEADER hdr;
+    ULONG    dwBytesRead;
+    BOOL     unicode;
+    HRESULT  r = S_OK;
+    DWORD    zero;
 
-    // IShellLinkImpl *This = impl_from_IPersistStream(iface);
+    IShellLinkImpl *This = impl_from_IPersistStream(iface);
 
-    // TRACE("%p %p\n", This, stm);
+    TRACE("%p %p\n", This, stm);
 
-    // if( !stm )
-        // return STG_E_INVALIDPOINTER;
+    if( !stm )
+        return STG_E_INVALIDPOINTER;
 
-    // dwBytesRead = 0;
-    // r = IStream_Read(stm, &hdr, sizeof(hdr), &dwBytesRead);
-    // if( FAILED( r ) )
-        // return r;
+    dwBytesRead = 0;
+    r = IStream_Read(stm, &hdr, sizeof(hdr), &dwBytesRead);
+    if( FAILED( r ) )
+        return r;
 
-    // if( dwBytesRead != sizeof(hdr))
-        // return E_FAIL;
-    // if( hdr.dwSize != sizeof(hdr))
-        // return E_FAIL;
-    // if( !IsEqualIID(&hdr.MagicGuid, &CLSID_ShellLink) )
-        // return E_FAIL;
+    if( dwBytesRead != sizeof(hdr))
+        return E_FAIL;
+    if( hdr.dwSize != sizeof(hdr))
+        return E_FAIL;
+    if( !IsEqualIID(&hdr.MagicGuid, &CLSID_ShellLink) )
+        return E_FAIL;
 
-    // /* free all the old stuff */
-    // ILFree(This->pPidl);
-    // This->pPidl = NULL;
-    // memset( &This->volume, 0, sizeof This->volume );
-    // free(This->sPath);
-    // This->sPath = NULL;
-    // free(This->sDescription);
-    // This->sDescription = NULL;
-    // free(This->sPathRel);
-    // This->sPathRel = NULL;
-    // free(This->sWorkDir);
-    // This->sWorkDir = NULL;
-    // free(This->sArgs);
-    // This->sArgs = NULL;
-    // free(This->sIcoPath);
-    // This->sIcoPath = NULL;
-    // free(This->sProduct);
-    // This->sProduct = NULL;
-    // free(This->sComponent);
-    // This->sComponent = NULL;
+    /* free all the old stuff */
+    ILFree(This->pPidl);
+    This->pPidl = NULL;
+    memset( &This->volume, 0, sizeof This->volume );
+    free(This->sPath);
+    This->sPath = NULL;
+    free(This->sDescription);
+    This->sDescription = NULL;
+    free(This->sPathRel);
+    This->sPathRel = NULL;
+    free(This->sWorkDir);
+    This->sWorkDir = NULL;
+    free(This->sArgs);
+    This->sArgs = NULL;
+    free(This->sIcoPath);
+    This->sIcoPath = NULL;
+    free(This->sProduct);
+    This->sProduct = NULL;
+    free(This->sComponent);
+    This->sComponent = NULL;
         
-    // This->wHotKey = hdr.wHotKey;
-    // This->iIcoNdx = hdr.nIcon;
-    // FileTimeToSystemTime (&hdr.CreationTime, &This->CreationTime);
-    // FileTimeToSystemTime (&hdr.AccessTime, &This->AccessTime);
-    // FileTimeToSystemTime (&hdr.WriteTime, &This->WriteTime);
-    // if (TRACE_ON(shell))
-    // {
-        // WCHAR sTemp[MAX_PATH];
-        // GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->CreationTime, NULL, sTemp, ARRAY_SIZE(sTemp));
-        // TRACE("-- CreationTime: %s\n", debugstr_w(sTemp) );
-        // GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->AccessTime, NULL, sTemp, ARRAY_SIZE(sTemp));
-        // TRACE("-- AccessTime: %s\n", debugstr_w(sTemp) );
-        // GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->WriteTime, NULL, sTemp, ARRAY_SIZE(sTemp));
-        // TRACE("-- WriteTime: %s\n", debugstr_w(sTemp) );
-    // }
+    This->wHotKey = hdr.wHotKey;
+    This->iIcoNdx = hdr.nIcon;
+    FileTimeToSystemTime (&hdr.CreationTime, &This->CreationTime);
+    FileTimeToSystemTime (&hdr.AccessTime, &This->AccessTime);
+    FileTimeToSystemTime (&hdr.WriteTime, &This->WriteTime);
+    if (TRACE_ON(shell))
+    {
+        WCHAR sTemp[MAX_PATH];
+        GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->CreationTime, NULL, sTemp, ARRAY_SIZE(sTemp));
+        TRACE("-- CreationTime: %s\n", debugstr_w(sTemp) );
+        GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->AccessTime, NULL, sTemp, ARRAY_SIZE(sTemp));
+        TRACE("-- AccessTime: %s\n", debugstr_w(sTemp) );
+        GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &This->WriteTime, NULL, sTemp, ARRAY_SIZE(sTemp));
+        TRACE("-- WriteTime: %s\n", debugstr_w(sTemp) );
+    }
 
-    // /* load all the new stuff */
-    // if( hdr.dwFlags & SLDF_HAS_ID_LIST )
-    // {
-        // r = ILLoadFromStream( stm, &This->pPidl );
-        // if( FAILED( r ) )
-            // return r;
-    // }
-    // pdump(This->pPidl);
+    /* load all the new stuff */
+    if( hdr.dwFlags & SLDF_HAS_ID_LIST )
+    {
+        r = ILLoadFromStream( stm, &This->pPidl );
+        if( FAILED( r ) )
+            return r;
+    }
+    pdump(This->pPidl);
 
-    // /* load the location information */
-    // if( hdr.dwFlags & SLDF_HAS_LINK_INFO )
-        // r = Stream_LoadLocation( stm, &This->volume, &This->sPath );
-    // if( FAILED( r ) )
-        // goto end;
+    /* load the location information */
+    if( hdr.dwFlags & SLDF_HAS_LINK_INFO )
+        r = Stream_LoadLocation( stm, &This->volume, &This->sPath );
+    if( FAILED( r ) )
+        goto end;
 
-    // unicode = hdr.dwFlags & SLDF_UNICODE;
-    // if( hdr.dwFlags & SLDF_HAS_NAME )
-    // {
-        // r = Stream_LoadString( stm, unicode, &This->sDescription );
-        // TRACE("Description  -> %s\n",debugstr_w(This->sDescription));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    unicode = hdr.dwFlags & SLDF_UNICODE;
+    if( hdr.dwFlags & SLDF_HAS_NAME )
+    {
+        r = Stream_LoadString( stm, unicode, &This->sDescription );
+        TRACE("Description  -> %s\n",debugstr_w(This->sDescription));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_RELPATH )
-    // {
-        // r = Stream_LoadString( stm, unicode, &This->sPathRel );
-        // TRACE("Relative Path-> %s\n",debugstr_w(This->sPathRel));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_RELPATH )
+    {
+        r = Stream_LoadString( stm, unicode, &This->sPathRel );
+        TRACE("Relative Path-> %s\n",debugstr_w(This->sPathRel));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_WORKINGDIR )
-    // {
-        // r = Stream_LoadString( stm, unicode, &This->sWorkDir );
-        // TRACE("Working Dir  -> %s\n",debugstr_w(This->sWorkDir));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_WORKINGDIR )
+    {
+        r = Stream_LoadString( stm, unicode, &This->sWorkDir );
+        TRACE("Working Dir  -> %s\n",debugstr_w(This->sWorkDir));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_ARGS )
-    // {
-        // r = Stream_LoadString( stm, unicode, &This->sArgs );
-        // TRACE("Working Dir  -> %s\n",debugstr_w(This->sArgs));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_ARGS )
+    {
+        r = Stream_LoadString( stm, unicode, &This->sArgs );
+        TRACE("Working Dir  -> %s\n",debugstr_w(This->sArgs));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_ICONLOCATION )
-    // {
-        // r = Stream_LoadString( stm, unicode, &This->sIcoPath );
-        // TRACE("Icon file    -> %s\n",debugstr_w(This->sIcoPath));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_ICONLOCATION )
+    {
+        r = Stream_LoadString( stm, unicode, &This->sIcoPath );
+        TRACE("Icon file    -> %s\n",debugstr_w(This->sIcoPath));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_LOGO3ID )
-    // {
-        // r = Stream_LoadAdvertiseInfo( stm, &This->sProduct );
-        // TRACE("Product      -> %s\n",debugstr_w(This->sProduct));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_LOGO3ID )
+    {
+        r = Stream_LoadAdvertiseInfo( stm, &This->sProduct );
+        TRACE("Product      -> %s\n",debugstr_w(This->sProduct));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // if( hdr.dwFlags & SLDF_HAS_DARWINID )
-    // {
-        // r = Stream_LoadAdvertiseInfo( stm, &This->sComponent );
-        // TRACE("Component    -> %s\n",debugstr_w(This->sComponent));
-    // }
-    // if( FAILED( r ) )
-        // goto end;
+    if( hdr.dwFlags & SLDF_HAS_DARWINID )
+    {
+        r = Stream_LoadAdvertiseInfo( stm, &This->sComponent );
+        TRACE("Component    -> %s\n",debugstr_w(This->sComponent));
+    }
+    if( FAILED( r ) )
+        goto end;
 
-    // r = IStream_Read(stm, &zero, sizeof zero, &dwBytesRead);
-    // if( FAILED( r ) || zero || dwBytesRead != sizeof zero )
-    // {
-        // /* Some lnk files have extra data blocks starting with a
-         // * DATABLOCK_HEADER. For instance EXP_SPECIAL_FOLDER and an unknown
-         // * one with a 0xa0000003 signature. However these don't seem to matter
-         // * too much.
-         // */
-        // WARN("Last word was not zero\n");
-    // }
+    r = IStream_Read(stm, &zero, sizeof zero, &dwBytesRead);
+    if( FAILED( r ) || zero || dwBytesRead != sizeof zero )
+    {
+        /* Some lnk files have extra data blocks starting with a
+         * DATABLOCK_HEADER. For instance EXP_SPECIAL_FOLDER and an unknown
+         * one with a 0xa0000003 signature. However these don't seem to matter
+         * too much.
+         */
+        WARN("Last word was not zero\n");
+    }
 
-    // TRACE("OK\n");
+    TRACE("OK\n");
 
-    // pdump (This->pPidl);
-
-    // return S_OK;
-// end:
-    // return r;
-	IShellLinkImpl *This = impl_from_IPersistStream(iface);
-	HRESULT hr = S_OK;
+    pdump (This->pPidl);
 	
-	hr = IPersistStream_Load(This->pRealPersistStream, stm);	
+    r = IPersistStream_Load(This->pRealPersistStream, stm);		
+
+    return r;
+end:
+    return r;
+	// IShellLinkImpl *This = impl_from_IPersistStream(iface);
+	// HRESULT hr = S_OK;
 	
-	return hr;	
+	// hr = IPersistStream_Load(This->pRealPersistStream, stm);	
+	
+	// return hr;	
 }
 
 /************************************************************************
@@ -2918,13 +2920,14 @@ HRESULT WINAPI IShellLink_Constructor(IUnknown *outer, REFIID riid, void **obj)
     sl->filepath = NULL;
 	
     /* === 1. Carrega shell32 e obtém DllGetClassObject === */
-    hShell32 = LoadLibraryW(L"shell32.dll");
-    if (!hShell32)
-    {
-        LocalFree(sl);
-        return HRESULT_FROM_WIN32(GetLastError());
-    }
-
+	hShell32 = GetModuleHandleW(shellName);
+	if (!hShell32){
+		hShell32 = LoadLibraryW(shellName);
+		if (!hShell32)
+		{
+			return HRESULT_FROM_WIN32(GetLastError());
+		}					
+	}
     pfnDllGetClassObject = (PFNDllGetClassObject)
         GetProcAddress(hShell32, "DllGetClassObjectNative");
     if (!pfnDllGetClassObject)
