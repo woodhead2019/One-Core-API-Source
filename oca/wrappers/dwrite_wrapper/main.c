@@ -147,18 +147,23 @@ BOOL ShouldUseDWriteCore() {
         return FALSE;
     }
 
-    if (GetModuleHandleW(L"Qt6Core.dll")) {
+    if (GetModuleHandleW(L"Qt6Core.dll") || //Qt Applications
+	    HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "CanSetClientBeta") || 
+	    (HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "IsSandboxedProcess") && HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "GetHandleVerifier"))) { //Steam
+        // if (!HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "g_originals")) {
+            // return FALSE;
+        // }		
         // Applications using Qt 6.8 or higher requires Windows 10 DirectWrite interfaces, or everything will appear as a block.
         return TRUE;
     }
-    
-    if (HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "IsSandboxedProcess") && HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "GetHandleVerifier")) {
-        if (!HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "g_originals")) {
-            return FALSE;
-        }
-        // Chromium application.
-        return TRUE;
-    }
+	
+    // if (HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "IsSandboxedProcess") && HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "GetHandleVerifier")) {
+        // if (!HasExportedFunction(Peb->ProcessParameters->ImagePathName.Buffer, "g_originals")) {
+            // return FALSE;
+        // }
+        // // Chromium application.
+        // return TRUE;
+    // }
     
     return FALSE;
 }
