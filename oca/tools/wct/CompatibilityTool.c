@@ -122,30 +122,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         if (!RegisterClass(&wc)) return -1;
 
-        // Dimensões da janela
-        int width = 398;
-        int height = 165;
-
-        // Obtém tamanho da tela
-        int screenW = GetSystemMetrics(SM_CXSCREEN);
-        int screenH = GetSystemMetrics(SM_CYSCREEN);
-
-        // Calcula posição central
-        int posX = (screenW - width) / 2;
-        int posY = (screenH - height) / 2;
-
         hwnd = CreateWindowEx(
             WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_DLGMODALFRAME,
             _T("DropdownApp"),
             _T("Windows Compatibility Tool"),
             WS_VISIBLE | WS_BORDER | WS_SYSMENU | WS_MINIMIZEBOX,
-            posX, posY, width, height,
+            CW_USEDEFAULT, CW_USEDEFAULT, 398, 165,
             NULL, NULL, hInstance, NULL
         );
-
-        // Garante que a janela será mostrada no centro da tela
-        ShowWindow(hwnd, nCmdShow);
-        UpdateWindow(hwnd);
 
         while (GetMessage(&msg, NULL, 0, 0) > 0) {
             TranslateMessage(&msg);
@@ -231,7 +215,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     int i;
 
     switch (msg) {
-        case WM_CREATE: {
+				case WM_CREATE: {
+			RECT rc;
+			int winW, winH;
+			int screenW, screenH;
+			int x, y;
+
+			GetWindowRect(hwnd, &rc);
+			winW = rc.right - rc.left;
+			winH = rc.bottom - rc.top;
+
+			screenW = GetSystemMetrics(SM_CXSCREEN);
+			screenH = GetSystemMetrics(SM_CYSCREEN);
+
+			x = (screenW - winW) / 2;
+			y = (screenH - winH) / 2;
+
+			SetWindowPos(
+				hwnd,
+				NULL,
+				x, y,
+				0, 0,
+				SWP_NOZORDER | SWP_NOSIZE
+			);			
             hFont = CreateFont(
                 20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
@@ -329,24 +335,24 @@ void WriteToRegistry(const TCHAR* value, BOOL useMessageBox)
 
     result = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+        _T("SOFTWARE\\OCA\\Settings"),
         0, KEY_SET_VALUE, &hKey
     );
 
 #ifdef _M_AMD64
     resultWow64 = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
+        _T("SOFTWARE\\Wow6432Node\\OCA\\Settings"),
         0, KEY_SET_VALUE, &Wow64hKey
     );
 #endif
 
     if (result == ERROR_SUCCESS) {
-        RegSetValueEx(hKey, _T("EmulatedVersion"), 0, REG_SZ,
+        RegSetValueEx(hKey, _T("GlobalVersion"), 0, REG_SZ,
             (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
 #ifdef _M_AMD64
         if (resultWow64 == ERROR_SUCCESS)
-            RegSetValueEx(Wow64hKey, _T("EmulatedVersion"), 0, REG_SZ,
+            RegSetValueEx(Wow64hKey, _T("GlobalVersion"), 0, REG_SZ,
                 (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
 #endif
         RegCloseKey(hKey);
@@ -356,12 +362,12 @@ void WriteToRegistry(const TCHAR* value, BOOL useMessageBox)
         if (useMessageBox) {
             msgboxID = MessageBox(NULL, _T("Value saved successfully!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
             ExitWindow(msgboxID);
-        } else PostQuitMessage(0);
+        } else ExitProcess(0);
     } else {
         if (useMessageBox) {
             msgboxID = MessageBox(NULL, _T("Error accessing registry key."), _T("Error"), MB_OK | MB_ICONERROR);
             ExitWindow(msgboxID);
-        } else PostQuitMessage(1);
+        } else ExitProcess(0);
     }
 }
 
@@ -377,23 +383,23 @@ void DeleteRegistryKey(BOOL useMessageBox)
 
     result = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+        _T("SOFTWARE\\OCA\\Settings"),
         0, KEY_SET_VALUE, &hKey
     );
 
 #ifdef _M_AMD64
     resultWow64 = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
+        _T("SOFTWARE\\Wow6432Node\\OCA\\Settings"),
         0, KEY_SET_VALUE, &Wow64hKey
     );
 #endif
 
     if (result == ERROR_SUCCESS) {
-        result = RegDeleteValue(hKey, _T("EmulatedVersion"));
+        result = RegDeleteValue(hKey, _T("GlobalVersion"));
 #ifdef _M_AMD64
         if (resultWow64 == ERROR_SUCCESS)
-            RegDeleteValue(Wow64hKey, _T("EmulatedVersion"));
+            RegDeleteValue(Wow64hKey, _T("GlobalVersion"));
 #endif
         RegCloseKey(hKey);
 #ifdef _M_AMD64
@@ -404,23 +410,23 @@ void DeleteRegistryKey(BOOL useMessageBox)
             if (useMessageBox) {
                 msgboxID = MessageBox(NULL, _T("Registry key removed successfully!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
                 ExitWindow(msgboxID);
-            } else PostQuitMessage(0);
+            } else ExitProcess(0);
         } else {
             if (useMessageBox) {
                 msgboxID = MessageBox(NULL, _T("Error removing registry value."), _T("Error"), MB_OK | MB_ICONERROR);
                 ExitWindow(msgboxID);
-            } else PostQuitMessage(1);
+            } else ExitProcess(0);
         }
     } else {
         if (useMessageBox) {
             msgboxID = MessageBox(NULL, _T("Error opening registry key."), _T("Error"), MB_OK | MB_ICONERROR);
             ExitWindow(msgboxID);
-        } else PostQuitMessage(1);
+        } else ExitProcess(0);
     }
 }
 
 void ExitWindow(int msgboxID)
 {
     if (msgboxID == IDOK)
-        PostQuitMessage(0);
+        ExitProcess(0);
 }
