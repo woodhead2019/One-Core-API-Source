@@ -752,6 +752,7 @@
 @ stdcall -stub CloseTouchInputHandle(ptr)
 @ stdcall -stub DisplayConfigGetDeviceInfo(ptr)
 @ stdcall -stub GetDisplayConfigBufferSizes(long ptr ptr)
+@ stdcall -stub PrivateRegisterICSProc(long)
 ; 744 stub QueryDisplayConfig
 ; 745 stub CreateWindowInBand
 ; 746 stub GetWindowBand
@@ -786,4 +787,5 @@
 ; @ stdcall -stub UnregisterTouchWindow(ptr)
 ; @ stdcall -stub GetPointerDevice(long ptr)
 ; @ stdcall -stub GetPointerDevices(ptr ptr)
+; @ stdcall -stub RegisterPointerDeviceNotifications(ptr long)
 ; @ stdcall -stub RegisterPointerDeviceNotifications(ptr long)
