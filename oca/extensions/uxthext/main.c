@@ -458,7 +458,7 @@ EndBufferedAnimation(
 */
 HRESULT WINAPI BufferedPaintSetAlpha(HPAINTBUFFER hBufferedPaint, const RECT *prc, BYTE alpha)
 {
-    FIXME("Stub (%p %p %u)\n", hBufferedPaint, prc, alpha);
+    //FIXME("Stub (%p %p %u)\n", hBufferedPaint, prc, alpha);
 	return E_NOTIMPL;
 }
 
@@ -467,7 +467,7 @@ HRESULT WINAPI BufferedPaintSetAlpha(HPAINTBUFFER hBufferedPaint, const RECT *pr
 */
 BOOL WINAPI IsCompositionActive(void)
 {
-    FIXME(": stub\n");
+    //FIXME(": stub\n");
 
     SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 
