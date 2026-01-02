@@ -135,7 +135,6 @@
 #Vista functions
 @ stdcall FreeAddrInfoEx(ptr)
 @ stdcall FreeAddrInfoExW(ptr)
-@ stdcall GetAddrInfoExCancel(ptr)
 @ stdcall GetAddrInfoExOverlappedResult(ptr)
 @ stdcall GetAddrInfoExW(wstr wstr long ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall inet_ntop(long ptr ptr long) 
@@ -151,6 +150,7 @@
 @ stdcall WSCSetProviderInfo(ptr long ptr long long ptr)
 
 #Win8.1 functions
+@ stdcall GetAddrInfoExCancel(ptr)
 @ stdcall GetHostNameW(wstr long)
 
 #Hooks
