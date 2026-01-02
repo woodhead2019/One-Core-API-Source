@@ -29,6 +29,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(process);
 #define PF_AVX2_INSTRUCTIONS_AVAILABLE 40
 #define PF_AVX512F_INSTRUCTIONS_AVAILABLE 41
 #define LTP_PC_SMT 0x1
+#define QUOTA_LIMITS_HARDWS_MIN_ENABLE 0x00000001
+#define QUOTA_LIMITS_HARDWS_MAX_ENABLE 0x00000004
 
 UNICODE_STRING NoDefaultCurrentDirectoryInExePath = RTL_CONSTANT_STRING(L"NoDefaultCurrentDirectoryInExePath");
 
@@ -404,10 +406,6 @@ SetProcessWorkingSetSizeEx(
     NTSTATUS Status;
     BOOL rv;
 
-#if defined(_M_AMD64)
-    ASSERT(dwMinimumWorkingSetSize != 0xffffffff && dwMaximumWorkingSetSize != 0xffffffff);
-#endif
-
     if (dwMinimumWorkingSetSize == 0 || dwMaximumWorkingSetSize == 0) {
         Status = STATUS_INVALID_PARAMETER;
         rv = FALSE;
@@ -416,17 +414,19 @@ SetProcessWorkingSetSizeEx(
         QuotaLimits.MaximumWorkingSetSize = dwMaximumWorkingSetSize;
         QuotaLimits.MinimumWorkingSetSize = dwMinimumWorkingSetSize;
         QuotaLimits.Flags = Flags;
-
+		
         Status = NtSetInformationProcess (hProcess,
                                           ProcessQuotaLimits,
                                           &QuotaLimits,
                                           sizeof(QuotaLimits));
-        if (!NT_SUCCESS (Status)) {
+		
+		if (Status == STATUS_INFO_LENGTH_MISMATCH) { // XP
+			return SetProcessWorkingSetSize(hProcess, dwMinimumWorkingSetSize, dwMaximumWorkingSetSize);
+		}else if (!NT_SUCCESS (Status)) {
             rv = FALSE;
         } else {
             rv = TRUE;
         }
-
     }
 
     if (!rv) {
@@ -458,6 +458,16 @@ GetProcessWorkingSetSizeEx(
                                        NULL);
     if (!NT_SUCCESS(Status))
     {
+		
+		if (Status == STATUS_INFO_LENGTH_MISMATCH) { // XP
+			if (!GetProcessWorkingSetSize(hProcess, lpMinimumWorkingSetSize, lpMaximumWorkingSetSize))
+				return FALSE;
+			
+			/* The only flag that applies to XP is HARDWS_ENABLE */
+			*Flags = QUOTA_LIMITS_HARDWS_MIN_ENABLE | QUOTA_LIMITS_HARDWS_MAX_ENABLE;
+			return TRUE;
+		}
+		
         /* Return error */
         BaseSetLastNTError(Status);
         return FALSE;
@@ -470,9 +480,9 @@ GetProcessWorkingSetSizeEx(
     return TRUE;
 }
 
-// /*
- // * @implemented
- // */
+/*
+ * @implemented
+ */
 BOOL
 WINAPI
 GetLogicalProcessorInformation(

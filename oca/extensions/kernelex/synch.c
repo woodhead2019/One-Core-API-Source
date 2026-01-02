@@ -62,38 +62,43 @@ HANDLE get_BaseNamedObjects_handle(void)
  */
 BOOL WINAPI InitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,DWORD dwSpinCount,DWORD Flags)
 {
-	NTSTATUS RtlStatus=STATUS_SUCCESS;
-	if (Flags&RTL_CRITICAL_SECTION_FLAG_RESERVED)
-		RtlStatus=STATUS_INVALID_PARAMETER_3;
-	if (dwSpinCount&0xFF000000)	//dwSpinCount>0x00FFFFFF
-		RtlStatus=STATUS_INVALID_PARAMETER_2;
-	if (NT_SUCCESS(RtlStatus))
-	{
-		if (Flags&RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN)
-			dwSpinCount=dwSpinCount&0x00FFFFFF;
-		else
-			dwSpinCount=2000;
-		//RTL_CRITICAL_SECTION_FLAG_static_INIT的效果是不初始化直接返回
-		//RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO的效果是不分配DebugInfo的内存
-		//由于不知道XP是否支持这些行为，稳妥起见不应用标记
-		RtlStatus=RtlInitializeCriticalSectionAndSpinCount((PRTL_CRITICAL_SECTION)lpCriticalSection,dwSpinCount);
-	}
-	if (NT_SUCCESS(RtlStatus))
-		return TRUE;
-	BaseSetLastNTError(RtlStatus);
-	return FALSE;
+    NTSTATUS Status;
+    
+    if (Flags & RTL_CRITICAL_SECTION_FLAG_RESERVED) {
+        Status = STATUS_INVALID_PARAMETER_3;
+    }else if (dwSpinCount & 0xFF000000) {
+        Status = STATUS_INVALID_PARAMETER_2;
+    } else {
+        Status = RtlInitializeCriticalSectionAndSpinCount((PRTL_CRITICAL_SECTION)lpCriticalSection, dwSpinCount);
+    }
+    
+    if (NT_SUCCESS(Status))
+        return TRUE;
+    
+    BaseSetLastNTError(Status);
+    return FALSE;
 }
+
 /***********************************************************************
  *           SleepConditionVariableCS   (KERNEL32.@)
  */
-BOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable,PCRITICAL_SECTION CriticalSection,DWORD dwMilliseconds)
+/***********************************************************************
+ *           SleepConditionVariableCS   (KERNEL32.@)
+ */
+BOOL WINAPI SleepConditionVariableCS(
+	PCONDITION_VARIABLE ConditionVariable,
+	PCRITICAL_SECTION CriticalSection,
+	DWORD dwMilliseconds)
 {
-	LARGE_INTEGER Timeout;
-	NTSTATUS Result=RtlSleepConditionVariableCS(ConditionVariable,(PRTL_CRITICAL_SECTION)CriticalSection,BaseFormatTimeOut(&Timeout,dwMilliseconds));
-	BaseSetLastNTError(Result);
-	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
-		return TRUE;
-	return FALSE;
+    LARGE_INTEGER Timeout;
+	
+    NTSTATUS Status=RtlSleepConditionVariableCS(ConditionVariable,(PRTL_CRITICAL_SECTION)CriticalSection,BaseFormatTimeOut(&Timeout,dwMilliseconds));
+	
+    NtCurrentTeb()->LastErrorValue = (Status == 0 ? 0 : RtlNtStatusToDosError(Status));
+    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT)
+        return TRUE;
+    
+    return FALSE;
 }
 
 /***********************************************************************
@@ -101,12 +106,14 @@ BOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable,PCRIT
  */
 BOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable,PSRWLOCK SRWLock,DWORD dwMilliseconds,ULONG Flags)
 {
-	LARGE_INTEGER Timeout;
-	NTSTATUS Result=RtlSleepConditionVariableSRW(ConditionVariable,SRWLock,BaseFormatTimeOut(&Timeout,dwMilliseconds),Flags);
-	BaseSetLastNTError(Result);
-	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
-		return TRUE;
-	return FALSE;
+    LARGE_INTEGER Timeout;
+	
+    NTSTATUS Status=RtlSleepConditionVariableSRW(ConditionVariable,SRWLock,BaseFormatTimeOut(&Timeout,dwMilliseconds),Flags);
+    
+	NtCurrentTeb()->LastErrorValue = (Status == 0 ? 0 : RtlNtStatusToDosError(Status));
+    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT)
+        return TRUE;
+    return FALSE;
 }
 
 /***********************************************************************
@@ -819,22 +826,18 @@ BOOL WINAPI WaitOnAddress(
     IN    DWORD            Milliseconds OPTIONAL)
 {
     NTSTATUS Status;
-    PLARGE_INTEGER TimeOutPointer;
     LARGE_INTEGER TimeOut;
-
-    TimeOutPointer = BaseFormatTimeOut(&TimeOut, Milliseconds);
-
+    
     Status = RtlWaitOnAddress(
         Address,
         CompareAddress,
         AddressSize,
-        TimeOutPointer);
+        BaseFormatTimeOut(&TimeOut, Milliseconds));
 
-    BaseSetLastNTError(Status);
+    NtCurrentTeb()->LastErrorValue = (Status == 0 ? 0 : RtlNtStatusToDosError(Status));
     
-    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT) {
+    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT)
         return TRUE;
-    } else {
-        return FALSE;
-    }
+    
+    return FALSE;
 }

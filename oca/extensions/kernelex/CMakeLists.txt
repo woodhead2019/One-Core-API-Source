@@ -44,6 +44,7 @@ list(APPEND SOURCE
 	firmware.c
 	handle.c 
 	heap.c
+	job.c
     locale.c
 	mem.c
 	module.c
