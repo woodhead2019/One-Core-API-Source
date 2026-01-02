@@ -12,11 +12,15 @@
 
 // Opções do dropdown
 static LPCTSTR versions[] = {
-    _T("Windows 2000"),
+    _T("Windows 2000 SP4"),
+    _T("Windows XP SP2"),
     _T("Windows XP SP3"),
+    _T("Windows Server 2003 SP1"),
     _T("Windows Server 2003 SP2"),
+    _T("Windows Vista SP1"),
     _T("Windows Vista SP2"),
     _T("Windows 7 SP1"),
+    _T("Windows 8"),
     _T("Windows 8.1"),
     _T("Windows 10 1511"),
     _T("Windows 10 1607"),
@@ -26,17 +30,21 @@ static LPCTSTR versions[] = {
 };
 
 static LPCTSTR versionValues[] = {
-    _T("5.0.2195"),
-    _T("5.1.2600"),
-    _T("5.2.3790"),
-    _T("6.0.6002"),
-    _T("6.1.7601"),
-    _T("6.3.9600"),
-    _T("10.0.10586"),
-    _T("10.0.14393"),
-    _T("10.0.17763"),
-    _T("10.0.19045"),
-    _T("10.0.22600")
+    _T("5.0.2195.4.0.2.Service Pack 4"),
+    _T("5.1.2600.2.0.2.Service Pack 2"),
+    _T("5.1.2600.3.0.2.Service Pack 3"),
+    _T("5.2.3790.1.0.2.Service Pack 1"),
+    _T("5.2.3790.2.0.2.Service Pack 2"),
+    _T("6.0.6001.1.0.2.Service Pack 1"),
+    _T("6.0.6002.2.0.2.Service Pack 2"),
+    _T("6.1.7601.1.0.2.Service Pack 1"),
+    _T("6.2.9200.0.0.2."),
+    _T("6.3.9600.0.0.2."),
+    _T("10.0.10586.0.0.2."),
+    _T("10.0.14393.0.0.2"),
+    _T("10.0.17763.0.0.2."),
+    _T("10.0.19045.0.0.2."),
+    _T("10.0.22600.0.0.2")
 };
 
 // Prototipos
@@ -164,39 +172,52 @@ int ReadFromRegistry(void)
     HKEY hKey;
     TCHAR value[64];
     DWORD size = sizeof(value);
-    LONG result;
+    LONG result = ERROR_FILE_NOT_FOUND;
 
 #ifdef _M_AMD64
-    LONG resultWow64;
     HKEY Wow64hKey;
+    LONG resultWow64 = ERROR_FILE_NOT_FOUND;
 #endif
 
+    // Chave nativa
     result = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+        _T("SOFTWARE\\OCA\\Settings"),
         0, KEY_QUERY_VALUE, &hKey
     );
 
-#ifdef _M_AMD64
-    resultWow64 = RegOpenKeyEx(
-        HKEY_LOCAL_MACHINE,
-        _T("SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion"),
-        0, KEY_QUERY_VALUE, &Wow64hKey
-    );
-#endif
-
     if (result == ERROR_SUCCESS) {
-        result = RegQueryValueEx(hKey, _T("EmulatedVersion"), NULL, NULL, (LPBYTE)value, &size);
+        result = RegQueryValueEx(
+            hKey,
+            _T("GlobalVersion"),
+            NULL, NULL,
+            (LPBYTE)value, &size
+        );
         RegCloseKey(hKey);
     }
 
 #ifdef _M_AMD64
-    if (result != ERROR_SUCCESS && resultWow64 == ERROR_SUCCESS) {
-        result = RegQueryValueEx(Wow64hKey, _T("EmulatedVersion"), NULL, NULL, (LPBYTE)value, &size);
-        RegCloseKey(Wow64hKey);
+    // Fallback Wow6432Node
+    if (result != ERROR_SUCCESS) {
+        resultWow64 = RegOpenKeyEx(
+            HKEY_LOCAL_MACHINE,
+            _T("SOFTWARE\\Wow6432Node\\OCA\\Settings"),
+            0, KEY_QUERY_VALUE, &Wow64hKey
+        );
+
+        if (resultWow64 == ERROR_SUCCESS) {
+            result = RegQueryValueEx(
+                Wow64hKey,
+                _T("GlobalVersion"),
+                NULL, NULL,
+                (LPBYTE)value, &size
+            );
+            RegCloseKey(Wow64hKey);
+        }
     }
 #endif
 
+    // Se achou valor, tenta mapear para o índice
     if (result == ERROR_SUCCESS) {
         int i;
         for (i = 0; i < (int)(sizeof(versionValues) / sizeof(versionValues[0])); ++i) {
@@ -205,7 +226,8 @@ int ReadFromRegistry(void)
         }
     }
 
-    return 0; // padrão
+    // Nenhum valor salvo → comportamento atual
+    return 0;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -328,46 +350,94 @@ void WriteToRegistry(const TCHAR* value, BOOL useMessageBox)
     HKEY hKey;
     int msgboxID;
     LONG result;
+    DWORD disposition;
+
 #ifdef _M_AMD64
-    LONG resultWow64;
     HKEY Wow64hKey;
+    LONG resultWow64;
+    DWORD dispositionWow64;
 #endif
 
-    result = RegOpenKeyEx(
+    // Chave nativa
+    result = RegCreateKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\OCA\\Settings"),
-        0, KEY_SET_VALUE, &hKey
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_SET_VALUE,
+        NULL,
+        &hKey,
+        &disposition
     );
 
 #ifdef _M_AMD64
-    resultWow64 = RegOpenKeyEx(
+    // Chave Wow6432Node
+    resultWow64 = RegCreateKeyEx(
         HKEY_LOCAL_MACHINE,
         _T("SOFTWARE\\Wow6432Node\\OCA\\Settings"),
-        0, KEY_SET_VALUE, &Wow64hKey
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_SET_VALUE,
+        NULL,
+        &Wow64hKey,
+        &dispositionWow64
     );
 #endif
 
     if (result == ERROR_SUCCESS) {
-        RegSetValueEx(hKey, _T("GlobalVersion"), 0, REG_SZ,
-            (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
+
+        RegSetValueEx(
+            hKey,
+            _T("GlobalVersion"),
+            0,
+            REG_SZ,
+            (const BYTE*)value,
+            (_tcslen(value) + 1) * sizeof(TCHAR)
+        );
+
 #ifdef _M_AMD64
-        if (resultWow64 == ERROR_SUCCESS)
-            RegSetValueEx(Wow64hKey, _T("GlobalVersion"), 0, REG_SZ,
-                (const BYTE*)value, (_tcslen(value) + 1) * sizeof(TCHAR));
+        if (resultWow64 == ERROR_SUCCESS) {
+            RegSetValueEx(
+                Wow64hKey,
+                _T("GlobalVersion"),
+                0,
+                REG_SZ,
+                (const BYTE*)value,
+                (_tcslen(value) + 1) * sizeof(TCHAR)
+            );
+        }
 #endif
+
         RegCloseKey(hKey);
 #ifdef _M_AMD64
         RegCloseKey(Wow64hKey);
 #endif
+
         if (useMessageBox) {
-            msgboxID = MessageBox(NULL, _T("Value saved successfully!"), _T("Success"), MB_OK | MB_ICONINFORMATION);
+            msgboxID = MessageBox(
+                NULL,
+                _T("Value saved successfully!"),
+                _T("Success"),
+                MB_OK | MB_ICONINFORMATION
+            );
             ExitWindow(msgboxID);
-        } else ExitProcess(0);
+        } else {
+            ExitProcess(0);
+        }
     } else {
         if (useMessageBox) {
-            msgboxID = MessageBox(NULL, _T("Error accessing registry key."), _T("Error"), MB_OK | MB_ICONERROR);
+            msgboxID = MessageBox(
+                NULL,
+                _T("Error accessing or creating registry key."),
+                _T("Error"),
+                MB_OK | MB_ICONERROR
+            );
             ExitWindow(msgboxID);
-        } else ExitProcess(0);
+        } else {
+            ExitProcess(0);
+        }
     }
 }
 
