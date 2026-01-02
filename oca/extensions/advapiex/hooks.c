@@ -25,6 +25,251 @@ WINE_DEFAULT_DEBUG_CHANNEL(advapi32_hooks);
 
 #define REG_NOTIFY_THREAD_AGNOSTIC   0x10000000
 
+// DWORD
+// WINAPI
+// SetNamedSecurityInfoWNative(
+	// LPWSTR pObjectName,
+    // SE_OBJECT_TYPE ObjectType,
+    // SECURITY_INFORMATION SecurityInfo,
+    // PSID psidOwner,
+    // PSID psidGroup,
+    // PACL pDacl,
+    // PACL pSacl
+// );
+
+// DWORD
+// WINAPI
+// SetSecurityInfoNative(
+	// HANDLE handle,
+    // SE_OBJECT_TYPE ObjectType,
+    // SECURITY_INFORMATION SecurityInfo,
+    // PSID psidOwner,
+    // PSID psidGroup,
+    // PACL pDacl,
+    // PACL pSacl
+// );
+
+// DWORD
+// WINAPI
+// GetSecurityInfoNative(
+	// HANDLE handle,
+    // SE_OBJECT_TYPE ObjectType,
+    // SECURITY_INFORMATION SecurityInfo,
+    // PSID *ppsidOwner,
+    // PSID *ppsidGroup,
+    // PACL *ppDacl,
+    // PACL *ppSacl,
+    // PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+// );
+
+// DWORD
+// WINAPI
+// GetNamedSecurityInfoWNative(
+	// LPWSTR pObjectName,
+    // SE_OBJECT_TYPE ObjectType,
+    // SECURITY_INFORMATION SecurityInfo,
+    // PSID *ppsidOwner,
+    // PSID *ppsidGroup,
+    // PACL *ppDacl,
+    // PACL *ppSacl,
+    // PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+// );
+
+/* ---------------------------
+   Dynamic resolver (GetModuleHandleW + GetProcAddress)
+   Insert this block after the Native prototypes in hooks.c
+   Compatible C89 / WinXP
+   --------------------------- */
+
+static HMODULE ghAdvapi32 = NULL;
+
+/* Function pointer declarations matching the real APIs */
+static LSTATUS (WINAPI *pRegGetValueW)(
+    HKEY, LPCWSTR, LPCWSTR, DWORD, LPDWORD, PVOID, LPDWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegNotifyChangeKeyValue)(
+    HKEY, BOOL, DWORD, HANDLE, BOOL
+) = NULL;
+
+static BOOL (WINAPI *pConvertStringSecurityDescriptorToSecurityDescriptorW)(
+    LPCWSTR, DWORD, PSECURITY_DESCRIPTOR*, PULONG
+) = NULL;
+
+static DWORD (WINAPI *pSetNamedSecurityInfoW)(
+    LPWSTR, SE_OBJECT_TYPE, SECURITY_INFORMATION,
+    PSID, PSID, PACL, PACL
+) = NULL;
+
+static DWORD (WINAPI *pSetSecurityInfo)(
+    HANDLE, SE_OBJECT_TYPE, SECURITY_INFORMATION,
+    PSID, PSID, PACL, PACL
+) = NULL;
+
+static DWORD (WINAPI *pGetSecurityInfo)(
+    HANDLE, SE_OBJECT_TYPE, SECURITY_INFORMATION,
+    PSID*, PSID*, PACL*, PACL*, PSECURITY_DESCRIPTOR*
+) = NULL;
+
+static DWORD (WINAPI *pGetNamedSecurityInfoW)(
+    LPWSTR, SE_OBJECT_TYPE, SECURITY_INFORMATION,
+    PSID*, PSID*, PACL*, PACL*, PSECURITY_DESCRIPTOR*
+) = NULL;
+
+/* Initialize pointers using GetModuleHandleW (no LoadLibrary) */
+BOOL InitNativeProcs(void)
+{
+    HMODULE h;
+    if (ghAdvapi32) return TRUE; /* já inicializado */
+
+    h = GetModuleHandleW(L"advapi32.dll");
+    if (!h) return FALSE;
+    ghAdvapi32 = h;
+
+    /* getprocaddress - use exact exported names */
+    pRegGetValueW = (void*) GetProcAddress(ghAdvapi32, "RegGetValueWNative");
+    pRegNotifyChangeKeyValue = (void*) GetProcAddress(ghAdvapi32, "RegNotifyChangeKeyValueNative");
+    pConvertStringSecurityDescriptorToSecurityDescriptorW =
+        (void*) GetProcAddress(ghAdvapi32, "ConvertStringSecurityDescriptorToSecurityDescriptorWNative");
+    pSetNamedSecurityInfoW = (void*) GetProcAddress(ghAdvapi32, "SetNamedSecurityInfoWNative");
+    pSetSecurityInfo = (void*) GetProcAddress(ghAdvapi32, "SetSecurityInfoNative");
+    pGetSecurityInfo = (void*) GetProcAddress(ghAdvapi32, "GetSecurityInfoNative");
+    pGetNamedSecurityInfoW = (void*) GetProcAddress(ghAdvapi32, "GetNamedSecurityInfoWNative");
+
+    /* It's OK if some pointers are NULL (fallbacks in code may handle) */
+    return TRUE;
+}
+
+/* ---------------------------
+   Wrappers for Native functions
+   These keep existing call-sites untouched.
+   --------------------------- */
+
+LSTATUS 
+WINAPI 
+RegGetValueWNative(
+    HKEY hkey, 
+    LPCWSTR lpSubKey, 
+    LPCWSTR lpValue, 
+    DWORD dwFlags, 
+    LPDWORD pdwType, 
+    PVOID pvData, 
+    LPDWORD pcbData
+)
+{
+    if (!InitNativeProcs() || !pRegGetValueW) {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND; /* LSTATUS is LONG - returning an error code */
+    }
+    return pRegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+}
+
+LSTATUS 
+WINAPI 
+RegNotifyChangeKeyValueNative(
+    HKEY   hKey,
+    BOOL   bWatchSubtree,
+    DWORD  dwNotifyFilter,
+    HANDLE hEvent, 
+    BOOL   fAsynchronous
+)
+{
+    if (!InitNativeProcs() || !pRegNotifyChangeKeyValue) {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND;
+    }
+    return pRegNotifyChangeKeyValue(hKey, bWatchSubtree, dwNotifyFilter, hEvent, fAsynchronous);
+}
+
+BOOL 
+WINAPI
+DECLSPEC_HOTPATCH 
+ConvertStringSecurityDescriptorToSecurityDescriptorWNative(
+        const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size )
+{
+    if (!InitNativeProcs() || !pConvertStringSecurityDescriptorToSecurityDescriptorW) {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return FALSE;
+    }
+    return pConvertStringSecurityDescriptorToSecurityDescriptorW(string, revision, sd, ret_size);
+}
+
+DWORD
+WINAPI
+SetNamedSecurityInfoWNative(
+    LPWSTR pObjectName,
+    SE_OBJECT_TYPE ObjectType,
+    SECURITY_INFORMATION SecurityInfo,
+    PSID psidOwner,
+    PSID psidGroup,
+    PACL pDacl,
+    PACL pSacl
+)
+{
+    if (!InitNativeProcs() || !pSetNamedSecurityInfoW) {
+        return ERROR_PROC_NOT_FOUND;
+    }
+    return pSetNamedSecurityInfoW(pObjectName, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+}
+
+DWORD
+WINAPI
+SetSecurityInfoNative(
+    HANDLE handle,
+    SE_OBJECT_TYPE ObjectType,
+    SECURITY_INFORMATION SecurityInfo,
+    PSID psidOwner,
+    PSID psidGroup,
+    PACL pDacl,
+    PACL pSacl
+)
+{
+    if (!InitNativeProcs() || !pSetSecurityInfo) {
+        return ERROR_PROC_NOT_FOUND;
+    }
+    return pSetSecurityInfo(handle, ObjectType, SecurityInfo, psidOwner, psidGroup, pDacl, pSacl);
+}
+
+DWORD
+WINAPI
+GetSecurityInfoNative(
+    HANDLE handle,
+    SE_OBJECT_TYPE ObjectType,
+    SECURITY_INFORMATION SecurityInfo,
+    PSID *ppsidOwner,
+    PSID *ppsidGroup,
+    PACL *ppDacl,
+    PACL *ppSacl,
+    PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+)
+{
+    if (!InitNativeProcs() || !pGetSecurityInfo) {
+        return ERROR_PROC_NOT_FOUND;
+    }
+    return pGetSecurityInfo(handle, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+}
+
+DWORD
+WINAPI
+GetNamedSecurityInfoWNative(
+    LPWSTR pObjectName,
+    SE_OBJECT_TYPE ObjectType,
+    SECURITY_INFORMATION SecurityInfo,
+    PSID *ppsidOwner,
+    PSID *ppsidGroup,
+    PACL *ppDacl,
+    PACL *ppSacl,
+    PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+)
+{
+    if (!InitNativeProcs() || !pGetNamedSecurityInfoW) {
+        return ERROR_PROC_NOT_FOUND;
+    }
+    return pGetNamedSecurityInfoW(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+}
+
+/* End of dynamic resolver block */
+
 LSTATUS 
 WINAPI 
 RegGetValueWNative(
@@ -291,64 +536,6 @@ well_known_rids[] =
     { {'R','S'}, WinAccountRasAndIasServersSid, DOMAIN_ALIAS_RID_RAS_SERVERS },
 };
 
-BOOL 
-WINAPI 
-DECLSPEC_HOTPATCH 
-ConvertStringSidToSidExW( 
-    const WCHAR *string, 
-	PSID *sid 
-);
-
-DWORD
-WINAPI
-SetNamedSecurityInfoWNative(
-	LPWSTR pObjectName,
-    SE_OBJECT_TYPE ObjectType,
-    SECURITY_INFORMATION SecurityInfo,
-    PSID psidOwner,
-    PSID psidGroup,
-    PACL pDacl,
-    PACL pSacl
-);
-
-DWORD
-WINAPI
-SetSecurityInfoNative(
-	HANDLE handle,
-    SE_OBJECT_TYPE ObjectType,
-    SECURITY_INFORMATION SecurityInfo,
-    PSID psidOwner,
-    PSID psidGroup,
-    PACL pDacl,
-    PACL pSacl
-);
-
-DWORD
-WINAPI
-GetSecurityInfoNative(
-	HANDLE handle,
-    SE_OBJECT_TYPE ObjectType,
-    SECURITY_INFORMATION SecurityInfo,
-    PSID *ppsidOwner,
-    PSID *ppsidGroup,
-    PACL *ppDacl,
-    PACL *ppSacl,
-    PSECURITY_DESCRIPTOR *ppSecurityDescriptor
-);
-
-DWORD
-WINAPI
-GetNamedSecurityInfoWNative(
-	LPWSTR pObjectName,
-    SE_OBJECT_TYPE ObjectType,
-    SECURITY_INFORMATION SecurityInfo,
-    PSID *ppsidOwner,
-    PSID *ppsidGroup,
-    PACL *ppDacl,
-    PACL *ppSacl,
-    PSECURITY_DESCRIPTOR *ppSecurityDescriptor
-);
-
 static LPWSTR SERV_dup( LPCSTR str )
 {
     UINT len;
@@ -524,96 +711,6 @@ SetTokenInformationInternal (
 		return TRUE;	
 	}						  
 }
-
-// BOOL 
-// WINAPI 
-// OpenThreadTokenInternal(
-  // _In_  HANDLE  ThreadHandle,
-  // _In_  DWORD   DesiredAccess,
-  // _In_  BOOL    OpenAsSelf,
-  // _Out_ PHANDLE TokenHandle
-// )
-// {
-	// BOOL ret;
-	
-	// ret = OpenThreadToken(ThreadHandle,
-							  // DesiredAccess,
-							  // OpenAsSelf,
-							  // TokenHandle);
-							  
-	// // if(!ret){
-		// // DbgPrint("OpenThreadTokenInternal::OpenThreadToken returned False\n");	
-	// // }
-	
-	// return ret;			
-// }
-
-// /******************************************************************************
- // * OpenProcessToken			[ADVAPI32.@]
- // * Opens the access token associated with a process handle.
- // *
- // * PARAMS
- // *   ProcessHandle [I] Handle to process
- // *   DesiredAccess [I] Desired access to process
- // *   TokenHandle   [O] Pointer to handle of open access token
- // *
- // * RETURNS
- // *  Success: TRUE. TokenHandle contains the access token.
- // *  Failure: FALSE.
- // *
- // * NOTES
- // *  See NtOpenProcessToken.
- // */
-// BOOL 
-// WINAPI
-// OpenProcessTokenInternal( 
-	// HANDLE ProcessHandle, 
-	// DWORD DesiredAccess,
-    // HANDLE *TokenHandle 
-// )
-// {
-	// BOOL ret;
-	
-	// ret = OpenProcessToken(ProcessHandle,
-							  // DesiredAccess,
-							  // TokenHandle);
-							  
-	// if(!ret){
-		// DbgPrint("OpenProcessTokenInternal::OpenProcessToken returned False\n");	
-	// }	
-
-	// return ret;			
-// }
-
-// BOOL WINAPI CreateRestrictedTokenInternal(
-    // HANDLE baseToken,
-    // DWORD flags,
-    // DWORD nDisableSids,
-    // PSID_AND_ATTRIBUTES disableSids,
-    // DWORD nDeletePrivs,
-    // PLUID_AND_ATTRIBUTES deletePrivs,
-    // DWORD nRestrictSids,
-    // PSID_AND_ATTRIBUTES restrictSids,
-    // PHANDLE newToken)
-// {
-	// BOOL ret;
-	
-	// ret = CreateRestrictedToken(baseToken,
-								// flags,
-								// nDisableSids,
-								// disableSids,
-								// nDeletePrivs,
-								// deletePrivs,
-								// nRestrictSids,
-								// restrictSids,
-								// newToken);
-								
-	// if(!ret){
-		// DbgPrint("CreateRestrictedTokenInternal::CreateRestrictedToken returned False\n");	
-	// }	
-
-	// return ret;
-// }
 
 BOOL 
 WINAPI 
@@ -1909,7 +2006,7 @@ RegGetValueWInternal(
         return Py_RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
     }
     // Otherwise, call RegGetValueW like normal.
-    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+    return RegGetValueWNative(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
 
 LSTATUS 

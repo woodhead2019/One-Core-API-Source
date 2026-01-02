@@ -23,6 +23,7 @@
 #include "main.h"
 
 extern BOOL RegInitialize(VOID);
+extern BOOL InitNativeProcs(void);
 
 WINE_DEFAULT_DEBUG_CHANNEL(main); 	
 
@@ -32,6 +33,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     {
         case DLL_PROCESS_ATTACH:
            RegInitialize();		
+           InitNativeProcs();		
            break;
     }
 
