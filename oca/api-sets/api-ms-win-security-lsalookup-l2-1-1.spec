@@ -4,4 +4,4 @@
 @ stdcall LookupPrivilegeNameW(wstr ptr ptr long) advapi32.LookupPrivilegeNameW
 @ stdcall LookupPrivilegeValueW(ptr ptr ptr) advapi32.LookupPrivilegeValueW
 @ stdcall LsaEnumerateTrustedDomains(ptr ptr ptr long ptr) advapi32.LsaEnumerateTrustedDomains
-@ stub LsaManageSidNameMapping ;(long ptr ptr) secur32.LsaManageSidNameMapping
+@ stdcall LsaManageSidNameMappins(long ptr ptr) secur32.LsaManageSidNameMapping

@@ -520,7 +520,7 @@
 547 stdcall SaferiIsExecutableFileType(wstr long)
 548 stdcall SaferiPopulateDefaultsInRegistry(ptr long)
 549 stdcall SaferiRecordEventLogEntry()
-550 stdcall SaferiReplaceProcessThreadTokens(ptr ptr ptr)
+550 stdcall SaferiReplaceProcessThreadTokens(ptr ptr ptr) advapi32.SaferiReplaceProcessThreadTokens
 551 stdcall SaferiSearchMatchingHashRules(long ptr long long ptr ptr)
 552 stdcall SetAclInformation(ptr ptr long long)
 553 stdcall SetEntriesInAccessListA(long ptr long str ptr ptr)
@@ -644,7 +644,7 @@
 680 stdcall WmiSetSingleInstanceW(long wstr long long ptr)
 681 stdcall WmiSetSingleItemA(long str long long long ptr)
 682 stdcall WmiSetSingleItemW(long wstr long long long ptr)
-683 stdcall Wow64Win32ApiEntry(long long long)
+683 stdcall Wow64Win32ApiEntry(long long long) advapi32.Wow64Win32ApiEntry
 684 stdcall WriteEncryptedFileRaw(ptr ptr ptr)
 
 #Only on XP
@@ -847,16 +847,6 @@
 @ stdcall EvtSetChannelConfigProperty() wevtapibase.EvtIntSetChannelConfigProperty
 @ stdcall EvtUpdateBookmark() wevtapibase.EvtIntUpdateBookmark
 @ stdcall EvtUpdateSubscription() wevtapibase.EvtIntUpdateSubscription
-
-; #Imports from advapilong (advapi32 from Longhorn Pre-Reset)
-; @ stdcall EvtGetThreadCorrelationId()
-; @ stdcall EvtIsActive()
-; @ stdcall EvtRegisterPublisher()
-; @ stdcall EvtRegisterSubscriber()
-; @ stdcall EvtReport()
-; @ stdcall EvtReportText()
-; @ stdcall EvtScopePublisher()
-; @ stdcall EvtSetThreadCorrelationId()
 
 #Vista Beta Functions
 @ stdcall WmiSendDataBlock(ptr long long long long)

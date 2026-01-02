@@ -1,8 +1,8 @@
 /*
- * PROJECT:     ReactOS Compatibility Layer Shell Extension
+ * PROJECT:     One-Core-API Compatibility Layer Shell Extension
  * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
  * PURPOSE:     CLayerUIPropPage implementation
- * COPYRIGHT:   Copyright 2015-2019 Mark Jansen (mark.jansen@reactos.org)
+ * COPYRIGHT:   Copyright 2015-2019 Mark Jansen (mark.jansen@One-Core-API.org)
  */
 
 #include "precomp.h"
@@ -32,21 +32,22 @@ static struct {
     const PCWSTR Display;
     const PCWSTR Name;
 } g_CompatModes[] = {
-    { L"Windows XP (Service Pack 2)", L"5.1.2600.2180" },
-    { L"Windows XP (Service Pack 3)", L"5.1.2600.5512" },
-    { L"Windows Server 2003 (Service Pack 1))", L"5.2.3790.1830" },
-    { L"Windows Server 2003 (Service Pack 2)", L"5.2.3790.3959" },
-    { L"Windows Vista", L"6.0.6000" },
-    { L"Windows Vista (Service Pack 1)", L"6.0.6001" },
-    { L"Windows Vista (Service Pack 2)", L"6.0.6002" },
-    { L"Windows 7 (Service Pack 1", L"6.1.7601" },
-    { L"Windows 8", L"6.2.9200" },
-    { L"Windows 8.1", L"6.3.9600" },
-    { L"Windows 10 1511", L"10.0.10586" },
-    { L"Windows 10 1607", L"10.0.14393" },
-    { L"Windows 10 1809", L"10.0.17763" },
-    { L"Windows 10 22H2", L"10.0.19045" },
-    { L"Windows 11 24H2", L"10.0.22600" },
+    { L"Windows 2000 (Service Pack 4)", L"5.0.2195.4.0.2.Service Pack 4" },
+    { L"Windows XP (Service Pack 2)", L"5.1.2600.2.0.2.Service Pack 2" },
+    { L"Windows XP (Service Pack 3)", L"5.1.2600.3.0.2.Service Pack 3" },
+    { L"Windows Server 2003 (Service Pack 1))", L"5.2.3790.1.0.2.Service Pack 1" },
+    { L"Windows Server 2003 (Service Pack 2)", L"5.2.3790.2.0.2.Service Pack 2" },
+    { L"Windows Vista", L"6.0.6000.0.0.2." },
+    { L"Windows Vista (Service Pack 1)", L"6.0.6001.1.0.2.Service Pack 1" },
+    { L"Windows Vista (Service Pack 2)", L"6.0.6002.2.0.2.Service Pack 2" },
+    { L"Windows 7 (Service Pack 1)", L"6.1.7601.1.0.2.Service Pack 1" },
+    { L"Windows 8", L"6.2.9200.0.0.2." },
+    { L"Windows 8.1", L"6.3.9600.0.0.2." },
+    { L"Windows 10 1511", L"10.0.10586.0.0.2." },
+    { L"Windows 10 1607", L"10.0.14393.0.0.2." },
+    { L"Windows 10 1809", L"10.0.17763.0.0.2." },
+    { L"Windows 10 22H2", L"10.0.19045.0.0.2." },
+    { L"Windows 11 24H2", L"10.0.22600.0.0.2." },
     { NULL, NULL }
 };
 
@@ -77,14 +78,6 @@ static const WCHAR* g_AllowedExtensions[] = {
 BOOL IsBuiltinLayer(PCWSTR Name)
 {
     size_t n;
-
-    // for (n = 0; g_Layers[n].Name; ++n)
-    // {
-        // if (!wcsicmp(g_Layers[n].Name, Name))
-        // {
-            // return TRUE;
-        // }
-    // }
 
     for (n = 0; g_CompatModes[n].Name; ++n)
     {
@@ -667,7 +660,7 @@ LRESULT CLayerUIPropPage::OnEditModes(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 LRESULT CLayerUIPropPage::OnClickNotify(INT uCode, LPNMHDR hdr, BOOL& bHandled)
 {
     if (hdr->idFrom == IDC_INFOLINK)
-        ShellExecute(NULL, L"open", L"https://reactos.org/forum/viewforum.php?f=4", NULL, NULL, SW_SHOW);
+        ShellExecute(NULL, L"open", L"https://One-Core-API.org/forum/viewforum.php?f=4", NULL, NULL, SW_SHOW);
     return 0;
 }
 

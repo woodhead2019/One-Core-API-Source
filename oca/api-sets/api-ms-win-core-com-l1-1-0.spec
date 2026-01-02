@@ -1,7 +1,7 @@
 @ stdcall CLSIDFromProgID(wstr ptr) ole32.CLSIDFromProgID
 @ stdcall CLSIDFromString(wstr ptr) ole32.CLSIDFromString
 @ stdcall CoAddRefServerProcess() ole32.CoAddRefServerProcess
-@ stub CoAllowUnmarshalerCLSID ;(long) ole.CoAllowUnmarshalerCLSID
+#@ stub CoAllowUnmarshalerCLSID ;(long) ole.CoAllowUnmarshalerCLSID
 @ stdcall CoCancelCall(long long) ole32.CoCancelCall
 @ stdcall CoCopyProxy(ptr ptr) ole32.CoCopyProxy
 @ stdcall CoCreateFreeThreadedMarshaler(ptr ptr) ole32.CoCreateFreeThreadedMarshaler
@@ -67,7 +67,7 @@
 @ stdcall CoUnmarshalHresult(ptr ptr) ole32.CoUnmarshalHresult
 @ stdcall CoUnmarshalInterface(ptr ptr ptr) ole32.CoUnmarshalInterface
 @ stdcall CoWaitForMultipleHandles(long long long ptr ptr) ole32.CoWaitForMultipleHandles
-@ stub CoWaitForMultipleObjects ;(long long long ptr ptr) combase.CoWaitForMultipleObjects
+#@ stub CoWaitForMultipleObjects ;(long long long ptr ptr) combase.CoWaitForMultipleObjects
 @ stdcall CreateStreamOnHGlobal(ptr long ptr) ole32.CreateStreamOnHGlobal
 @ stdcall FreePropVariantArray(long ptr) ole32.FreePropVariantArray
 @ stdcall GetHGlobalFromStream(ptr ptr) ole32.GetHGlobalFromStream

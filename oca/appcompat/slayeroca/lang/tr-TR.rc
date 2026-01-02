@@ -7,7 +7,7 @@ STYLE DS_SHELLFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Uyumluluk"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    LTEXT "ReactOS'ta bu programı çalıştırırken sorunlarınız oluyorsa ReactOS'un uygulamaya bildireceği bir işletim dizgesi seçiniz.\nPlease note that this is a work in progress.", IDC_EXPLANATION, 7, 7, 210, 31
+    LTEXT "One-Core-API'ta bu programı çalıştırırken sorunlarınız oluyorsa One-Core-API'un uygulamaya bildireceği bir işletim dizgesi seçiniz.\nPlease note that this is a work in progress.", IDC_EXPLANATION, 7, 7, 210, 31
     GROUPBOX "Uyumluluk Kipi", IDC_COMPATGROUP, 7, 41, 210, 49
     CHECKBOX "Bu programı şu uyumluluk kipinde çalıştır:", IDC_CHKRUNCOMPATIBILITY, 18, 57, 188, 10, BS_AUTOCHECKBOX | WS_TABSTOP
     COMBOBOX IDC_COMPATIBILITYMODE, 18, 70, 188, 85, CBS_HASSTRINGS | CBS_DROPDOWNLIST | WS_TABSTOP | WS_DISABLED
@@ -40,6 +40,6 @@ STRINGTABLE
 BEGIN
     IDS_COMPAT_TITLE "Uyumluluk"
     IDS_FAILED_NETWORK "Bir ağ sürücüsü üzerinde olduğundan bu programda uyumluluk kipleri ayarlanamaz."
-    IDS_FAILED_PROTECTED "ReactOS'un bir parçası olduğundan bu programda uyumluluk kipleri ayarlanamaz."
+    IDS_FAILED_PROTECTED "One-Core-API'un bir parçası olduğundan bu programda uyumluluk kipleri ayarlanamaz."
 END
 
