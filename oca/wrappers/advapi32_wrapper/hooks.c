@@ -2022,47 +2022,6 @@ RegNotifyChangeKeyValueInternal(
     return RegNotifyChangeKeyValueNative(hKey, bWatchSubtree, dwNotifyFilter & ~REG_NOTIFY_THREAD_AGNOSTIC, hEvent, fAsynchronous);
 }
 
-BOOL IsTargetKeyAndValue(HKEY hKey, LPCWSTR lpValueName)
-{
-    WCHAR path[512];
-	WCHAR lowerValue[256];
-    //DWORD size = sizeof(path);
-
-    // Normaliza para lower-case
-    CharLowerW(path);
-
-    if (wcsstr(path, L"software\\microsoft\\windows nt\\currentversion") == NULL)
-        return FALSE;
-
-    if (!lpValueName)
-        return TRUE;
-    
-    lstrcpynW(lowerValue, lpValueName, 256);
-    CharLowerW(lowerValue);
-
-    return (wcscmp(lowerValue, L"currentversion") == 0);
-}
-
-BOOL IsTargetKeyAndValueA(HKEY hKey, LPCSTR lpValueName)
-{
-    CHAR path[512];
-    //DWORD size = sizeof(path);
-    CHAR lowerValue[256];	
-
-    CharLowerA(path);
-
-    if (strstr(path, "software\\microsoft\\windows nt\\currentversion") == NULL)
-        return FALSE;
-
-    if (!lpValueName)
-        return TRUE;
-
-    lstrcpynA(lowerValue, lpValueName, 256);
-    CharLowerA(lowerValue);
-
-    return (strcmp(lowerValue, "currentversion") == 0);
-}
-
 BOOLEAN
 IsHklmWindowsNT(HANDLE hKey)
 {
@@ -2098,76 +2057,6 @@ IsHklmWindowsNT(HANDLE hKey)
     return FALSE;
 }
 
-// LONG WINAPI Hook_RegQueryValueExW(
-    // HKEY hKey,
-    // LPCWSTR lpValueName,
-    // LPDWORD lpReserved,
-    // LPDWORD lpType,
-    // LPBYTE lpData,
-    // LPDWORD lpcbData
-// )
-// {
-    // PPEB Peb;
-    // UNICODE_STRING EmulatedVersion;	
-
-    // Peb = NtCurrentPeb();
-	
-	// //if(wcsstr(Peb->ProcessParameters->ImagePathName.Buffer, L"teste") != NULL){
-		// if (IsHklmWindowsNT(hKey))
-		// {
-			// DbgPrint("[HOOK] CurrentVersion solicitado em HKLM\\Software\\Microsoft\\Windows NT\n");
-			// DbgPrint("RegQueryValueExW: hKey=%p lpValueName=%ws\n", hKey, lpValueName);			
-		// if(ReadEmulatedVersion(&EmulatedVersion, Peb->ProcessParameters->ImagePathName.Buffer))
-		// {
-			// WCHAR versionBuf[32];
-			// WCHAR localCopy[64];
-			// ULONG major, minor;
-			// PWSTR p;
-			// SIZE_T lenChars;
-			// DWORD need;
-
-			// /* Copia conte?do de EmulatedVersion para buffer pr?prio */
-			// if (EmulatedVersion.Length >= sizeof(localCopy))
-				// return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-
-			// memcpy(localCopy, EmulatedVersion.Buffer, EmulatedVersion.Length);
-			// localCopy[EmulatedVersion.Length / sizeof(WCHAR)] = L'\0';
-
-			// /* Agora usa sempre o buffer seguro local */
-			// p = localCopy;
-			// lenChars = EmulatedVersion.Length / sizeof(WCHAR);
-
-			// major = GetNextPointValue(&p, &lenChars);
-			// minor = GetNextPointValue(&p, &lenChars);
-
-			// // Peb->OSMajorVersion = major;
-			// // Peb->OSMinorVersion = minor;
-
-			// wsprintfW(versionBuf, L"%u.%u", major, minor);
-
-			// if (lpType)
-				// *lpType = REG_SZ;
-
-			// if (lpcbData)
-			// {
-				// need = ((DWORD)lstrlenW(versionBuf) + 1) * sizeof(WCHAR);
-
-				// if (lpData)
-					// memcpy(lpData, versionBuf, need);
-
-				// *lpcbData = need;
-			// }
-
-			// return ERROR_SUCCESS;
-		// }
-
-			
-			// return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-		// }
-
-    // return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-// }
-
 /* Assume que os prototypes e imports necess?rios existem:
    NtQueryValueKey, NtQueryKey, RtlNtStatusToDosError, MapDefaultKey, ClosePredefKey,
    IsHKCRKey, QueryHKCRValue, ReadEmulatedVersion, GetProcessHeap, HeapAlloc, HeapFree,
@@ -2177,71 +2066,6 @@ IsHklmWindowsNT(HANDLE hKey)
 #define EMULATED_BUF_CHARS 64
 #define LOCAL_QUERY_BUFFER 256
 #define INFO_BASE offsetof(KEY_VALUE_PARTIAL_INFORMATION, Data)
-
-// LONG WINAPI Hook_RegQueryValueExW(
-    // HKEY hKey,
-    // LPCWSTR lpValueName,
-    // LPDWORD lpReserved,
-    // LPDWORD lpType,
-    // LPBYTE lpData,
-    // LPDWORD lpcbData
-// )
-// {
-    // PPEB Peb;
-    // UNICODE_STRING EmulatedVersion;
-    // WCHAR versionBuf[32];
-    // SIZE_T need;
-    // DWORD cb;
-
-    // /* Nunca mexa no PEB aqui */
-    // Peb = NtCurrentPeb();
-
-    // /* S? intercepta a chave desejada */
-    // if (!IsHklmWindowsNT(hKey))
-        // return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-
-    // /* S? intercepta se for "CurrentVersion" */
-    // if (!lpValueName || _wcsicmp(lpValueName, L"CurrentVersion") != 0)
-        // return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-
-    // /* Se falhar, retorna o valor real */
-    // if (!ReadEmulatedVersion(&EmulatedVersion, Peb->ProcessParameters->ImagePathName.Buffer))
-        // return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
-
-    // /* Copia vers?o em EmulatedVersion para buffer local com seguran?a */
-    // cb = EmulatedVersion.Length / sizeof(WCHAR);
-    // if (cb >= 30) cb = 30;
-
-    // memcpy(versionBuf, EmulatedVersion.Buffer, cb * sizeof(WCHAR));
-    // versionBuf[cb] = L'\0'; /* garante NULL-termination */
-
-    // need = ((DWORD)lstrlenW(versionBuf) + 1) * sizeof(WCHAR);
-
-    // if (lpType)
-        // *lpType = REG_SZ;
-
-    // if (lpcbData)
-    // {
-        // if (!lpData)
-        // {
-            // /* Apenas retorna tamanho necess?rio */
-            // *lpcbData = (DWORD)need;
-            // return ERROR_SUCCESS;
-        // }
-
-        // if (*lpcbData < need)
-        // {
-            // /* Buffer pequeno demais */
-            // *lpcbData = (DWORD)need;
-            // return ERROR_MORE_DATA;
-        // }
-
-        // memcpy(lpData, versionBuf, need);
-        // *lpcbData = (DWORD)need;
-    // }
-
-    // return ERROR_SUCCESS;
-// }
 
 LONG WINAPI Hook_RegQueryValueExW(
     HKEY hKey,
@@ -2322,22 +2146,62 @@ LONG WINAPI Hook_RegQueryValueExA(
     LPDWORD lpcbData
 )
 {
-    if (IsTargetKeyAndValueA(hKey, lpValueName))
+    PPEB  Peb;
+    CHAR  versionBuf[32];
+    SIZE_T need;
+    DWORD cb;
+
+    UNREFERENCED_PARAMETER(lpReserved);
+
+    Peb = NtCurrentPeb();
+
+    /* Só intercepta HKLM\Software\Microsoft\Windows NT\CurrentVersion */
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueExA(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /* Só intercepta CurrentVersion */
+    if (!lpValueName || _stricmp(lpValueName, "CurrentVersion") != 0)
+        return RegQueryValueExA(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /*
+     * Ex: "6.1", "10.0"
+     */
+    wsprintfA(
+        versionBuf,
+        "%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    cb   = (DWORD)(lstrlenA(versionBuf) + 1);
+    need = cb * sizeof(CHAR);
+
+    if (lpType)
+        *lpType = REG_SZ;
+
+    if (lpcbData)
     {
-        if (lpType) *lpType = REG_SZ;
-        if (lpcbData)
+        if (!lpData)
         {
-            DWORD need = lstrlenA(g_FakeVersionA) + 1;
-
-            if (lpData)
-                memcpy(lpData, g_FakeVersionA, need);
-
-            *lpcbData = need;
+            *lpcbData = (DWORD)need;
+            return ERROR_SUCCESS;
         }
-        return ERROR_SUCCESS;
+
+        if (*lpcbData < need)
+        {
+            *lpcbData = (DWORD)need;
+            return ERROR_MORE_DATA;
+        }
+
+        memcpy(lpData, versionBuf, need);
+        *lpcbData = (DWORD)need;
     }
 
-    return RegQueryValueExA(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+    return ERROR_SUCCESS;
 }
 
 LONG WINAPI Hook_RegQueryValueW(
@@ -2347,17 +2211,46 @@ LONG WINAPI Hook_RegQueryValueW(
     PLONG lpcbData
 )
 {
-    if (IsTargetKeyAndValue(hKey, lpSubKey))
+    PPEB  Peb;
+    WCHAR versionBuf[32];
+    LONG  need;
+
+    Peb = NtCurrentPeb();
+
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueW(hKey, lpSubKey, lpData, lpcbData);
+
+    if (!lpSubKey || _wcsicmp(lpSubKey, L"CurrentVersion") != 0)
+        return RegQueryValueW(hKey, lpSubKey, lpData, lpcbData);
+
+    swprintf(
+        versionBuf,
+        L"%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    need = (LONG)((lstrlenW(versionBuf) + 1) * sizeof(WCHAR));
+
+    if (!lpcbData)
+        return ERROR_SUCCESS;
+
+    if (!lpData)
     {
-        if (lpData && lpcbData)
-        {
-            lstrcpyW(lpData, g_FakeVersionW);
-            *lpcbData = (lstrlenW(g_FakeVersionW) + 1) * sizeof(WCHAR);
-        }
+        *lpcbData = need;
         return ERROR_SUCCESS;
     }
 
-    return RegQueryValueW(hKey, lpSubKey, lpData, lpcbData);
+    if (*lpcbData < need)
+    {
+        *lpcbData = need;
+        return ERROR_MORE_DATA;
+    }
+
+    memcpy(lpData, versionBuf, need);
+    *lpcbData = need;
+
+    return ERROR_SUCCESS;
 }
 
 LONG WINAPI Hook_RegQueryValueA(
@@ -2367,15 +2260,44 @@ LONG WINAPI Hook_RegQueryValueA(
     PLONG lpcbData
 )
 {
-    if (IsTargetKeyAndValueA(hKey, lpSubKey))
+    PPEB  Peb;
+    CHAR  versionBuf[32];
+    LONG  need;
+
+    Peb = NtCurrentPeb();
+
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueA(hKey, lpSubKey, lpData, lpcbData);
+
+    if (!lpSubKey || _stricmp(lpSubKey, "CurrentVersion") != 0)
+        return RegQueryValueA(hKey, lpSubKey, lpData, lpcbData);
+
+    wsprintfA(
+        versionBuf,
+        "%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    need = (LONG)(lstrlenA(versionBuf) + 1);
+
+    if (!lpcbData)
+        return ERROR_SUCCESS;
+
+    if (!lpData)
     {
-        if (lpData && lpcbData)
-        {
-            lstrcpyA(lpData, g_FakeVersionA);
-            *lpcbData = lstrlenA(g_FakeVersionA) + 1;
-        }
+        *lpcbData = need;
         return ERROR_SUCCESS;
     }
 
-    return RegQueryValueA(hKey, lpSubKey, lpData, lpcbData);
+    if (*lpcbData < need)
+    {
+        *lpcbData = need;
+        return ERROR_MORE_DATA;
+    }
+
+    memcpy(lpData, versionBuf, need);
+    *lpcbData = need;
+
+    return ERROR_SUCCESS;
 }

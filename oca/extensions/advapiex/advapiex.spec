@@ -473,10 +473,6 @@
 499 stdcall RegQueryInfoKeyW(long ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 500 stdcall RegQueryMultipleValuesA(long ptr long ptr ptr)
 501 stdcall RegQueryMultipleValuesW(long ptr long ptr ptr)
-503 stdcall RegQueryValueA(long str ptr ptr)
-504 stdcall RegQueryValueExA(long str ptr ptr ptr ptr)
-505 stdcall RegQueryValueExW(long wstr ptr ptr ptr ptr)
-506 stdcall RegQueryValueW(long wstr ptr ptr)
 507 stdcall RegReplaceKeyA(long str str str)
 508 stdcall RegReplaceKeyW(long wstr wstr wstr)
 509 stdcall RegRestoreKeyA(long str long)
@@ -872,6 +868,10 @@
 434 stdcall OpenThreadToken(ptr long long ptr) #OpenThreadTokenInternal
 487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) RegGetValueWInternal
 490 stdcall RegNotifyChangeKeyValue(long long long long long) RegNotifyChangeKeyValueInternal
+503 stdcall RegQueryValueA(long str ptr ptr) RegQueryValueAInternal
+504 stdcall RegQueryValueExA(long str ptr ptr ptr ptr) RegQueryValueExAInternal
+505 stdcall RegQueryValueExW(long wstr ptr ptr ptr ptr) RegQueryValueExWInternal
+506 stdcall RegQueryValueW(long wstr ptr ptr) RegQueryValueWInternal
 563 stdcall SetKernelObjectSecurity(long long ptr) SetKernelObjectSecurityInternal
 567 stdcall SetNamedSecurityInfoW(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoWInternal
 576 stdcall SetSecurityInfo(long long long ptr ptr ptr ptr) SetSecurityInfoInternal

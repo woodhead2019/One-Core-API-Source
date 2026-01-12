@@ -35,6 +35,6 @@ set_module_type(advapiex win32dll ENTRYPOINT DllMain 12)
 
 target_link_libraries(advapiex wine)
 
-add_importlibs(advapiex advapi32 ntext kernel32 wevtapibase)
+add_importlibs(advapiex advapi32 ntext kernel32 user32 wevtapibase)
 
 add_cd_file(TARGET advapiex DESTINATION reactos/system32 FOR all)

@@ -53,7 +53,9 @@ RtlpVerGetConditionMask(
 		
 #define MAX_PATH 260
 
-static const WCHAR SECTION_NAME[] = L"\\BaseNamedObjects\\SharedAppCompat";
+static WCHAR SECTION_COMMON_NAME[] = L"\\BaseNamedObjects\\SharedAppCompat";
+static WCHAR SECTION_MSI_NAME[] = L"\\BaseNamedObjects\\SharedAppCompatMsi";
+static WCHAR SECTION_EXE_TO_MSI_NAME[] = L"\\BaseNamedObjects\\SharedAppCompatExeMsi";
 
 typedef struct _OCA_COMPATIBILITY_INFO{
 	ULONG MajorVersion;
@@ -70,180 +72,11 @@ void SanitizeFilenameForRegistry(const WCHAR* src, WCHAR* dst, size_t dstSize)
     for (i = 0; src[i] != 0 && i < dstSize - 1; i++)
     {
         if (src[i] == L'\\')
-            dst[i] = L'/'; // substitui barra invertida por barra normal
+            dst[i] = L'/'; // replace backslash with forward slash
         else
             dst[i] = src[i];
     }
     dst[i] = 0;
-}
-
-ULONG
-FindLikelyCreatorProcessPid(PSYSTEM_PROCESS_INFORMATION sysInfo, ULONG CurrentPid)
-{
-    ULONG offset = 0;
-    PSYSTEM_PROCESS_INFORMATION p = NULL;
-    PSYSTEM_PROCESS_INFORMATION best = NULL;
-    LONGLONG closestDiff = 0x7FFFFFFFFFFFFFFFLL;
-    LARGE_INTEGER childCreateTime;
-    ULONG parentPid;
-
-    /* 1) Achar registro do processo atual */
-    while (1)
-    {
-        p = (PSYSTEM_PROCESS_INFORMATION)((PUCHAR)sysInfo + offset);
-
-        if ((ULONG_PTR)p->UniqueProcessId == CurrentPid)
-        {
-            parentPid = (ULONG)p->InheritedFromUniqueProcessId;
-            childCreateTime = p->CreateTime;
-            break;
-        }
-
-        if (p->NextEntryOffset == 0)
-            return 0;
-
-        offset += p->NextEntryOffset;
-    }
-
-    /* 2) Se PPID for claramente válido, usamos ele */
-    if (parentPid != 0 &&
-        parentPid != CurrentPid)
-    {
-        // Listar pais “suspeitos” que NÃO devem ser considerados pais reais
-        static const ULONG badParents[] = {
-            0, 4,    /* Idle / System */
-            8,       /* smss */
-            528,     /* services */
-            576,     /* lsass */
-        };
-
-        size_t i;
-        BOOLEAN bad = FALSE;
-        for (i = 0; i < sizeof(badParents) / sizeof(badParents[0]); i++)
-        {
-            if (parentPid == badParents[i])
-            {
-                bad = TRUE;
-                break;
-            }
-        }
-
-        if (!bad)
-            return parentPid;
-    }
-
-    /* 3) Heurística de criador real:
-          Achar processo cuja criação é imediatamente anterior ao filho */
-    offset = 0;    
-
-    while (1)
-    {
-        p = (PSYSTEM_PROCESS_INFORMATION)((PUCHAR)sysInfo + offset);
-
-        if ((ULONG_PTR)p->UniqueProcessId != CurrentPid)
-        {
-            /* diferença de tempo */
-            LONGLONG diff = childCreateTime.QuadPart - p->CreateTime.QuadPart;
-
-            if (diff > 0 && diff < closestDiff)
-            {
-                closestDiff = diff;
-                best = p;
-            }
-        }
-
-        if (p->NextEntryOffset == 0)
-            break;
-
-        offset += p->NextEntryOffset;
-    }
-
-    if (best)
-        return (ULONG)(ULONG_PTR)best->UniqueProcessId;
-
-    return parentPid;
-}
-
-
-/* -- GetParentProcessOSVersionByPid -- */
-/* Recebe ProcessId (PID) passado no parâmetro ProcessId (cast internamente). */
-BOOLEAN
-GetParentProcessOSVersionByPid(
-    HANDLE ProcessId,      /* trata-se de PID, feito cast para CLIENT_ID */
-    ULONG *MajorVersion,
-    ULONG *MinorVersion,
-    ULONG *BuildNumber
-)
-{
-    NTSTATUS status;
-    PROCESS_BASIC_INFORMATION pbi;
-    ULONG retLen;
-    HANDLE hProcess;
-    OBJECT_ATTRIBUTES oa;
-    CLIENT_ID cid;
-    SIZE_T bytesRead;
-    PEB pebRemote;
-
-    RtlZeroMemory(&pbi, sizeof(pbi));
-    retLen = 0;
-    hProcess = NULL;
-    RtlZeroMemory(&oa, sizeof(oa));
-    cid.UniqueProcess = (HANDLE)(ULONG_PTR)ProcessId; /* caller supplies PID */
-    cid.UniqueThread = (HANDLE)0;
-    bytesRead = 0;
-    RtlZeroMemory(&pebRemote, sizeof(pebRemote));
-
-    InitializeObjectAttributes(&oa, NULL, 0, NULL, NULL);
-
-    status = NtOpenProcess(&hProcess,
-                           PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                           &oa,
-                           &cid);
-    if (!NT_SUCCESS(status))
-    {
-        DbgPrint("GetParentProcessOSVersionByPid: ZwOpenProcess falhou 0x%08X\n", status);
-        return FALSE;
-    }
-
-    status = ZwQueryInformationProcess(hProcess,
-                                       ProcessBasicInformation,
-                                       &pbi,
-                                       sizeof(pbi),
-                                       &retLen);
-    if (!NT_SUCCESS(status))
-    {
-        DbgPrint("GetParentProcessOSVersionByPid: ZwQueryInformationProcess falhou 0x%08X\n", status);
-        ZwClose(hProcess);
-        return FALSE;
-    }
-
-    if (pbi.PebBaseAddress == NULL) {
-        DbgPrint("GetParentProcessOSVersionByPid: PEB base address NULL\n");
-        ZwClose(hProcess);
-        return FALSE;
-    }
-
-    status = ZwReadVirtualMemory(hProcess,
-                                 pbi.PebBaseAddress,
-                                 &pebRemote,
-                                 sizeof(pebRemote),
-                                 &bytesRead);
-
-    if (!NT_SUCCESS(status) || bytesRead < sizeof(pebRemote))
-    {
-        DbgPrint("GetParentProcessOSVersionByPid: ZwReadVirtualMemory falhou 0x%08X bytesRead=%Iu\n",
-                 status, bytesRead);
-        ZwClose(hProcess);
-        return FALSE;
-    }
-
-    /* Preenchendo os valores de saída */
-    if (MajorVersion) *MajorVersion = (ULONG)pebRemote.OSMajorVersion;
-    if (MinorVersion) *MinorVersion = (ULONG)pebRemote.OSMinorVersion;
-    if (BuildNumber) *BuildNumber = (ULONG)pebRemote.OSBuildNumber;
-
-    ZwClose(hProcess);
-    return TRUE;
 }
 
 ULONG
@@ -287,30 +120,30 @@ BOOLEAN GetMsiPathFromCommandLine(
 
     OutPath[0] = 0;
 
-    /* Procura pelo parâmetro /i ou /package */
+    /* Search for the /i or /package parameter */
     while (*p)
     {
-        /* Ignora espaços */
+        /* Skip spaces */
         while (*p == L' ') p++;
 
-        /* Verifica /i */
+        /* Check for /i */
         if ((p[0] == L'/' || p[0] == L'-') &&
             (p[1] == L'i' || p[1] == L'I'))
         {
             p += 2;
 
-            /* pula ":" caso exista */
+            /* Skip ':' if present */
             if (*p == L':') p++;
 
-            /* pula espaços */
+            /* Skip spaces */
             while (*p == L' ') p++;
 
             goto extract;
         }
 
-        /* Verifica /package */
+        /* Check for /package */
         if ((p[0] == L'/' || p[0] == L'-') &&
-            ( _wcsnicmp(&p[1], L"package", 7) == 0))
+            (_wcsnicmp(&p[1], L"package", 7) == 0))
         {
             p += 8;
 
@@ -327,7 +160,7 @@ BOOLEAN GetMsiPathFromCommandLine(
 
 extract:
 
-    /* Caso esteja entre aspas */
+    /* Case: quoted path */
     if (*p == L'"')
     {
         p++;
@@ -349,7 +182,7 @@ extract:
         return TRUE;
     }
 
-    /* Caso esteja sem aspas */
+    /* Case: unquoted path */
     start = p;
     while (*p && *p != L' ')
         p++;
@@ -367,9 +200,41 @@ extract:
     return TRUE;
 }
 
+BOOLEAN
+BuildWorldSecurityDescriptor(
+    PSECURITY_DESCRIPTOR *OutSd
+)
+{
+    PSECURITY_DESCRIPTOR sd;
+
+    sd = (PSECURITY_DESCRIPTOR)RtlAllocateHeap(
+        RtlProcessHeap(),
+        0,
+        SECURITY_DESCRIPTOR_MIN_LENGTH
+    );
+
+    if (!sd)
+        return FALSE;
+
+    if (!NT_SUCCESS(RtlCreateSecurityDescriptor(
+            sd,
+            SECURITY_DESCRIPTOR_REVISION)))
+        return FALSE;
+
+    /* NULL DACL = total access */
+    if (!NT_SUCCESS(RtlSetDaclSecurityDescriptor(
+            sd,
+            TRUE,
+            NULL,
+            FALSE)))
+        return FALSE;
+
+    *OutSd = sd;
+    return TRUE;
+}
 
 BOOLEAN
-StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
+StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo, const PWCHAR StorageType)
 {
     UNICODE_STRING sectionName;
     PVOID baseAddress;
@@ -378,13 +243,14 @@ StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
     HANDLE hSection = NULL;
     LARGE_INTEGER maxSize;
     NTSTATUS status;
+	PSECURITY_DESCRIPTOR sd = NULL;
+	
+	BuildWorldSecurityDescriptor(&sd);
 
-    RtlInitUnicodeString(&sectionName, SECTION_NAME);
-    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, NULL);
+    RtlInitUnicodeString(&sectionName, StorageType);
+    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, sd);
 
     maxSize.QuadPart = sizeof(OCA_COMPATIBILITY_INFO);
-
-    DbgPrint("[StoreInSharedSection] Criando seção… tamanho=%llu bytes\n", maxSize.QuadPart);
 
     status = NtCreateSection(
         &hSection,
@@ -395,16 +261,23 @@ StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
         SEC_COMMIT,
         NULL
     );
+	
+    if (status == STATUS_OBJECT_NAME_COLLISION)
+    {
+        status = NtOpenSection(
+            &hSection,
+            SECTION_MAP_READ | SECTION_MAP_WRITE,
+            &objAttr
+        );
+    }	
 
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[StoreInSharedSection] Erro NtCreateSection: 0x%08X\n", status);
+        DbgPrint("[StoreInSharedSection] NtCreateSection failed: 0x%08X\n", status);
         return FALSE;
     }
 
     baseAddress = NULL;
     viewSize = (SIZE_T)maxSize.QuadPart;
-
-    DbgPrint("[StoreInSharedSection] Mapeando seção no processo atual…\n");
 
     status = NtMapViewOfSection(
         hSection,
@@ -420,23 +293,19 @@ StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
     );
 
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[StoreInSharedSection] Erro NtMapViewOfSection: 0x%08X\n", status);
-        DbgPrint("[StoreInSharedSection] Desmapeando seção…\n");
+        DbgPrint("[StoreInSharedSection] NtMapViewOfSection failed: 0x%08X\n", status);
         NtUnmapViewOfSection((HANDLE)-1, baseAddress);		
         NtClose(hSection);
         return FALSE;
     }
 
-    DbgPrint("[StoreInSharedSection] Seção mapeada em %p, copia do caminho…\n", baseAddress);
-
     memcpy(baseAddress, OcaCompatInfo, sizeof(OCA_COMPATIBILITY_INFO));
 
-    DbgPrint("[StoreInSharedSection] Finalizado com sucesso.\n");
     return TRUE;
 }
 
 BOOLEAN
-LoadFromSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
+LoadFromSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo, const PWCHAR StorageType)
 {
     UNICODE_STRING sectionName;
     PVOID baseAddress;
@@ -444,366 +313,50 @@ LoadFromSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
     HANDLE hSection = NULL;
     NTSTATUS status;
     OBJECT_ATTRIBUTES objAttr;
-	//OCA_COMPATIBILITY_INFO OcaCompatInfo;
 
-    DbgPrint("[LoadFromSharedSection] Iniciando…\n");
-
-    RtlInitUnicodeString(&sectionName, SECTION_NAME);
+    RtlInitUnicodeString(&sectionName, StorageType);
     InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-    DbgPrint("[LoadFromSharedSection] Abrindo seção compartilhada…\n");
-	
-	__try{
-
-		status = NtOpenSection(
-			&hSection,
-			SECTION_MAP_READ,
-			&objAttr
-		);
-
-		if (!NT_SUCCESS(status)) {
-			DbgPrint("[LoadFromSharedSection] Erro NtOpenSection: 0x%08X\n", status);
-			return FALSE;
-		}
-
-		baseAddress = NULL;
-		viewSize = 0;
-
-		DbgPrint("[LoadFromSharedSection] Mapeando seção para leitura…\n");
-
-		status = NtMapViewOfSection(
-			hSection,
-			(HANDLE)-1,
-			&baseAddress,
-			0,
-			0,
-			NULL,
-			&viewSize,
-			ViewShare,
-			0,
-			PAGE_READONLY
-		);
-
-		if (!NT_SUCCESS(status)) {
-			DbgPrint("[LoadFromSharedSection] Erro NtMapViewOfSection: 0x%08X\n", status);
-			NtClose(hSection);
-			return FALSE;
-		}
-
-		DbgPrint("[LoadFromSharedSection] Seção mapeada em %p (tam=%llu). Copiando string…\n",
-				 baseAddress, (unsigned long long)viewSize);
-
-		memcpy(OcaCompatInfo, baseAddress, sizeof(OCA_COMPATIBILITY_INFO));
-		
-		DbgPrint("[LoadFromSharedSection] Desmapeando seção…\n");
-		NtUnmapViewOfSection((HANDLE)-1, baseAddress);
-
-		DbgPrint("[LoadFromSharedSection] Fechando seção…\n");
-		NtClose(hSection);		
-
-		return TRUE;
-	}__except ( EXCEPTION_EXECUTE_HANDLER ) {
-		return FALSE;
-	}	
-
-    DbgPrint("[LoadFromSharedSection] Finalizado com sucesso.\n");
-    return FALSE;
-}
-
-BOOLEAN
-HasSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo)
-{
-    UNICODE_STRING sectionName;
-    HANDLE hSection = NULL;
-    NTSTATUS status;
-    OBJECT_ATTRIBUTES objAttr;
-
-    DbgPrint("[LoadFromSharedSection] Iniciando…\n");
-
-    RtlInitUnicodeString(&sectionName, SECTION_NAME);
-    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-    DbgPrint("[LoadFromSharedSection] Abrindo seção compartilhada…\n");
 	
 	status = NtOpenSection(
-			&hSection,
-			SECTION_MAP_READ,
-			&objAttr
-		);
+		&hSection,
+		SECTION_MAP_READ,
+		&objAttr
+	);
 
 	if (!NT_SUCCESS(status)) {
+		DbgPrint("[LoadFromSharedSection] Error NtOpenSection: 0x%08X\n", status);
 		return FALSE;
 	}
-	
-    return TRUE;
-}
 
-/* -- ReadEmulatedVersion -- */
-/* Preenche EmulatedVersion com uma UNICODE_STRING alocada (chamador deve liberar) */
-BOOLEAN
-ReadEmulatedVersion(
-    PUNICODE_STRING EmulatedVersion,
-    PWSTR FilePath
-)
-{
-    PKEY_VALUE_PARTIAL_INFORMATION KeyInfo;
-    UNICODE_STRING valueKeyName;
-    UNICODE_STRING UnicodeKey;
-    OBJECT_ATTRIBUTES Obj;
-    HANDLE Handle;
-    NTSTATUS status;
-    WCHAR buffer[128];
-    WCHAR SanitizedPath[MAX_PATH];
-    WCHAR FullKeyPath[MAX_PATH];
-    WCHAR Version[MAX_PATH];
-    ULONG informationLength;
-    ULONG_PTR currentPid;
-    ULONG_PTR parentPid = 0;
-    PSYSTEM_PROCESS_INFORMATION sysInfo = NULL;
-    ULONG sysInfoSize = 0x10000;
-    PPEB Peb;
-    PWSTR heapBuf = NULL;
-    SIZE_T neededBytes;
+	baseAddress = NULL;
+	viewSize = 0;
 
-    RtlZeroMemory(EmulatedVersion, sizeof(*EmulatedVersion));
-    KeyInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
-    RtlZeroMemory(buffer, sizeof(buffer));
+	status = NtMapViewOfSection(
+		hSection,
+		(HANDLE)-1,
+		&baseAddress,
+		0,
+		0,
+		NULL,
+		&viewSize,
+		ViewShare,
+		0,
+		PAGE_READONLY
+	);
 
-    //DbgPrint("ReadEmulatedVersion: Iniciando para arquivo: %ws\n", FilePath);
+	if (!NT_SUCCESS(status)) {
+		DbgPrint("[LoadFromSharedSection] Error NtMapViewOfSection: 0x%08X\n", status);
+		NtClose(hSection);
+		return FALSE;
+	}
 
-    /* Sanitiza o caminho */
-    SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
-    //DbgPrint("ReadEmulatedVersion: Caminho sanitizado: %ws\n", SanitizedPath);
+	memcpy(OcaCompatInfo, baseAddress, sizeof(OCA_COMPATIBILITY_INFO));
+		
+	NtUnmapViewOfSection((HANDLE)-1, baseAddress);
 
-    /* Constroi caminho completo da chave */
-    swprintf(FullKeyPath,
-             L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings\\%s",
-             SanitizedPath);
+	NtClose(hSection);		
 
-    //DbgPrint("ReadEmulatedVersion: Tentando abrir chave: %ws\n", FullKeyPath);
-
-    RtlInitUnicodeString(&UnicodeKey, FullKeyPath);
-    InitializeObjectAttributes(&Obj, &UnicodeKey, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-    /* Tentativa de abrir chave */
-    status = NtOpenKey(&Handle, GENERIC_READ, &Obj);
-    if (!NT_SUCCESS(status))
-    {
-        DbgPrint("ReadEmulatedVersion: Chave não encontrada. Status=0x%08X\n", status);
-
-        /* Buscar por processo criador */
-        currentPid = (ULONG_PTR)NtCurrentTeb()->ClientId.UniqueProcess;
-        DbgPrint("ReadEmulatedVersion: PID atual = %u\n", (ULONG)currentPid);
-
-        /* --- Loop para ler lista de processos --- */
-        for (;;)
-        {
-            sysInfo = (PSYSTEM_PROCESS_INFORMATION)
-                RtlAllocateHeap(RtlProcessHeap(), 0, sysInfoSize);
-
-            if (!sysInfo)
-            {
-                DbgPrint("ReadEmulatedVersion: Falha RtlAllocateHeap(%lu)\n", sysInfoSize);
-                return FALSE;
-            }
-
-            status = ZwQuerySystemInformation(
-                SystemProcessInformation,
-                sysInfo,
-                sysInfoSize,
-                &sysInfoSize
-            );
-
-            if (NT_SUCCESS(status))
-                break;
-
-            // DbgPrint("ReadEmulatedVersion: ZwQuerySystemInformation precisa realocar (status=0x%08X)\n",
-                     // status);
-
-            RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-            sysInfo = NULL;
-
-            if (status != STATUS_INFO_LENGTH_MISMATCH &&
-                status != STATUS_BUFFER_TOO_SMALL)
-            {
-                DbgPrint("ReadEmulatedVersion: Erro inesperado ZwQuerySystemInformation: 0x%08X\n",
-                         status);
-                return FALSE;
-            }
-        }
-
-        /* --- Descobrir processo criador real --- */
-        parentPid = FindLikelyCreatorProcessPid(sysInfo, (ULONG)currentPid);
-
-        // if (parentPid)
-            // DbgPrint("ReadEmulatedVersion: Processo criador detectado: PID=%u\n", (ULONG)parentPid);
-        // else
-            // DbgPrint("ReadEmulatedVersion: Processo criador NÃO encontrado.\n");
-
-        /* Se achou criador real */
-        if (parentPid)
-        {
-            ULONG Maj, Min, Bld;
-
-            //DbgPrint("ReadEmulatedVersion: Lendo versão do Windows do pai via PEB remoto...\n");
-
-            if (GetParentProcessOSVersionByPid((HANDLE)parentPid, &Maj, &Min, &Bld))
-            {
-                Peb = NtCurrentPeb();
-
-                // DbgPrint("ReadEmulatedVersion: Pai=%u -> versão detectada %lu.%lu.%lu\n",
-                         // (ULONG)parentPid, Maj, Min, Bld);
-
-                // DbgPrint("ReadEmulatedVersion: Processo atual: %lu.%lu.%lu\n",
-                         // Peb->OSMajorVersion, Peb->OSMinorVersion, Peb->OSBuildNumber);
-
-                if (Peb->OSMajorVersion != Maj ||
-                    Peb->OSMinorVersion != Min ||
-                    Peb->OSBuildNumber != Bld)
-                {
-                    /* construir string final */
-                    swprintf(Version, L"%lu.%lu.%lu", Maj, Min, Bld);
-
-                    //DbgPrint("ReadEmulatedVersion: Versão será EMULADA como: %ws\n", Version);
-
-                    neededBytes = (wcslen(Version) + 1) * sizeof(WCHAR);
-                    heapBuf = (PWSTR)RtlAllocateHeap(RtlProcessHeap(), 0, neededBytes);
-
-                    if (!heapBuf)
-                    {
-                        //DbgPrint("ReadEmulatedVersion: Falha ao alocar %Iu bytes\n", neededBytes);
-                        RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-                        return FALSE;
-                    }
-
-                    RtlCopyMemory(heapBuf, Version, neededBytes);
-
-                    EmulatedVersion->Buffer = heapBuf;
-                    EmulatedVersion->Length = (USHORT)((wcslen(heapBuf)) * sizeof(WCHAR));
-                    EmulatedVersion->MaximumLength = (USHORT)neededBytes;
-
-                    DbgPrint("ReadEmulatedVersion: Sucesso — versão emulada definida.\n");
-
-                    RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-                    return TRUE;
-                }
-                else
-                {
-                    DbgPrint("ReadEmulatedVersion: Versões iguais — emulação NÃO necessária.\n");
-                    RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-                    return FALSE;
-                }
-            }
-
-            //DbgPrint("ReadEmulatedVersion: Falha ao obter versão do processo criador.\n");
-            RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-            return FALSE;
-        }
-
-        //DbgPrint("ReadEmulatedVersion: Criador não encontrado. Tentará registro normalmente.\n");
-        RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-
-        /* Continua para tentar registro */
-    }
-
-    /* Sucesso ao abrir chave */
-    DbgPrint("ReadEmulatedVersion: Chave encontrada no registro!\n");
-
-    /* Ler valor */
-    RtlInitUnicodeString(&valueKeyName, L"CompatWindowsVersion");
-
-    status = NtQueryValueKey(
-        Handle,
-        &valueKeyName,
-        KeyValuePartialInformation,
-        (PVOID)KeyInfo,
-        sizeof(buffer),
-        &informationLength
-    );
-
-    if (NT_SUCCESS(status) &&
-        (KeyInfo->Type == REG_SZ || KeyInfo->Type == REG_MULTI_SZ))
-    {
-        PWSTR regStr = (PWSTR)KeyInfo->Data;
-        SIZE_T lenChars = wcslen(regStr) + 1;
-        SIZE_T lenBytes = lenChars * sizeof(WCHAR);
-
-        //DbgPrint("ReadEmulatedVersion: Valor encontrado no registro: %ws\n", regStr);
-
-        heapBuf = (PWSTR)RtlAllocateHeap(RtlProcessHeap(), 0, lenBytes);
-
-        if (!heapBuf)
-        {
-            //DbgPrint("ReadEmulatedVersion: Falha ao alocar buffer de %Iu bytes\n", lenBytes);
-            NtClose(Handle);
-            return FALSE;
-        }
-
-        RtlCopyMemory(heapBuf, regStr, lenBytes);
-
-        EmulatedVersion->Buffer = heapBuf;
-        EmulatedVersion->Length = (USHORT)((lenChars - 1) * sizeof(WCHAR));
-        EmulatedVersion->MaximumLength = (USHORT)lenBytes;
-
-        //DbgPrint("ReadEmulatedVersion: Sucesso — valor carregado do registro.\n");
-
-        NtClose(Handle);
-        return TRUE;
-    }
-
-    DbgPrint("ReadEmulatedVersion: Valor NÃO encontrado na chave.\n");
-
-    if (Handle)
-        NtClose(Handle);
-
-    return FALSE;
-}
-
-PSYSTEM_PROCESS_INFORMATION
-FindProcessInfoByPid(
-    PSYSTEM_PROCESS_INFORMATION List,
-    ULONG Pid
-)
-{
-    PSYSTEM_PROCESS_INFORMATION cur = List;
-
-    for (;;)
-    {
-        if ((ULONG)(ULONG_PTR)cur->UniqueProcessId == Pid)
-            return cur;
-
-        if (cur->NextEntryOffset == 0)
-            break;
-
-        cur = (PSYSTEM_PROCESS_INFORMATION)
-            ((PUCHAR)cur + cur->NextEntryOffset);
-    }
-
-    return NULL;
-}
-
-BOOLEAN
-UnicodePathEquals(
-    PWSTR A,
-    PWSTR B
-)
-{
-    if (!A || !B)
-        return FALSE;
-
-    while (*A && *B)
-    {
-        WCHAR ca = RtlUpcaseUnicodeChar(*A);
-        WCHAR cb = RtlUpcaseUnicodeChar(*B);
-
-        if (ca != cb)
-            return FALSE;
-
-        A++;
-        B++;
-    }
-
-    return (*A == 0 && *B == 0);
+	return TRUE;
 }
 
 BOOLEAN
@@ -815,17 +368,10 @@ GetProcessFullPathByPid(
 {
     NTSTATUS status;
     HANDLE hProcess = NULL;
-    PROCESS_BASIC_INFORMATION pbi;
-    ULONG retLen;
-    PPEB remotePeb;
-    PRTL_USER_PROCESS_PARAMETERS procParams;
-    UNICODE_STRING imagePath;
-
     OBJECT_ATTRIBUTES oa;
     CLIENT_ID cid;
-
-    DbgPrint("[OCA][PATH] GetProcessFullPathByPid PID=%lu\n",
-             (ULONG)(ULONG_PTR)ProcessId);
+    ULONG len;
+    PUNICODE_STRING img;
 
     InitializeObjectAttributes(&oa, NULL, 0, NULL, NULL);
 
@@ -834,7 +380,7 @@ GetProcessFullPathByPid(
 
     status = NtOpenProcess(
         &hProcess,
-        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+        PROCESS_QUERY_INFORMATION,
         &oa,
         &cid
     );
@@ -845,183 +391,138 @@ GetProcessFullPathByPid(
         return FALSE;
     }
 
+    /* Primeiro consulta tamanho */
     status = NtQueryInformationProcess(
         hProcess,
-        ProcessBasicInformation,
-        &pbi,
-        sizeof(pbi),
-        &retLen
+        ProcessImageFileName,
+        NULL,
+        0,
+        &len
+    );
+
+    if (status != STATUS_INFO_LENGTH_MISMATCH)
+    {
+        NtClose(hProcess);
+        return FALSE;
+    }
+
+    img = (PUNICODE_STRING)RtlAllocateHeap(RtlProcessHeap(), 0, len);
+    if (!img)
+    {
+        NtClose(hProcess);
+        return FALSE;
+    }
+
+    status = NtQueryInformationProcess(
+        hProcess,
+        ProcessImageFileName,
+        img,
+        len,
+        &len
     );
 
     if (!NT_SUCCESS(status))
     {
-        DbgPrint("[OCA][PATH] NtQueryInformationProcess failed: 0x%08X\n", status);
+        RtlFreeHeap(RtlProcessHeap(), 0, img);
         NtClose(hProcess);
         return FALSE;
     }
 
-    remotePeb = pbi.PebBaseAddress;
-
-    status = NtReadVirtualMemory(
-        hProcess,
-        &remotePeb->ProcessParameters,
-        &procParams,
-        sizeof(procParams),
-        NULL
-    );
-
-    if (!NT_SUCCESS(status) || !procParams)
+    if ((img->Length / sizeof(WCHAR)) >= BufferCch)
     {
-        DbgPrint("[OCA][PATH] Failed reading ProcessParameters ptr\n");
+        RtlFreeHeap(RtlProcessHeap(), 0, img);
         NtClose(hProcess);
         return FALSE;
     }
 
-    status = NtReadVirtualMemory(
-        hProcess,
-        &procParams->ImagePathName,
-        &imagePath,
-        sizeof(imagePath),
-        NULL
-    );
+    RtlCopyMemory(Buffer, img->Buffer, img->Length);
+    Buffer[img->Length / sizeof(WCHAR)] = L'\0';
 
-    if (!NT_SUCCESS(status) || !imagePath.Buffer)
-    {
-        DbgPrint("[OCA][PATH] Failed reading ImagePathName\n");
-        NtClose(hProcess);
-        return FALSE;
-    }
+    DbgPrint("[OCA][PATH] ImagePath (NT): %ws\n", Buffer);
 
-    if ((imagePath.Length / sizeof(WCHAR)) >= BufferCch)
-    {
-        DbgPrint("[OCA][PATH] Buffer too small (%lu chars needed)\n",
-                 imagePath.Length / sizeof(WCHAR));
-        NtClose(hProcess);
-        return FALSE;
-    }
-
-    status = NtReadVirtualMemory(
-        hProcess,
-        imagePath.Buffer,
-        Buffer,
-        imagePath.Length,
-        NULL
-    );
-
-    if (!NT_SUCCESS(status))
-    {
-        DbgPrint("[OCA][PATH] Failed reading ImagePath buffer\n");
-        NtClose(hProcess);
-        return FALSE;
-    }
-
-    Buffer[imagePath.Length / sizeof(WCHAR)] = L'\0';
-
-    DbgPrint("[OCA][PATH] FullPath = %ws\n", Buffer);
-
+    RtlFreeHeap(RtlProcessHeap(), 0, img);
     NtClose(hProcess);
+
     return TRUE;
 }
 
 BOOLEAN
-IsParentOrGrandparentMatchingCompatPath(
-    POCA_COMPATIBILITY_INFO CompatInfo
+ReadEmulatedVersion(
+    PUNICODE_STRING EmulatedVersion,
+    PWSTR FilePath
 )
 {
-    ULONG_PTR currentPid;
-    ULONG parentPid = 0;
-    ULONG grandParentPid = 0;
-
-    WCHAR pathBuf[MAX_PATH];
-
-    PSYSTEM_PROCESS_INFORMATION sysInfo = NULL;
-    ULONG sysInfoSize = 0x10000;
+    WCHAR SanitizedPath[MAX_PATH];
+    WCHAR FullKeyPath[MAX_PATH];
+    WCHAR buffer[128];
+    UNICODE_STRING UnicodeKey;
+    UNICODE_STRING valueKeyName;
+    OBJECT_ATTRIBUTES Obj;
+    HANDLE Handle;
     NTSTATUS status;
+    PKEY_VALUE_PARTIAL_INFORMATION KeyInfo;
+    ULONG informationLength;
+    PWSTR heapBuf;
+    SIZE_T lenChars, lenBytes;
 
-    PSYSTEM_PROCESS_INFORMATION curProc;
-    PSYSTEM_PROCESS_INFORMATION parentProc;
+    RtlZeroMemory(EmulatedVersion, sizeof(*EmulatedVersion));
+    RtlZeroMemory(buffer, sizeof(buffer));
 
-    DbgPrint("[OCA][INHERIT] === START ===\n");
-    DbgPrint("[OCA][INHERIT] Compat path: %ws\n", CompatInfo->emuPath);
+    KeyInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
 
-    currentPid = (ULONG_PTR)NtCurrentTeb()->ClientId.UniqueProcess;
+    SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
 
-    /* Enumerar processos */
-    for (;;)
+    swprintf(
+        FullKeyPath,
+        L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings\\%s",
+        SanitizedPath
+    );
+
+    RtlInitUnicodeString(&UnicodeKey, FullKeyPath);
+    InitializeObjectAttributes(&Obj, &UnicodeKey, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+    status = NtOpenKey(&Handle, GENERIC_READ, &Obj);
+    if (!NT_SUCCESS(status))
+        return FALSE;
+
+    RtlInitUnicodeString(&valueKeyName, L"CompatWindowsVersion");
+
+    status = NtQueryValueKey(
+        Handle,
+        &valueKeyName,
+        KeyValuePartialInformation,
+        KeyInfo,
+        sizeof(buffer),
+        &informationLength
+    );
+
+    if (NT_SUCCESS(status) &&
+        (KeyInfo->Type == REG_SZ || KeyInfo->Type == REG_MULTI_SZ))
     {
-        sysInfo = RtlAllocateHeap(RtlProcessHeap(), 0, sysInfoSize);
-        if (!sysInfo)
-            return FALSE;
+        PWSTR regStr = (PWSTR)KeyInfo->Data;
 
-        status = ZwQuerySystemInformation(
-            SystemProcessInformation,
-            sysInfo,
-            sysInfoSize,
-            &sysInfoSize
-        );
+        lenChars = wcslen(regStr) + 1;
+        lenBytes = lenChars * sizeof(WCHAR);
 
-        if (NT_SUCCESS(status))
-            break;
-
-        RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-        sysInfo = NULL;
-
-        if (status != STATUS_INFO_LENGTH_MISMATCH &&
-            status != STATUS_BUFFER_TOO_SMALL)
-            return FALSE;
-    }
-
-    curProc = FindProcessInfoByPid(sysInfo, (ULONG)currentPid);
-    if (!curProc)
-        goto cleanup;
-
-    parentPid = (ULONG)(ULONG_PTR)
-        curProc->InheritedFromUniqueProcessId;
-
-    DbgPrint("[OCA][INHERIT] Parent PID=%lu\n", parentPid);
-
-    /* --- PAI --- */
-    if (parentPid &&
-        GetProcessFullPathByPid((HANDLE)(ULONG_PTR)parentPid,
-                                pathBuf, MAX_PATH))
-    {
-        if (UnicodePathEquals(pathBuf, CompatInfo->emuPath))
+        heapBuf = (PWSTR)RtlAllocateHeap(RtlProcessHeap(), 0, lenBytes);
+        if (!heapBuf)
         {
-            DbgPrint("[OCA][INHERIT] MATCH parent\n");
-            goto match;
+            NtClose(Handle);
+            return FALSE;
         }
+
+        RtlCopyMemory(heapBuf, regStr, lenBytes);
+
+        EmulatedVersion->Buffer = heapBuf;
+        EmulatedVersion->Length = (USHORT)((lenChars - 1) * sizeof(WCHAR));
+        EmulatedVersion->MaximumLength = (USHORT)lenBytes;
+
+        NtClose(Handle);
+        return TRUE;
     }
 
-    parentProc = FindProcessInfoByPid(sysInfo, parentPid);
-    if (!parentProc)
-        goto cleanup;
-
-    grandParentPid = (ULONG)(ULONG_PTR)
-        parentProc->InheritedFromUniqueProcessId;
-
-    DbgPrint("[OCA][INHERIT] Grandparent PID=%lu\n", grandParentPid);
-
-    /* --- AVÔ --- */
-    if (grandParentPid &&
-        GetProcessFullPathByPid((HANDLE)(ULONG_PTR)grandParentPid,
-                                pathBuf, MAX_PATH))
-    {
-        if (UnicodePathEquals(pathBuf, CompatInfo->emuPath))
-        {
-            DbgPrint("[OCA][INHERIT] MATCH grandparent\n");
-            goto match;
-        }
-    }
-
-cleanup:
-    RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-    DbgPrint("[OCA][INHERIT] NO MATCH\n");
+    NtClose(Handle);
     return FALSE;
-
-match:
-    RtlFreeHeap(RtlProcessHeap(), 0, sysInfo);
-    DbgPrint("[OCA][INHERIT] SUCCESS\n");
-    return TRUE;
 }
 
 BOOLEAN
@@ -1105,8 +606,7 @@ ReadGlobalEmulationVersion(
         (USHORT)lenBytes;
 
     NtClose(KeyHandle);
-
-    DbgPrint("[OCA] GlobalVersion aplicada: %ws\n", heapBuf);
+	
     return TRUE;
 }
 
@@ -1134,6 +634,13 @@ BOOLEAN CheckIsMsiExec(LPWSTR ExePath){
 	return FALSE;
 }
 
+BOOLEAN CheckIsServices(LPWSTR ExePath){
+	if(wcsstr(ExePath, L"services") != NULL) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void ParseEmulationVersionAndApplyOnPeb(UNICODE_STRING EmulatedVersion, PPEB Peb){
 	PWCHAR p;
 	ULONG maj;
@@ -1153,10 +660,13 @@ void ParseEmulationVersionAndApplyOnPeb(UNICODE_STRING EmulatedVersion, PPEB Peb
 
 	Peb->OSMajorVersion = maj;
 	Peb->OSMinorVersion = min;
-	Peb->OSBuildNumber  = (USHORT)bld;	
+	Peb->OSBuildNumber  = (USHORT)bld;
+    Peb->OSCSDVersion = (USHORT)(GetNextPointValue( &p, &len )) << 8;
+    Peb->OSCSDVersion |= (USHORT)GetNextPointValue( &p, &len );
+    Peb->OSPlatformId = GetNextPointValue( &p, &len );	
 }
 
-void CreateCompatVersionAndStore(PPEB Peb, PWCHAR emuPath){
+void CreateCompatVersionAndStore(PPEB Peb, PWCHAR emuPath, const PWCHAR storageType){
 	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
 	
 	OcaCompatInfo.MajorVersion = Peb->OSMajorVersion;
@@ -1165,133 +675,151 @@ void CreateCompatVersionAndStore(PPEB Peb, PWCHAR emuPath){
 						
 	wcscpy(OcaCompatInfo.emuPath, emuPath);				
 						
-	StoreInSharedSection(&OcaCompatInfo);		
+	StoreInSharedSection(&OcaCompatInfo, storageType);		
 }
 
-HANDLE OpenProcessNative(ULONG_PTR pid)
+ULONG_PTR
+GetParentProcessId(void)
 {
-    HANDLE hProcess = NULL;
-    CLIENT_ID cid;
-    OBJECT_ATTRIBUTES oa;
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG retLen;
+    NTSTATUS status;
 
-    cid.UniqueProcess = (HANDLE)(ULONG_PTR)pid;
-    cid.UniqueThread  = NULL;
-
-    InitializeObjectAttributes(
-        &oa,
-        NULL,
-        0,
-        NULL,
-        NULL
+    status = NtQueryInformationProcess(
+        NtCurrentProcess(),
+        ProcessBasicInformation,
+        &pbi,
+        sizeof(pbi),
+        &retLen
     );
 
-    NtOpenProcess(
-        &hProcess,
-        PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION,
+    if (!NT_SUCCESS(status))
+        return (ULONG_PTR)-1;
+
+    if (retLen < sizeof(pbi))
+        return (ULONG_PTR)-1;
+
+    return pbi.InheritedFromUniqueProcessId;
+}
+
+BOOLEAN
+GetParentProcessPeb(
+    PHANDLE ParentProcessHandle,
+    PVOID   ParentPeb,
+    BOOLEAN *IsWow64Parent
+)
+{
+    ULONG_PTR parentPid;
+    NTSTATUS status;
+    OBJECT_ATTRIBUTES oa;
+    CLIENT_ID cid;
+    HANDLE hParent;
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG retLen;
+    PVOID peb32Addr;
+
+    if (!ParentProcessHandle || !ParentPeb)
+        return FALSE;
+
+    *ParentProcessHandle = NULL;
+    if (IsWow64Parent) *IsWow64Parent = FALSE;
+
+    parentPid = GetParentProcessId();
+    if (!parentPid)
+        return FALSE;
+
+    InitializeObjectAttributes(&oa, NULL, 0, NULL, NULL);
+
+    cid.UniqueProcess = (HANDLE)(ULONG_PTR)parentPid;
+    cid.UniqueThread  = NULL;
+
+    status = NtOpenProcess(
+        &hParent,
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
         &oa,
         &cid
     );
+    if (!NT_SUCCESS(status))
+        return FALSE;
 
-    return hProcess;
-}
+    /* 1) Tentar descobrir se é WOW64 */
+    peb32Addr = NULL;
+    status = NtQueryInformationProcess(
+        hParent,
+        ProcessWow64Information,
+        &peb32Addr,
+        sizeof(peb32Addr),
+        &retLen
+    );
 
-NTSTATUS KillProcessNative(ULONG_PTR pid)
-{
-    HANDLE hProcess;
-    NTSTATUS status;
+    if (NT_SUCCESS(status) && peb32Addr)
+    {
+        /* Processo pai é WOW64 → ler PEB32 */
+        if (IsWow64Parent)
+            *IsWow64Parent = TRUE;
 
-    hProcess = OpenProcessNative(pid);
-    if (!hProcess)
-        return STATUS_INVALID_HANDLE;
+        status = NtReadVirtualMemory(
+            hParent,
+            peb32Addr,
+            ParentPeb,
+            sizeof(PEB32),
+            NULL
+        );
 
-    status = NtTerminateProcess(hProcess, STATUS_SUCCESS);
+        if (!NT_SUCCESS(status))
+        {
+            NtClose(hParent);
+            return FALSE;
+        }
+    }
+    else
+    {
+        /* Processo pai é nativo */
+        status = NtQueryInformationProcess(
+            hParent,
+            ProcessBasicInformation,
+            &pbi,
+            sizeof(pbi),
+            &retLen
+        );
 
-    NtClose(hProcess);
-    return status;
+        if (!NT_SUCCESS(status))
+        {
+            NtClose(hParent);
+            return FALSE;
+        }
+
+        status = NtReadVirtualMemory(
+            hParent,
+            pbi.PebBaseAddress,
+            ParentPeb,
+            sizeof(PEB),
+            NULL
+        );
+
+        if (!NT_SUCCESS(status))
+        {
+            NtClose(hParent);
+            return FALSE;
+        }
+    }
+
+    *ParentProcessHandle = hParent;
+    return TRUE;
 }
 
 NTSTATUS
-NTAPI
-RtlGetVersionCompatHook(
+RtlGetVersionInternal(
     OUT  PRTL_OSVERSIONINFOW lpVersionInformation
     )
 {
-	PPEB Peb;
-	NT_PRODUCT_TYPE NtProductType;
-	UNICODE_STRING EmulatedVersion;
-	WCHAR emuPath[MAX_PATH];
-	WCHAR msiPath[MAX_PATH];
-	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
-	
-	Peb = NtCurrentPeb();
+    PPEB Peb;
+    NT_PRODUCT_TYPE NtProductType;
 
-	/* Copia inicialmente o caminho da imagem */
-	wcscpy(emuPath, Peb->ProcessParameters->ImagePathName.Buffer);
-	DbgPrint("[EMU] ImagePath original: %ws\n", emuPath);
-
-	/* Se não é um executável bloqueado */
-	if (!CheckIsUnsafeExe(emuPath))
-	{
-		//Verifica se a chave global de emulaço de verso esta preenchida
-		if(ReadGlobalEmulationVersion(&EmulatedVersion)){
-			ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);	
-			goto setVersionParameter;			
-		}
-		/* Verifica se é o msiexec.exe */
-		if (CheckIsMsiExec(emuPath))
-		{		
-			if (GetMsiPathFromCommandLine(Peb->ProcessParameters->CommandLine.Buffer,
-										  msiPath,
-										  260))
-			{
-				wcscpy(emuPath, msiPath);				
-				if (ReadEmulatedVersion(&EmulatedVersion, emuPath)){
-					ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
-					CreateCompatVersionAndStore(Peb, emuPath);
-					goto setVersionParameter;
-				}
-				DbgPrint("[EMU] MSI path extracted: %ws\n", msiPath);
-			}				
-			else
-			{				
-				if(LoadFromSharedSection(&OcaCompatInfo)){
-					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-					goto setVersionParameter;					
-				}	
-				goto setVersionParameter;
-			}				
-		}
-
-		/* Tenta ler a versão emulada com base no caminho (exe ou .msi) */
-		DbgPrint("[EMU] Using emulation lookup path: %ws\n", emuPath);
-
-        if (ReadEmulatedVersion(&EmulatedVersion, emuPath))
-		{		 
-			ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
-			CreateCompatVersionAndStore(Peb, emuPath);
-			goto setVersionParameter;
-		} 
-		
-		if(LoadFromSharedSection(&OcaCompatInfo)){
-			Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-			Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-			Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-			goto setVersionParameter;				
-		}
-	}
-	else
-	{
-		DbgPrint("[EMU] Skipped: Executable marked as unsafe: %ws\n",
-				  Peb->ProcessParameters->ImagePathName.Buffer);
-	}
-	
-setVersionParameter:	
-	lpVersionInformation->dwMajorVersion = Peb->OSMajorVersion;
-	lpVersionInformation->dwMinorVersion = Peb->OSMinorVersion;
-	lpVersionInformation->dwBuildNumber  = Peb->OSBuildNumber;
-
+    Peb = NtCurrentPeb();
+    lpVersionInformation->dwMajorVersion = Peb->OSMajorVersion;
+    lpVersionInformation->dwMinorVersion = Peb->OSMinorVersion;
+    lpVersionInformation->dwBuildNumber  = Peb->OSBuildNumber;
     lpVersionInformation->dwPlatformId   = Peb->OSPlatformId;
     if (Peb->CSDVersion.Buffer) {
         wcscpy( lpVersionInformation->szCSDVersion, Peb->CSDVersion.Buffer );
@@ -1303,14 +831,11 @@ setVersionParameter:
     {
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMajor = (Peb->OSCSDVersion >> 8) & 0xFF;
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMinor = Peb->OSCSDVersion & 0xFF;
-        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(SharedUserData->SuiteMask&0xffff);
+        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(USER_SHARED_DATA->SuiteMask&0xffff);
         ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = 0;
         if (RtlGetNtProductType( &NtProductType )) {
             ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = (UCHAR)NtProductType;
             if (NtProductType == VER_NT_WORKSTATION) {
-               //
-               // For workstation product never return VER_SUITE_TERMINAL
-               //
                 ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask & 0xffef;
             }
 
@@ -1318,7 +843,165 @@ setVersionParameter:
     }
 
     return STATUS_SUCCESS;
-}	
+}
+
+NTSTATUS
+RtlGetVersionHook(
+    OUT  PRTL_OSVERSIONINFOW lpVersionInformation
+    )
+{
+	PPEB Peb;
+	HANDLE parentHandle;
+	PEB ParentPeb;
+	NT_PRODUCT_TYPE NtProductType;
+	PWCHAR p;
+	WCHAR emuPath[MAX_PATH];
+	WCHAR msiPath[MAX_PATH];
+	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
+	BOOLEAN isOCACompatFound = FALSE;
+	WCHAR parentPath[MAX_PATH];
+	ULONG_PTR parentPid;
+	BOOLEAN IsWow64Parent = FALSE;
+		
+	Peb = NtCurrentPeb();
+
+	//Copy the current image path to emulation path on start
+	wcscpy(emuPath, Peb->ProcessParameters->ImagePathName.Buffer);
+
+	//Check if is the executable name is in whitlist
+	if (!CheckIsUnsafeExe(emuPath))
+	{
+		UNICODE_STRING EmulatedVersion;
+		RtlZeroMemory(&ParentPeb, sizeof(PEB));		
+		
+        if (GetParentProcessPeb(&parentHandle, &ParentPeb, &IsWow64Parent))
+        {
+            if (IsWow64Parent)
+            {
+                /* Interpretar ParentPeb como PEB32 */
+                PEB32 *Peb32 = (PEB32 *)(void *)&ParentPeb;
+
+                Peb->OSMajorVersion = Peb32->OSMajorVersion;
+                Peb->OSMinorVersion = Peb32->OSMinorVersion;
+                Peb->OSBuildNumber  = Peb32->OSBuildNumber;
+			    Peb->OSCSDVersion   = Peb32->OSCSDVersion;
+                Peb->OSPlatformId   = Peb32->OSPlatformId;
+            }
+            else
+            {
+                /* ParentPeb é PEB nativo */
+                Peb->OSMajorVersion = ParentPeb.OSMajorVersion;
+                Peb->OSMinorVersion = ParentPeb.OSMinorVersion;
+                Peb->OSBuildNumber  = ParentPeb.OSBuildNumber;
+                Peb->OSCSDVersion   = ParentPeb.OSCSDVersion;
+                Peb->OSPlatformId   = ParentPeb.OSPlatformId;
+            }
+        }
+		//Check if the global emulation version key is filled
+		if(ReadGlobalEmulationVersion(&EmulatedVersion)){
+			ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
+			RtlFreeUnicodeString(&EmulatedVersion);	
+			return RtlGetVersionInternal(lpVersionInformation);			
+		}
+		// Check if is msiexec.exe
+		if (CheckIsMsiExec(emuPath))
+		{		
+			UNICODE_STRING EmulatedVersionMsi = {0};
+			if (GetMsiPathFromCommandLine(Peb->ProcessParameters->CommandLine.Buffer,
+										  msiPath,
+										  260))
+			{
+				wcscpy(emuPath, msiPath);				
+				if (ReadEmulatedVersion(&EmulatedVersionMsi, emuPath)){
+					ParseEmulationVersionAndApplyOnPeb(EmulatedVersionMsi, Peb);
+					CreateCompatVersionAndStore(Peb, emuPath, SECTION_MSI_NAME);
+					RtlFreeUnicodeString(&EmulatedVersionMsi);	
+					return RtlGetVersionInternal(lpVersionInformation);	
+				}else{
+					if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
+						Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+						Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+						Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+						CreateCompatVersionAndStore(Peb, emuPath, SECTION_EXE_TO_MSI_NAME);
+						return RtlGetVersionInternal(lpVersionInformation);						
+					}						
+				}
+				//DbgPrint("[EMU] MSI path extracted: %ws\n", msiPath);
+			}				
+			else
+			{	
+				if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
+					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+					return RtlGetVersionInternal(lpVersionInformation);			
+				}					
+				if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+					return RtlGetVersionInternal(lpVersionInformation);		
+				} 
+				else if(LoadFromSharedSection(&OcaCompatInfo, SECTION_EXE_TO_MSI_NAME)){
+					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+					return RtlGetVersionInternal(lpVersionInformation);		
+				}	
+				return RtlGetVersionInternal(lpVersionInformation);	
+			}				
+		}else{
+			if (ReadEmulatedVersion(&EmulatedVersion, emuPath))
+			{		 
+				ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
+				CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+				RtlFreeUnicodeString(&EmulatedVersion);	
+			} else {
+				parentPid = GetParentProcessId();
+				
+				if(GetProcessFullPathByPid((HANDLE)(ULONG_PTR)parentPid, parentPath, MAX_PATH)){
+					if (CheckIsMsiExec(parentPath)){
+						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+							return RtlGetVersionInternal(lpVersionInformation);					
+						}						
+					} else if(CheckIsServices(parentPath)){
+						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+							return RtlGetVersionInternal(lpVersionInformation);					
+						}
+						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
+							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+							return RtlGetVersionInternal(lpVersionInformation);					
+						}							
+					}else{
+						if (ReadEmulatedVersion(&EmulatedVersion, parentPath))
+						{		 
+							ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+							RtlFreeUnicodeString(&EmulatedVersion);				
+							return RtlGetVersionInternal(lpVersionInformation);	
+						}
+					}
+				}
+			
+			}
+			
+			CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+			return RtlGetVersionInternal(lpVersionInformation);			
+		}
+	}
+	
+	return RtlGetVersionInternal(lpVersionInformation);	
+}
 
 BOOLEAN
 RtlpVerCompare(

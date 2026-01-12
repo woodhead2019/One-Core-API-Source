@@ -116,6 +116,22 @@ static DWORD (WINAPI *pGetNamedSecurityInfoW)(
     PSID*, PSID*, PACL*, PACL*, PSECURITY_DESCRIPTOR*
 ) = NULL;
 
+static LSTATUS (WINAPI *pRegQueryValueExWNative)(
+    HKEY, LPCWSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegQueryValueExANative)(
+    HKEY, LPCSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegQueryValueWNative)(
+    HKEY, LPCWSTR, LPWSTR, PLONG
+) = NULL;
+
+static LSTATUS (WINAPI *pRegQueryValueANative)(
+    HKEY, LPCSTR, LPSTR, PLONG
+) = NULL;
+
 /* Initialize pointers using GetModuleHandleW (no LoadLibrary) */
 BOOL InitNativeProcs(void)
 {
@@ -135,9 +151,48 @@ BOOL InitNativeProcs(void)
     pSetSecurityInfo = (void*) GetProcAddress(ghAdvapi32, "SetSecurityInfoNative");
     pGetSecurityInfo = (void*) GetProcAddress(ghAdvapi32, "GetSecurityInfoNative");
     pGetNamedSecurityInfoW = (void*) GetProcAddress(ghAdvapi32, "GetNamedSecurityInfoWNative");
+    pRegQueryValueExWNative = (void*)GetProcAddress(ghAdvapi32, "RegQueryValueExWNative");
+    pRegQueryValueExANative = (void*)GetProcAddress(ghAdvapi32, "RegQueryValueExANative");
+    pRegQueryValueWNative = (void*)GetProcAddress(ghAdvapi32, "RegQueryValueWNative");
+    pRegQueryValueANative = (void*)GetProcAddress(ghAdvapi32, "RegQueryValueANative");	
 
     /* It's OK if some pointers are NULL (fallbacks in code may handle) */
     return TRUE;
+}
+
+BOOLEAN
+IsHklmWindowsNT(HANDLE hKey)
+{
+    BYTE buffer[1024];
+    ULONG ret;
+    NTSTATUS st;
+    PKEY_NAME_INFORMATION info;
+    ULONG chars;
+    static const WCHAR TargetPrefix[] =
+        L"\\Registry\\Machine\\Software\\Microsoft\\Windows NT";
+    ULONG prefixLen;
+
+    st = NtQueryKey(hKey,
+                    KeyNameInformation,
+                    buffer,
+                    sizeof(buffer),
+                    &ret);
+
+    if (!NT_SUCCESS(st))
+        return FALSE;
+
+    info = (PKEY_NAME_INFORMATION)buffer;
+
+    chars = info->NameLength / sizeof(WCHAR);
+    prefixLen = (ULONG)wcslen(TargetPrefix);
+
+    if (chars < prefixLen)
+        return FALSE;
+
+    if (_wcsnicmp(info->Name, TargetPrefix, prefixLen) == 0)
+        return TRUE;
+
+    return FALSE;
 }
 
 /* ---------------------------
@@ -266,6 +321,78 @@ GetNamedSecurityInfoWNative(
         return ERROR_PROC_NOT_FOUND;
     }
     return pGetNamedSecurityInfoW(pObjectName, ObjectType, SecurityInfo, ppsidOwner, ppsidGroup, ppDacl, ppSacl, ppSecurityDescriptor);
+}
+
+LSTATUS WINAPI RegQueryValueExWNative(
+    HKEY hKey,
+    LPCWSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE lpData,
+    LPDWORD lpcbData
+)
+{
+    if (!InitNativeProcs() || !pRegQueryValueExWNative)
+    {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND;
+    }
+
+    return pRegQueryValueExWNative(
+        hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+    );
+}
+
+LSTATUS WINAPI RegQueryValueExANative(
+    HKEY hKey,
+    LPCSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE lpData,
+    LPDWORD lpcbData
+)
+{
+    if (!InitNativeProcs() || !pRegQueryValueExANative)
+    {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND;
+    }
+
+    return pRegQueryValueExANative(
+        hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+    );
+}
+
+LSTATUS WINAPI RegQueryValueWNative(
+    HKEY hKey,
+    LPCWSTR lpSubKey,
+    LPWSTR lpData,
+    PLONG lpcbData
+)
+{
+    if (!InitNativeProcs() || !pRegQueryValueWNative)
+    {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND;
+    }
+
+    return pRegQueryValueWNative(hKey, lpSubKey, lpData, lpcbData);
+}
+
+LSTATUS WINAPI RegQueryValueANative(
+    HKEY hKey,
+    LPCSTR lpSubKey,
+    LPSTR lpData,
+    PLONG lpcbData
+)
+{
+    if (!InitNativeProcs() || !pRegQueryValueANative)
+    {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return ERROR_PROC_NOT_FOUND;
+    }
+
+    return pRegQueryValueANative(hKey, lpSubKey, lpData, lpcbData);
 }
 
 /* End of dynamic resolver block */
@@ -1909,7 +2036,7 @@ static LSTATUS Py_RegGetValueW(HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
         if (ret != ERROR_SUCCESS) return ret;
     }
 
-    ret = RegQueryValueExW(hKey, pszValue, NULL, &dwType, pvData, &cbData);
+    ret = RegQueryValueExWNative(hKey, pszValue, NULL, &dwType, pvData, &cbData);
 
     /* If the value is a string, we need to read in the whole value to be able
      * to know exactly how many bytes are needed after expanding the string and
@@ -1930,7 +2057,7 @@ static LSTATUS Py_RegGetValueW(HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
             }
 
             if (ret == ERROR_MORE_DATA || !pvData)
-                ret = RegQueryValueExW(hKey, pszValue, NULL,
+                ret = RegQueryValueExWNative(hKey, pszValue, NULL,
                     &dwType, pvBuf, &cbData);
             else
             {
@@ -2021,4 +2148,239 @@ RegNotifyChangeKeyValueInternal(
 {
 	//For fix Dns Error on Electron
     return RegNotifyChangeKeyValueNative(hKey, bWatchSubtree, dwNotifyFilter & ~REG_NOTIFY_THREAD_AGNOSTIC, hEvent, fAsynchronous);
+}
+
+LONG WINAPI RegQueryValueExWInternal(
+    HKEY hKey,
+    LPCWSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE lpData,
+    LPDWORD lpcbData
+)
+{
+    PPEB Peb;
+    WCHAR versionBuf[32];
+    SIZE_T need;
+    DWORD cb;
+
+    //UNREFERENCED_PARAMETER(lpReserved);
+
+    Peb = NtCurrentPeb();
+
+    /* S? intercepta HKLM\Software\Microsoft\Windows NT\CurrentVersion */
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueExWNative(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /* S? intercepta CurrentVersion */
+    if (!lpValueName || _wcsicmp(lpValueName, L"CurrentVersion") != 0)
+        return RegQueryValueExWNative(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /*
+     * Comp?e string diretamente do PEB
+     * Ex: "6.1", "10.0"
+     */
+    swprintf(
+        versionBuf,
+        L"%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    cb = (DWORD)(lstrlenW(versionBuf) + 1);
+    need = cb * sizeof(WCHAR);
+
+    if (lpType)
+        *lpType = REG_SZ;
+
+    if (lpcbData)
+    {
+        if (!lpData)
+        {
+            /* Apenas informa o tamanho necess?rio */
+            *lpcbData = (DWORD)need;
+            return ERROR_SUCCESS;
+        }
+
+        if (*lpcbData < need)
+        {
+            *lpcbData = (DWORD)need;
+            return ERROR_MORE_DATA;
+        }
+
+        memcpy(lpData, versionBuf, need);
+        *lpcbData = (DWORD)need;
+    }
+
+    return ERROR_SUCCESS;
+}
+
+
+LONG WINAPI RegQueryValueExAInternal(
+    HKEY hKey,
+    LPCSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE lpData,
+    LPDWORD lpcbData
+)
+{
+    PPEB  Peb;
+    CHAR  versionBuf[32];
+    SIZE_T need;
+    DWORD cb;
+
+    //UNREFERENCED_PARAMETER(lpReserved);
+
+    Peb = NtCurrentPeb();
+
+    /* S? intercepta HKLM\Software\Microsoft\Windows NT\CurrentVersion */
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueExANative(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /* S? intercepta CurrentVersion */
+    if (!lpValueName || _stricmp(lpValueName, "CurrentVersion") != 0)
+        return RegQueryValueExANative(
+            hKey, lpValueName, lpReserved, lpType, lpData, lpcbData
+        );
+
+    /*
+     * Ex: "6.1", "10.0"
+     */
+    wsprintfA(
+        versionBuf,
+        "%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    cb   = (DWORD)(lstrlenA(versionBuf) + 1);
+    need = cb * sizeof(CHAR);
+
+    if (lpType)
+        *lpType = REG_SZ;
+
+    if (lpcbData)
+    {
+        if (!lpData)
+        {
+            *lpcbData = (DWORD)need;
+            return ERROR_SUCCESS;
+        }
+
+        if (*lpcbData < need)
+        {
+            *lpcbData = (DWORD)need;
+            return ERROR_MORE_DATA;
+        }
+
+        memcpy(lpData, versionBuf, need);
+        *lpcbData = (DWORD)need;
+    }
+
+    return ERROR_SUCCESS;
+}
+
+LONG WINAPI RegQueryValueWInternal(
+    HKEY hKey,
+    LPCWSTR lpSubKey,
+    LPWSTR lpData,
+    PLONG lpcbData
+)
+{
+    PPEB  Peb;
+    WCHAR versionBuf[32];
+    LONG  need;
+
+    Peb = NtCurrentPeb();
+
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueWNative(hKey, lpSubKey, lpData, lpcbData);
+
+    if (!lpSubKey || _wcsicmp(lpSubKey, L"CurrentVersion") != 0)
+        return RegQueryValueWNative(hKey, lpSubKey, lpData, lpcbData);
+
+    swprintf(
+        versionBuf,
+        L"%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    need = (LONG)((lstrlenW(versionBuf) + 1) * sizeof(WCHAR));
+
+    if (!lpcbData)
+        return ERROR_SUCCESS;
+
+    if (!lpData)
+    {
+        *lpcbData = need;
+        return ERROR_SUCCESS;
+    }
+
+    if (*lpcbData < need)
+    {
+        *lpcbData = need;
+        return ERROR_MORE_DATA;
+    }
+
+    memcpy(lpData, versionBuf, need);
+    *lpcbData = need;
+
+    return ERROR_SUCCESS;
+}
+
+LONG WINAPI RegQueryValueAInternal(
+    HKEY hKey,
+    LPCSTR lpSubKey,
+    LPSTR lpData,
+    PLONG lpcbData
+)
+{
+    PPEB  Peb;
+    CHAR  versionBuf[32];
+    LONG  need;
+
+    Peb = NtCurrentPeb();
+
+    if (!IsHklmWindowsNT(hKey))
+        return RegQueryValueANative(hKey, lpSubKey, lpData, lpcbData);
+
+    if (!lpSubKey || _stricmp(lpSubKey, "CurrentVersion") != 0)
+        return RegQueryValueANative(hKey, lpSubKey, lpData, lpcbData);
+
+    wsprintfA(
+        versionBuf,
+        "%lu.%lu",
+        Peb->OSMajorVersion,
+        Peb->OSMinorVersion
+    );
+
+    need = (LONG)(lstrlenA(versionBuf) + 1);
+
+    if (!lpcbData)
+        return ERROR_SUCCESS;
+
+    if (!lpData)
+    {
+        *lpcbData = need;
+        return ERROR_SUCCESS;
+    }
+
+    if (*lpcbData < need)
+    {
+        *lpcbData = need;
+        return ERROR_MORE_DATA;
+    }
+
+    memcpy(lpData, versionBuf, need);
+    *lpcbData = need;
+
+    return ERROR_SUCCESS;
 }

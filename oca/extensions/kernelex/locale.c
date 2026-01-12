@@ -1763,7 +1763,7 @@ EnumPreferredThreadUILanguages(
     static const WCHAR formatstringW[] = { '%','.','2','s',0 };
 	
 
-    FIXME( "EnumPreferredThreadUILanguages :: semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
+    //FIXME( "EnumPreferredThreadUILanguages :: semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
 	
     /* FIXME should we check for too small buffersize too? */
     if (!buffer || *buffersize < 11)

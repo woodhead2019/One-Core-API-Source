@@ -595,6 +595,7 @@
 @ stdcall RtlGetSetBootStatusData(ptr long long ptr long long)
 @ stdcall RtlGetUnloadEventTrace() ntdll.RtlGetUnloadEventTrace
 @ stdcall RtlGetUserInfoHeap(ptr long ptr ptr ptr)
+@ stdcall RtlGetVersion(ptr)
 @ stdcall RtlHashUnicodeString(ptr long long ptr)
 @ stdcall RtlIdentifierAuthoritySid(ptr)
 @ stdcall RtlImageDirectoryEntryToData(long long long ptr)
@@ -1288,7 +1289,7 @@
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
-@ stdcall RtlGetVersion(ptr) ;RtlGetVersionInternal
+@ stdcall RtlGetVersionHook(ptr)
 
 #Missing on XP and Server 2003 RTM
 @ stdcall -arch=i386 KiFastSystemCall() ntdll.KiFastSystemCall
