@@ -1062,8 +1062,12 @@ typedef size_t SYNCSTATUS;
 #define SYNC_Spinning	2	//当前线程即将休眠，而不是休眠中或唤醒后
 #define SYNC_SharedLock	4	//条件变量使用共享锁等待，而不是独占锁
 
-#define SRWM_FLAG	0x0000000F
-#define SRWM_ITEM	0xFFFFFFF0	//64位系统应该改成0xFFFFFFFFFFFFFFF0
+#if defined(_WIN64)
+ #define SRWM_ITEM  0xFFFFFFFFFFFFFFF0ULL
+#else
+ #define SRWM_ITEM  0xFFFFFFF0U
+#endif
+#define SRWM_FLAG  (~SRWM_ITEM)
 #define SRWM_COUNT	SRWM_ITEM
 
 #define SRWF_Free	0	//空闲

@@ -44,8 +44,8 @@ Revision History:
 
 #define RtlpWaitOnAddressSpinCount 1024
 
-DWORD ConditionVariableSpinCount=1024;
-DWORD SRWLockSpinCount=1024;
+static DWORD ConditionVariableSpinCount=1024;
+static DWORD SRWLockSpinCount=1024;
 
 typedef SIZE_T SYNCSTATUS;
 
@@ -711,436 +711,436 @@ RtlRunOnceInitialize(
 }
 
 //New SRW implementation
-void NTAPI RtlpInitSRWLock(PEB* pPEB)
-{
-	if (pPEB->NumberOfProcessors==1)
-		SRWLockSpinCount=0;
-}
+//void NTAPI RtlpInitSRWLock(PEB* pPEB)
+// {
+	// if (pPEB->NumberOfProcessors==1)
+		// SRWLockSpinCount=0;
+// }
 
-void NTAPI RtlInitializeSRWLock(RTL_SRWLOCK* SRWLock)
-{
-	SRWLock->Ptr=NULL;
-}
+// void NTAPI RtlInitializeSRWLock(RTL_SRWLOCK* SRWLock)
+// {
+	// SRWLock->Ptr=NULL;
+// }
 
-void NTAPI RtlpWakeSRWLock(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
-{
-	SYNCSTATUS CurrStatus;
-	SYNCITEM* last;
-	SYNCITEM* first;	
+// void NTAPI RtlpWakeSRWLock(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
+// {
+	// SYNCSTATUS CurrStatus;
+	// SYNCITEM* last;
+	// SYNCITEM* first;	
 	
-	while (1)
-	{
-		//已经有线程抢先获取了锁，取消唤醒操作
-		if (OldStatus&SRWF_Hold)	//编译器将while(...)编译成if (...) do {} while(...)
-		{
-			do 
-			{
-				CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);	//清除链表操作标记
-				//状态被其它线程更新，设置状态失败
-				//本次分析失效，更新状态重新分析
-				//下面有大量类似代码，不再重复说明
-				if (CurrStatus==OldStatus)
-					return ;
-				OldStatus=CurrStatus;
-			} while (OldStatus&SRWF_Hold);
-		}
+	// while (1)
+	// {
+		// //已经有线程抢先获取了锁，取消唤醒操作
+		// if (OldStatus&SRWF_Hold)	//编译器将while(...)编译成if (...) do {} while(...)
+		// {
+			// do 
+			// {
+				// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);	//清除链表操作标记
+				// //状态被其它线程更新，设置状态失败
+				// //本次分析失效，更新状态重新分析
+				// //下面有大量类似代码，不再重复说明
+				// if (CurrStatus==OldStatus)
+					// return ;
+				// OldStatus=CurrStatus;
+			// } while (OldStatus&SRWF_Hold);
+		// }
 
-		last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
-		first=last->first;
-		if (first==NULL)
-		{
-			SYNCITEM* curr=last;
-			do 
-			{
-				curr->back->next=curr;	//补全链表
-				curr=curr->back;		//遍历链表
-				first=curr->first;		//更新查找结果
-			} while (first==NULL);		//找一个有效的first
-			//first指针提前到最近的地方
-			//优化链表里没有这个判断，大概是插入多个节点需要优化时，first一定不为last
-			if (last!=curr)	
-				last->first=first;
-		}
+		// last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+		// first=last->first;
+		// if (first==NULL)
+		// {
+			// SYNCITEM* curr=last;
+			// do 
+			// {
+				// curr->back->next=curr;	//补全链表
+				// curr=curr->back;		//遍历链表
+				// first=curr->first;		//更新查找结果
+			// } while (first==NULL);		//找一个有效的first
+			// //first指针提前到最近的地方
+			// //优化链表里没有这个判断，大概是插入多个节点需要优化时，first一定不为last
+			// if (last!=curr)	
+				// last->first=first;
+		// }
 
-		//如果后续还有节点等待，且这个是独占请求
-		if ((first->next!=NULL) && (first->attr&SYNC_Exclusive))
-		{
-			last->first=first->next;	//从链表中删除这个节点（删除和优化每次都用最近的first指针）
-			first->next=NULL;			//first从原链表脱离
-			_InterlockedAnd((long*)SRWLock,(~SRWF_Link));	//链表操作全部完成，去掉标记
-			break;
-		}
-		//否则，可能只有这一个节点等待，或这个是共享请求，全部唤醒
-		else
-		{
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,OldStatus);	//将状态重置为空闲
-			if (OldStatus==CurrStatus)
-				break;
-			last->first=first;	//将找到的first放到最近的位置
-			OldStatus=CurrStatus;
-		}
-	}
+		// //如果后续还有节点等待，且这个是独占请求
+		// if ((first->next!=NULL) && (first->attr&SYNC_Exclusive))
+		// {
+			// last->first=first->next;	//从链表中删除这个节点（删除和优化每次都用最近的first指针）
+			// first->next=NULL;			//first从原链表脱离
+			// _InterlockedAnd((long*)SRWLock,(~SRWF_Link));	//链表操作全部完成，去掉标记
+			// break;
+		// }
+		// //否则，可能只有这一个节点等待，或这个是共享请求，全部唤醒
+		// else
+		// {
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,OldStatus);	//将状态重置为空闲
+			// if (OldStatus==CurrStatus)
+				// break;
+			// last->first=first;	//将找到的first放到最近的位置
+			// OldStatus=CurrStatus;
+		// }
+	// }
 
-	//依次唤醒线程，可能仅有first一个，也可能是first链上的全部
-	//如果是全部唤醒，接下来线程会再次争夺锁，抢不到的再次循环，构建链表并阻塞
-	//好处是省掉了各种情况的分析，后面几个共享锁将成功获得锁，直到遇到独占锁
-	do 
-	{
-		//抢到锁的线程会返回，栈上的item失效，必须先保存next
-		SYNCITEM* next=first->next;
-		//如果有SYNC_Spinning标记，表示还在自旋等待，即将进入休眠
-		//下面的lock btr将其置0，目标线程发现后跳过休眠
-		//如果没有SYNC_Spinning标记，说明目标线程清掉了此标记，正式进入休眠
-		//下面的lock btr没有影响，本线程负责将目标线程唤醒
-		//需要注意的是，NtReleaseKeyedEvent发现key并没有休眠时，会阻塞当前线程
-		//直到有线程用此key调用了NtWaitForKeyedEvent，才会唤醒，因此不会丢失通知
-		if (InterlockedBitTestAndReset((LONG*)&(first->attr),SYNC_SPIN_BIT)==0)
-			NtReleaseKeyedEvent(GlobalKeyedEventHandle,first,FALSE,NULL);
-		first=next;	//遍历链表
-	} while (first!=NULL);
-}
+	// //依次唤醒线程，可能仅有first一个，也可能是first链上的全部
+	// //如果是全部唤醒，接下来线程会再次争夺锁，抢不到的再次循环，构建链表并阻塞
+	// //好处是省掉了各种情况的分析，后面几个共享锁将成功获得锁，直到遇到独占锁
+	// do 
+	// {
+		// //抢到锁的线程会返回，栈上的item失效，必须先保存next
+		// SYNCITEM* next=first->next;
+		// //如果有SYNC_Spinning标记，表示还在自旋等待，即将进入休眠
+		// //下面的lock btr将其置0，目标线程发现后跳过休眠
+		// //如果没有SYNC_Spinning标记，说明目标线程清掉了此标记，正式进入休眠
+		// //下面的lock btr没有影响，本线程负责将目标线程唤醒
+		// //需要注意的是，NtReleaseKeyedEvent发现key并没有休眠时，会阻塞当前线程
+		// //直到有线程用此key调用了NtWaitForKeyedEvent，才会唤醒，因此不会丢失通知
+		// if (InterlockedBitTestAndReset((LONG*)&(first->attr),SYNC_SPIN_BIT)==0)
+			// NtReleaseKeyedEvent(GlobalKeyedEventHandle,first,FALSE,NULL);
+		// first=next;	//遍历链表
+	// } while (first!=NULL);
+// }
 
-void NTAPI RtlpOptimizeSRWLockList(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
-{
-	SYNCSTATUS CurrStatus;
-	if (OldStatus&SRWF_Hold)
-	{
-		do 
-		{
-			SYNCITEM* last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
-			if (last!=NULL)
-			{
-				SYNCITEM* curr=last;
-				while (curr->first==NULL)
-				{
-					curr->back->next=curr;	//补全链表
-					curr=curr->back;		//遍历链表
-				}
-				last->first=curr->first;	//将first放到离容器入口最近的位置，加速下次查找
-			}
-			//链表操作结束，清除标记
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);
-			if (CurrStatus==OldStatus)
-				return ;
-			OldStatus=CurrStatus;
-		} while (OldStatus&SRWF_Hold);
-	}
-	//有人释放了锁，停止优化，改为唤醒
-	RtlpWakeSRWLock(SRWLock,OldStatus);
-}
+// void NTAPI RtlpOptimizeSRWLockList(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
+// {
+	// SYNCSTATUS CurrStatus;
+	// if (OldStatus&SRWF_Hold)
+	// {
+		// do 
+		// {
+			// SYNCITEM* last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+			// if (last!=NULL)
+			// {
+				// SYNCITEM* curr=last;
+				// while (curr->first==NULL)
+				// {
+					// curr->back->next=curr;	//补全链表
+					// curr=curr->back;		//遍历链表
+				// }
+				// last->first=curr->first;	//将first放到离容器入口最近的位置，加速下次查找
+			// }
+			// //链表操作结束，清除标记
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);
+			// if (CurrStatus==OldStatus)
+				// return ;
+			// OldStatus=CurrStatus;
+		// } while (OldStatus&SRWF_Hold);
+	// }
+	// //有人释放了锁，停止优化，改为唤醒
+	// RtlpWakeSRWLock(SRWLock,OldStatus);
+// }
 
-void NTAPI RtlAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
-{
-	//volatile
-	__declspec(align(16)) SYNCITEM item;
-	BOOL IsOptimize;
-	SYNCSTATUS NewStatus;
-	USHORT dwBackOffCount=0;
-	SYNCSTATUS CurrStatus;
-	SYNCSTATUS OldStatus;
-	int i;
+// void NTAPI RtlAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
+// {
+	// //volatile
+	// __declspec(align(16)) SYNCITEM item;
+	// BOOL IsOptimize;
+	// SYNCSTATUS NewStatus;
+	// USHORT dwBackOffCount=0;
+	// SYNCSTATUS CurrStatus;
+	// SYNCSTATUS OldStatus;
+	// int i;
 
-	//如果当前状态为空闲，直接获取锁
-	//甚至某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
-	//本线程也可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次进入等待
-	if (InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==0)
-		return ;
+	// //如果当前状态为空闲，直接获取锁
+	// //甚至某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
+	// //本线程也可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次进入等待
+	// if (InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==0)
+		// return ;
 
-	OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+	// OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
 	
-	while (1)
-	{
-		//如果当前已有线程持有锁，本线程将构建节点，将自己加入链表
-		if (OldStatus&SRWF_Hold)
-		{
-			if (RtlpWaitCouldDeadlock())
-			{
-				//GetCurrentProcess(),STATUS_THREAD_IS_TERMINATING
-				NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
-			}
+	// while (1)
+	// {
+		// //如果当前已有线程持有锁，本线程将构建节点，将自己加入链表
+		// if (OldStatus&SRWF_Hold)
+		// {
+			// if (RtlpWaitCouldDeadlock())
+			// {
+				// //GetCurrentProcess(),STATUS_THREAD_IS_TERMINATING
+				// NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
+			// }
 
-			item.attr=SYNC_Exclusive|SYNC_Spinning;
-			item.next=NULL;
-			IsOptimize=FALSE;
+			// item.attr=SYNC_Exclusive|SYNC_Spinning;
+			// item.next=NULL;
+			// IsOptimize=FALSE;
 
-			//如果有线程已经在前面等待了，就把之前的节点设为back
-			if (OldStatus&SRWF_Wait)
-			{
-				item.first=NULL;
-				item.count=0;
-				item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
-				NewStatus=((SYNCSTATUS)&item)|(OldStatus&SRWF_Many)|(SRWF_Link|SRWF_Wait|SRWF_Hold);
+			// //如果有线程已经在前面等待了，就把之前的节点设为back
+			// if (OldStatus&SRWF_Wait)
+			// {
+				// item.first=NULL;
+				// item.count=0;
+				// item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+				// NewStatus=((SYNCSTATUS)&item)|(OldStatus&SRWF_Many)|(SRWF_Link|SRWF_Wait|SRWF_Hold);
 
-				if (!(OldStatus&SRWF_Link))	//当前没人操作链表，就优化链表
-					IsOptimize=TRUE;
-			}
-			//如果本线程是第一个等待的线程，first指向自己
-			//查找时以first指针为准，不需要设置back
-			else
-			{
-				item.first=&item;
-				//如果锁的拥有者以独占方式持有，共享计数为0
-				//如果锁的拥有者以共享方式持有，共享计数为1或更多
-				item.count=OldStatus>>SRW_COUNT_BIT;
-				if (item.count>1)
-					NewStatus=((SYNCSTATUS)&item)|(SRWF_Many|SRWF_Wait|SRWF_Hold);
-				else
-					NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
-			}
-			//提交新状态
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-			{
-				if (IsOptimize)
-					RtlpOptimizeSRWLockList(SRWLock,NewStatus);
-				//进入内核的代价太高，先进行一段自旋等待
-				for (i=SRWLockSpinCount;i>0;i--)
-				{
-					if (!(item.attr&SYNC_Spinning))	//其它线程可能唤醒本线程，清除标记
-						break;
-					_mm_pause();
-				}
-				//如果一直没能等到唤醒，就进入内核休眠
-				if (InterlockedBitTestAndReset((LONG*)(&item.attr),SYNC_SPIN_BIT))
-					NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
-				//被唤醒后再次循环检测条件
-				OldStatus=CurrStatus;
-			}
-			else
-			{
-				//线程处于激烈的竞争中，退避一段时间
-				RtlBackoff(&dwBackOffCount);
-				OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
-			}
-		}
-		//别的线程可能做了什么，反正现在没有线程持有锁了，尝试获取锁
-		else
-		{
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Hold,OldStatus);
-			if (CurrStatus==OldStatus)
-				return ;
-			RtlBackoff(&dwBackOffCount);
-			OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
-		}
-	}
-}
+				// if (!(OldStatus&SRWF_Link))	//当前没人操作链表，就优化链表
+					// IsOptimize=TRUE;
+			// }
+			// //如果本线程是第一个等待的线程，first指向自己
+			// //查找时以first指针为准，不需要设置back
+			// else
+			// {
+				// item.first=&item;
+				// //如果锁的拥有者以独占方式持有，共享计数为0
+				// //如果锁的拥有者以共享方式持有，共享计数为1或更多
+				// item.count=OldStatus>>SRW_COUNT_BIT;
+				// if (item.count>1)
+					// NewStatus=((SYNCSTATUS)&item)|(SRWF_Many|SRWF_Wait|SRWF_Hold);
+				// else
+					// NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
+			// }
+			// //提交新状态
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+			// {
+				// if (IsOptimize)
+					// RtlpOptimizeSRWLockList(SRWLock,NewStatus);
+				// //进入内核的代价太高，先进行一段自旋等待
+				// for (i=SRWLockSpinCount;i>0;i--)
+				// {
+					// if (!(item.attr&SYNC_Spinning))	//其它线程可能唤醒本线程，清除标记
+						// break;
+					// _mm_pause();
+				// }
+				// //如果一直没能等到唤醒，就进入内核休眠
+				// if (InterlockedBitTestAndReset((LONG*)(&item.attr),SYNC_SPIN_BIT))
+					// NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
+				// //被唤醒后再次循环检测条件
+				// OldStatus=CurrStatus;
+			// }
+			// else
+			// {
+				// //线程处于激烈的竞争中，退避一段时间
+				// RtlBackoff(&dwBackOffCount);
+				// OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+			// }
+		// }
+		// //别的线程可能做了什么，反正现在没有线程持有锁了，尝试获取锁
+		// else
+		// {
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Hold,OldStatus);
+			// if (CurrStatus==OldStatus)
+				// return ;
+			// RtlBackoff(&dwBackOffCount);
+			// OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+		// }
+	// }
+// }
 
-void NTAPI RtlAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
-{
-	//volatile
-	__declspec(align(16)) SYNCITEM item;
-	BOOL IsOptimize;
-	USHORT dwBackOffCount=0;
-	int i;
+// void NTAPI RtlAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
+// {
+	// //volatile
+	// __declspec(align(16)) SYNCITEM item;
+	// BOOL IsOptimize;
+	// USHORT dwBackOffCount=0;
+	// int i;
 
-	SYNCSTATUS NewStatus;
-	SYNCSTATUS CurrStatus;
-	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
-	//如果当前状态为空闲，直接获取锁
-	if (OldStatus==0)
-		return ;
+	// SYNCSTATUS NewStatus;
+	// SYNCSTATUS CurrStatus;
+	// SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
+	// //如果当前状态为空闲，直接获取锁
+	// if (OldStatus==0)
+		// return ;
 
-	while (1)
-	{
-		//因独占锁需要等待的情况
-		//出于公平性考虑，只要有独占锁请求，后续的所有共享锁请求都要排队（即使当前正处于共享状态）
-		//有了wait标记，说明：1.当前是独占锁，后续无论什么类型的请求都要排队
-		//2.当前是共享锁，但是队列里有独占锁请求，后来的共享锁也应该排队
-		//作为对比，若当前是共享锁，紧接着的共享请求可以直接获取锁，不会阻塞和添加wait标记
-		//另有一种特殊情况，当前是独占锁，后续没有线程请求锁，也就没有wait标记
-		//但是这种情况的share count为0（作为对比，只有单个共享锁时share count为1）
-		//一旦后续有请求，请求者就会等待，变成有wait标记的情况
-		if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || ((OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL)))
-		{
-			if (RtlpWaitCouldDeadlock())
-				NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
+	// while (1)
+	// {
+		// //因独占锁需要等待的情况
+		// //出于公平性考虑，只要有独占锁请求，后续的所有共享锁请求都要排队（即使当前正处于共享状态）
+		// //有了wait标记，说明：1.当前是独占锁，后续无论什么类型的请求都要排队
+		// //2.当前是共享锁，但是队列里有独占锁请求，后来的共享锁也应该排队
+		// //作为对比，若当前是共享锁，紧接着的共享请求可以直接获取锁，不会阻塞和添加wait标记
+		// //另有一种特殊情况，当前是独占锁，后续没有线程请求锁，也就没有wait标记
+		// //但是这种情况的share count为0（作为对比，只有单个共享锁时share count为1）
+		// //一旦后续有请求，请求者就会等待，变成有wait标记的情况
+		// if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || ((OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL)))
+		// {
+			// if (RtlpWaitCouldDeadlock())
+				// NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
 
-			item.attr=SYNC_Spinning;
-			item.count=0;
-			IsOptimize=FALSE;
-			item.next=NULL;
+			// item.attr=SYNC_Spinning;
+			// item.count=0;
+			// IsOptimize=FALSE;
+			// item.next=NULL;
 
-			if (OldStatus&SRWF_Wait)
-			{
-				item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
-				//原汇编就是这么写的，但是刚才SRWF_Hold已经检测到了
-				NewStatus=((SYNCSTATUS)&item)|(OldStatus&(SRWF_Many|SRWF_Hold))|(SRWF_Link|SRWF_Wait);
-				item.first=NULL;
+			// if (OldStatus&SRWF_Wait)
+			// {
+				// item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+				// //原汇编就是这么写的，但是刚才SRWF_Hold已经检测到了
+				// NewStatus=((SYNCSTATUS)&item)|(OldStatus&(SRWF_Many|SRWF_Hold))|(SRWF_Link|SRWF_Wait);
+				// item.first=NULL;
 
-				if (!(OldStatus&SRWF_Link))
-					IsOptimize=TRUE;
-			}
-			else
-			{
-				item.first=&item;
-				//当前一定是独占锁，所以不用考虑SRWF_Many
-				NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
-			}
+				// if (!(OldStatus&SRWF_Link))
+					// IsOptimize=TRUE;
+			// }
+			// else
+			// {
+				// item.first=&item;
+				// //当前一定是独占锁，所以不用考虑SRWF_Many
+				// NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
+			// }
 
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-			{
-				if (IsOptimize)
-					RtlpOptimizeSRWLockList(SRWLock,NewStatus);
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+			// {
+				// if (IsOptimize)
+					// RtlpOptimizeSRWLockList(SRWLock,NewStatus);
 
-				for (i=SRWLockSpinCount;i>0;i--)
-				{
-					if (!(item.attr&SYNC_Spinning))
-						break;
-					_mm_pause();
-				}
+				// for (i=SRWLockSpinCount;i>0;i--)
+				// {
+					// if (!(item.attr&SYNC_Spinning))
+						// break;
+					// _mm_pause();
+				// }
 
-				if (InterlockedBitTestAndReset((LONG*)&(item.attr),SYNC_SPIN_BIT))
-					NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
-				OldStatus=CurrStatus;
-			}
-			else
-			{
-				RtlBackoff(&dwBackOffCount);
-				OldStatus=(SYNCSTATUS)SRWLock->Ptr;
-			}
-		}
-		else
-		{
-			//某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
-			//本线程可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次抢占锁
-			//这里有点小问题，如果刚刚是独占锁释放，即使后续是共享请求
-			//也有可能取消唤醒操作，而不是和当前的共享线程一起获取锁
-			if (OldStatus&SRWF_Wait)
-				NewStatus=OldStatus+SRWF_Hold;
-			//当前处于共享状态，可以获取锁，增加共享计数
-			else
-				NewStatus=(OldStatus+(1<<SRW_COUNT_BIT))|SRWF_Hold;
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-				return ;
-			RtlBackoff(&dwBackOffCount);
-			OldStatus=(SYNCSTATUS)SRWLock->Ptr;
-		}
-	}
-}
+				// if (InterlockedBitTestAndReset((LONG*)&(item.attr),SYNC_SPIN_BIT))
+					// NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
+				// OldStatus=CurrStatus;
+			// }
+			// else
+			// {
+				// RtlBackoff(&dwBackOffCount);
+				// OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+			// }
+		// }
+		// else
+		// {
+			// //某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
+			// //本线程可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次抢占锁
+			// //这里有点小问题，如果刚刚是独占锁释放，即使后续是共享请求
+			// //也有可能取消唤醒操作，而不是和当前的共享线程一起获取锁
+			// if (OldStatus&SRWF_Wait)
+				// NewStatus=OldStatus+SRWF_Hold;
+			// //当前处于共享状态，可以获取锁，增加共享计数
+			// else
+				// NewStatus=(OldStatus+(1<<SRW_COUNT_BIT))|SRWF_Hold;
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+				// return ;
+			// RtlBackoff(&dwBackOffCount);
+			// OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+		// }
+	// }
+// }
 
-void NTAPI RtlReleaseSRWLockExclusive(RTL_SRWLOCK* SRWLock)
-{
-	//去掉Hold标记
-	SYNCSTATUS CurrStatus;
-	SYNCSTATUS OldStatus=InterlockedExchangeAdd((volatile long*)SRWLock,-SRWF_Hold);
-	// if (!(OldStatus&SRWF_Hold))
-		// RtlRaiseStatus(0xC0000264);	//STATUS_RESOURCE_NOT_OWNED
-	//有线程在等待，且没有线程正在操作链表，执行唤醒操作
-	//否则当前操作链表的线程检测到状态改变，执行唤醒操作
-	if ((OldStatus&SRWF_Wait) && !(OldStatus&SRWF_Link))
-	{
-		OldStatus-=SRWF_Hold;
-		CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Link,OldStatus);
-		if (OldStatus==CurrStatus)
-			RtlpWakeSRWLock(SRWLock,OldStatus+SRWF_Link);
-	}
-}
+// void NTAPI RtlReleaseSRWLockExclusive(RTL_SRWLOCK* SRWLock)
+// {
+	// //去掉Hold标记
+	// SYNCSTATUS CurrStatus;
+	// SYNCSTATUS OldStatus=InterlockedExchangeAdd((volatile long*)SRWLock,-SRWF_Hold);
+	// // if (!(OldStatus&SRWF_Hold))
+		// // RtlRaiseStatus(0xC0000264);	//STATUS_RESOURCE_NOT_OWNED
+	// //有线程在等待，且没有线程正在操作链表，执行唤醒操作
+	// //否则当前操作链表的线程检测到状态改变，执行唤醒操作
+	// if ((OldStatus&SRWF_Wait) && !(OldStatus&SRWF_Link))
+	// {
+		// OldStatus-=SRWF_Hold;
+		// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Link,OldStatus);
+		// if (OldStatus==CurrStatus)
+			// RtlpWakeSRWLock(SRWLock,OldStatus+SRWF_Link);
+	// }
+// }
 
-void NTAPI RtlReleaseSRWLockShared(RTL_SRWLOCK* SRWLock)
-{
-	SYNCSTATUS CurrStatus,NewStatus;
-	DWORD count;
-	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,((1<<SRW_COUNT_BIT)|SRWF_Hold));
-	//如果共享计数为1，且标记仅为Hold
-	//说明仅有一个共享锁，恢复至空闲状态就可以了
-	if (OldStatus==0x11)//((1<<SRW_COUNT_BIT)|SRWF_Hold))
-		return ;
+// void NTAPI RtlReleaseSRWLockShared(RTL_SRWLOCK* SRWLock)
+// {
+	// SYNCSTATUS CurrStatus,NewStatus;
+	// DWORD count;
+	// SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,((1<<SRW_COUNT_BIT)|SRWF_Hold));
+	// //如果共享计数为1，且标记仅为Hold
+	// //说明仅有一个共享锁，恢复至空闲状态就可以了
+	// if (OldStatus==0x11)//((1<<SRW_COUNT_BIT)|SRWF_Hold))
+		// return ;
 
-	// if ((OldStatus&SRWF_Hold) == 0)
-		// RtlRaiseStatus(0xC0000264);
+	// // if ((OldStatus&SRWF_Hold) == 0)
+		// // RtlRaiseStatus(0xC0000264);
 
-	//只存在共享锁
-	if (!(OldStatus&SRWF_Wait))
-	{
-		do 
-		{
-			//共享计数为1，清空为空闲状态
-			if ((OldStatus&SRWM_COUNT)<=(1<<SRW_COUNT_BIT))
-				NewStatus=0;
-			//共享计数大于0，将其-1
-			else
-				NewStatus=OldStatus-(1<<SRW_COUNT_BIT);
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-				return ;
-			OldStatus=CurrStatus;
-		} while (!(OldStatus&SRWF_Wait));
-	}
+	// //只存在共享锁
+	// if (!(OldStatus&SRWF_Wait))
+	// {
+		// do 
+		// {
+			// //共享计数为1，清空为空闲状态
+			// if ((OldStatus&SRWM_COUNT)<=(1<<SRW_COUNT_BIT))
+				// NewStatus=0;
+			// //共享计数大于0，将其-1
+			// else
+				// NewStatus=OldStatus-(1<<SRW_COUNT_BIT);
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+				// return ;
+			// OldStatus=CurrStatus;
+		// } while (!(OldStatus&SRWF_Wait));
+	// }
 
-	//有独占请求等待时
-	//如果有多个共享锁，计数-1
-	if (OldStatus&SRWF_Many)
-	{
-		SYNCITEM* curr=(SYNCITEM*)(OldStatus&SRWM_ITEM);
-		//寻找最近的first节点，查询共享计数
-		//共享锁接共享锁不会阻塞，也不会新增等待节点
-		//共享锁接独占锁，独占锁会等待，并且其item记录共享计数
-		//特殊的，独占锁接独占锁，或独占锁接共享锁，记录的共享计数为0
-		while (curr->first==NULL)
-			curr=curr->back;	
-		curr=curr->first;
+	// //有独占请求等待时
+	// //如果有多个共享锁，计数-1
+	// if (OldStatus&SRWF_Many)
+	// {
+		// SYNCITEM* curr=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+		// //寻找最近的first节点，查询共享计数
+		// //共享锁接共享锁不会阻塞，也不会新增等待节点
+		// //共享锁接独占锁，独占锁会等待，并且其item记录共享计数
+		// //特殊的，独占锁接独占锁，或独占锁接共享锁，记录的共享计数为0
+		// while (curr->first==NULL)
+			// curr=curr->back;	
+		// curr=curr->first;
 
-		//共享计数-1，如果共享计数大于0，说明现在仍有线程占有共享锁
-		count=InterlockedDecrement(&curr->count);
-		if (count>0)
-			return ;
-	}
+		// //共享计数-1，如果共享计数大于0，说明现在仍有线程占有共享锁
+		// count=InterlockedDecrement(&curr->count);
+		// if (count>0)
+			// return ;
+	// }
 
-	//共享锁完全释放，唤醒下个等待者
-	while (1)
-	{
-		NewStatus=OldStatus&(~(SRWF_Many|SRWF_Hold));
-		//有线程在操作链表，让它去唤醒吧
-		if (OldStatus&SRWF_Link)
-		{
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-				return ;
-		}
-		else
-		{
-			NewStatus|=SRWF_Link;
-			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-			if (CurrStatus==OldStatus)
-			{
-				RtlpWakeSRWLock(SRWLock,NewStatus);
-				return ;
-			}
-		}
-		OldStatus=CurrStatus;
-	}
-}
+	// //共享锁完全释放，唤醒下个等待者
+	// while (1)
+	// {
+		// NewStatus=OldStatus&(~(SRWF_Many|SRWF_Hold));
+		// //有线程在操作链表，让它去唤醒吧
+		// if (OldStatus&SRWF_Link)
+		// {
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+				// return ;
+		// }
+		// else
+		// {
+			// NewStatus|=SRWF_Link;
+			// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			// if (CurrStatus==OldStatus)
+			// {
+				// RtlpWakeSRWLock(SRWLock,NewStatus);
+				// return ;
+			// }
+		// }
+		// OldStatus=CurrStatus;
+	// }
+// }
 
-BOOL NTAPI RtlTryAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
-{
-    return !(InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==TRUE);
-}
+// BOOL NTAPI RtlTryAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
+// {
+    // return !(InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==TRUE);
+// }
 
-BOOL NTAPI RtlTryAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
-{
-	USHORT dwBackOffCount=0;
-	SYNCSTATUS NewStatus;
-	SYNCSTATUS CurrStatus;
-	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
-	if (OldStatus==0)
-		return TRUE;
-	while (1) 
-	{
-		if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || (OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL))
-			return FALSE;		
-		if (OldStatus&SRWF_Wait)
-			NewStatus=OldStatus+SRWF_Hold;
-		else
-			NewStatus=OldStatus+(1<<SRW_COUNT_BIT);
-		CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
-		if (CurrStatus==OldStatus)
-			return TRUE;
-		RtlBackoff(&dwBackOffCount);
-		OldStatus=(SYNCSTATUS)SRWLock->Ptr;
-	}
-}
+// BOOL NTAPI RtlTryAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
+// {
+	// USHORT dwBackOffCount=0;
+	// SYNCSTATUS NewStatus;
+	// SYNCSTATUS CurrStatus;
+	// SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
+	// if (OldStatus==0)
+		// return TRUE;
+	// while (1) 
+	// {
+		// if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || (OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL))
+			// return FALSE;		
+		// if (OldStatus&SRWF_Wait)
+			// NewStatus=OldStatus+SRWF_Hold;
+		// else
+			// NewStatus=OldStatus+(1<<SRW_COUNT_BIT);
+		// CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+		// if (CurrStatus==OldStatus)
+			// return TRUE;
+		// RtlBackoff(&dwBackOffCount);
+		// OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+	// // }
+// // }
 
 BOOL NTAPI RtlpWaitCouldDeadlock()
 {
@@ -2098,4 +2098,409 @@ VOID NTAPI RtlWakeAddressAll(
 	IN	PVOID			Address)
 {
 	RtlpWakeByAddress(Address, TRUE);
+}
+
+
+//* Pointer-sized interlocked helpers for user mode. */
+#ifndef InterlockedAndPointer
+ #if defined(_WIN64)
+  #define InterlockedAndPointer(ptr, val) (PVOID)InterlockedAnd64((volatile LONG64*)(ptr), (LONG64)(val))
+ #else
+  #define InterlockedAndPointer(ptr, val) (PVOID)InterlockedAnd((volatile LONG*)(ptr), (LONG)(val))
+ #endif
+#endif
+
+#ifndef InterlockedExchangeAddPointer
+ #if defined(_WIN64)
+  #define InterlockedExchangeAddPointer(ptr, val) (PVOID)InterlockedExchangeAdd64((volatile LONG64*)(ptr), (LONG64)(val))
+ #else
+  #define InterlockedExchangeAddPointer(ptr, val) (PVOID)InterlockedExchangeAdd((volatile LONG*)(ptr), (LONG)(val))
+ #endif
+#endif
+
+/* Bit layout for internal SRW state and wait list flags. */
+#if defined(_WIN64)
+ #define SRWM_ITEM  0xFFFFFFFFFFFFFFF0ULL
+#else
+ #define SRWM_ITEM  0xFFFFFFF0U
+#endif
+#define SRWM_FLAG  (~SRWM_ITEM)
+
+#define SRWF_Hold   0x1 /* lock has been currently held */
+#define SRWF_Wait   0x2 /* a thread is waiting on a lock */
+#define SRWF_Link   0x4 /* lock is in the process of being released. */
+#define SRWF_Many   0x8 /* multiple threads are waiting on lock */
+
+#define SRW_COUNT_BIT   4
+#define SRW_HOLD_BIT    0
+#define NODE_SPIN_BIT   1
+
+#define NODEF_EXCL      0x01
+#define NODEF_SPIN      0x02
+
+typedef struct _SRW_WAIT_NODE
+{
+    struct _SRW_WAIT_NODE* prev;
+    struct _SRW_WAIT_NODE* head;
+    struct _SRW_WAIT_NODE* next;
+    ULONG shareSnapshot;    /* shared count snapshot */
+    ULONG flags;            /* NODEF_EXCL | NODEF_SPIN */
+    PRTL_SRWLOCK lock;      /* reserved */
+} SRW_WAIT_NODE;
+
+/* SRW internal state is encoded in the pointer-sized value of SRWLock->Ptr. */
+typedef ULONG_PTR SRW_STATE;
+
+/* Safely set bit 0 of a pointer-sized value; returns previous bit value (0/1). */
+
+static __forceinline LONG RtlpMarkSrwHeld(volatile PVOID* Target)
+{
+#if defined(_M_X64)
+    return _interlockedbittestandset64((volatile LONG64*)Target, 0);
+#elif defined(_M_IX86)
+    return _interlockedbittestandset((volatile LONG*)Target, 0);
+#else
+    PVOID OldValue = *Target;
+    for (;;)
+    {
+        ULONG_PTR OldBits = (ULONG_PTR)OldValue;
+        if (OldBits & SRWF_Hold) return 1; /* bit was already set */
+		
+        PVOID NewValue = (PVOID)(OldBits | SRWF_Hold);
+        PVOID Prev = InterlockedCompareExchangePointer((PVOID*)Target, NewValue, OldValue);
+		
+        if (Prev == OldValue) return 0;     /* successfully set from 0 to 1 */
+		
+        OldValue = Prev;
+    }
+#endif
+}
+
+static VOID NTAPI RtlpBackoffExp(ULONG* pCount)
+{
+    ULONG n = *pCount;
+    if (n == 0)
+    {
+        if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors == 1) return;
+        n = 64;
+    }
+    else if (n < 0x2000)
+    {
+        n <<= 1;
+    }
+    *pCount = n;
+    while (n--) YieldProcessor();
+}
+
+/* Helpers to test node attributes; avoid raw bit-twiddling at callsites. */
+static __forceinline BOOLEAN SrwNodeIsExclusive(const SRW_WAIT_NODE* n) { return (n->flags & NODEF_EXCL) != 0; }
+static __forceinline BOOLEAN SrwNodeIsSpinning(const SRW_WAIT_NODE* n)  { return (n->flags & NODEF_SPIN) != 0; }
+
+static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
+{
+    SRW_STATE CurrStatus;
+    SRW_WAIT_NODE* tail;
+    SRW_WAIT_NODE* first;
+
+    while (1)
+    {
+        while (OldStatus & SRWF_Hold)
+        {
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+            OldStatus = (SRW_STATE)CurrStatus;
+        }
+		
+        tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+        first = tail->head;
+        if (first == NULL)
+        {
+            SRW_WAIT_NODE* curr = tail;
+            do
+            {
+                curr->prev->next = curr;
+                curr = curr->prev;
+                first = curr->head;
+            } while (first == NULL);
+            if (tail != curr) tail->head = first;
+        }
+
+        if ((first->next != NULL) && SrwNodeIsExclusive(first))
+        {
+            tail->head = first->next;
+            first->next = NULL;
+            InterlockedAndPointer(&SRWLock->Ptr, (PVOID)(~((SRW_STATE)SRWF_Link)));
+            break;
+        }
+        else
+        {
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) break;
+            tail->head = first;
+            OldStatus = (SRW_STATE)CurrStatus;
+        }
+    }
+	
+    do
+    {
+        SRW_WAIT_NODE* next = first->next;
+        if (InterlockedBitTestAndReset((PLONG)&first->flags, NODE_SPIN_BIT) == 0)
+        {
+            NtReleaseKeyedEvent(GlobalKeyedEventHandle, first, FALSE, NULL);
+        }
+        first = next;
+    } while (first != NULL);
+}
+
+static VOID NTAPI RtlpSrwCompressQueue(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
+{
+    SRW_STATE CurrStatus;
+    while (OldStatus & SRWF_Hold)
+    {
+        SRW_WAIT_NODE* tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+        if (tail != NULL)
+        {
+            SRW_WAIT_NODE* curr = tail;
+            while (curr->head == NULL)
+            {
+                curr->prev->next = curr;
+                curr = curr->prev;
+            }
+            tail->head = curr->head;
+        }
+        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
+        if (CurrStatus == OldStatus) return;
+        OldStatus = (SRW_STATE)CurrStatus;
+    }
+    RtlpSrwWake(SRWLock, OldStatus);
+}
+
+VOID NTAPI RtlInitializeSRWLock(PRTL_SRWLOCK SRWLock)
+{
+    SRWLock->Ptr = NULL;
+}
+
+VOID NTAPI RtlAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+{
+    __ALIGNED(16) SRW_WAIT_NODE node;
+    BOOLEAN IsOptimize;
+    SRW_STATE NewStatus;
+    ULONG backoff = 0;
+    SRW_STATE CurrStatus;
+    SRW_STATE OldStatus;
+    int i;
+
+    if (RtlpMarkSrwHeld(&SRWLock->Ptr) == 0)
+        return;
+
+    OldStatus = (SRW_STATE)SRWLock->Ptr;
+
+    while (1)
+    {
+        if (OldStatus & SRWF_Hold)
+        {
+            if (RtlpWaitCouldDeadlock()) NtTerminateProcess((HANDLE)-1, STATUS_THREAD_IS_TERMINATING);
+
+            node.flags = NODEF_EXCL | NODEF_SPIN;
+            node.next = NULL;
+            IsOptimize = FALSE;
+
+            if (OldStatus & SRWF_Wait)
+            {
+                node.head = NULL;
+                node.shareSnapshot = 0;
+                node.prev = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+                NewStatus = (SRW_STATE)&node | (OldStatus & SRWF_Many) | (SRWF_Link | SRWF_Wait | SRWF_Hold);
+                if (!(OldStatus & SRWF_Link)) IsOptimize = TRUE;
+            }
+            else
+            {
+                node.head = &node;
+                node.shareSnapshot = (ULONG)(OldStatus >> SRW_COUNT_BIT);
+                if (node.shareSnapshot > 1)
+                    NewStatus = (SRW_STATE)&node | (SRWF_Many | SRWF_Wait | SRWF_Hold);
+                else
+                    NewStatus = (SRW_STATE)&node | (SRWF_Wait | SRWF_Hold);
+            }
+
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus)
+            {
+                if (IsOptimize) RtlpSrwCompressQueue(SRWLock, NewStatus);
+                for (i = SRWLockSpinCount; i > 0; --i)
+                {
+                    if (!SrwNodeIsSpinning(&node)) break;
+                    YieldProcessor();
+                }
+                if (InterlockedBitTestAndReset((PLONG)&node.flags, NODE_SPIN_BIT))
+                    NtWaitForKeyedEvent(GlobalKeyedEventHandle, &node, FALSE, NULL);
+                OldStatus = CurrStatus;
+            }
+            else
+            {
+                RtlpBackoffExp(&backoff);
+                OldStatus = (SRW_STATE)SRWLock->Ptr;
+            }
+        }
+        else
+        {
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Hold), (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+            RtlpBackoffExp(&backoff);
+            OldStatus = (SRW_STATE)SRWLock->Ptr;
+        }
+    }
+}
+
+VOID NTAPI RtlAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
+{
+    __ALIGNED(16) SRW_WAIT_NODE node;
+    BOOLEAN IsOptimize;
+    ULONG backoff = 0;
+    int i;
+
+    SRW_STATE NewStatus;
+    SRW_STATE CurrStatus;
+    SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)((1 << SRW_COUNT_BIT) | SRWF_Hold), NULL);
+    if (OldStatus == 0) return;
+
+    while (1)
+    {
+    if ((OldStatus & SRWF_Hold) && ((OldStatus & SRWF_Wait) || ((OldStatus & SRWM_ITEM) == (SRW_STATE)NULL)))
+        {
+            if (RtlpWaitCouldDeadlock()) NtTerminateProcess((HANDLE)-1, STATUS_THREAD_IS_TERMINATING);
+
+            node.flags = NODEF_SPIN;
+            node.shareSnapshot = 0;
+            IsOptimize = FALSE;
+            node.next = NULL;
+
+            if (OldStatus & SRWF_Wait)
+            {
+                node.prev = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+                NewStatus = (SRW_STATE)&node | (OldStatus & (SRWF_Many | SRWF_Hold)) | (SRWF_Link | SRWF_Wait);
+                node.head = NULL;
+                if (!(OldStatus & SRWF_Link)) IsOptimize = TRUE;
+            }
+            else
+            {
+                node.head = &node;
+                NewStatus = (SRW_STATE)&node | (SRWF_Wait | SRWF_Hold);
+            }
+
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus)
+            {
+                if (IsOptimize) RtlpSrwCompressQueue(SRWLock, NewStatus);
+                for (i = SRWLockSpinCount; i > 0; --i)
+                {
+                    if (!SrwNodeIsSpinning(&node)) break;
+                    YieldProcessor();
+                }
+                if (InterlockedBitTestAndReset((PLONG)&node.flags, NODE_SPIN_BIT))
+                    NtWaitForKeyedEvent(GlobalKeyedEventHandle, &node, FALSE, NULL);
+                OldStatus = CurrStatus;
+            }
+            else
+            {
+                RtlpBackoffExp(&backoff);
+                OldStatus = (SRW_STATE)SRWLock->Ptr;
+            }
+        }
+        else
+        {
+            if (OldStatus & SRWF_Wait)
+                NewStatus = OldStatus | SRWF_Hold;
+            else
+                NewStatus = (OldStatus + (1 << SRW_COUNT_BIT)) | SRWF_Hold;
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+            RtlpBackoffExp(&backoff);
+            OldStatus = (SRW_STATE)SRWLock->Ptr;
+        }
+    }
+}
+
+VOID NTAPI RtlReleaseSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+{
+    SRW_STATE CurrStatus;
+    SRW_STATE OldStatus = (SRW_STATE)InterlockedExchangeAddPointer(&SRWLock->Ptr, (PVOID)(-(LONG_PTR)SRWF_Hold));
+    if ((OldStatus & SRWF_Wait) && !(OldStatus & SRWF_Link))
+    {
+        OldStatus &= ~(SRW_STATE)SRWF_Hold;
+        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Link), (PVOID)OldStatus);
+        if (CurrStatus == OldStatus) RtlpSrwWake(SRWLock, OldStatus | SRWF_Link);
+    }
+}
+
+VOID NTAPI RtlReleaseSRWLockShared(PRTL_SRWLOCK SRWLock)
+{
+    SRW_STATE CurrStatus, NewStatus;
+    ULONG count;
+    SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)(((1 << SRW_COUNT_BIT) | SRWF_Hold)));
+    if (OldStatus == ((1 << SRW_COUNT_BIT) | SRWF_Hold)) return;
+
+    while (!(OldStatus & SRWF_Wait))
+    {
+        if (OldStatus < (2 << SRW_COUNT_BIT)) NewStatus = 0; // MSVC doesn't optimize this... for some reason.
+        else NewStatus = OldStatus - (1 << SRW_COUNT_BIT);
+        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+        if (CurrStatus == OldStatus) return;
+        OldStatus = CurrStatus;
+    }
+
+    if (OldStatus & SRWF_Many)
+    {
+	    SRW_WAIT_NODE* curr = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+	    while (curr->head == NULL) curr = curr->prev;
+	    curr = curr->head;
+	    count = InterlockedDecrement((PLONG)&curr->shareSnapshot);
+        if (count > 0) return;
+    }
+
+    while (1)
+    {
+        NewStatus = OldStatus & (~(SRW_STATE)(SRWF_Many | SRWF_Hold));
+        if (OldStatus & SRWF_Link)
+        {
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+        }
+        else
+        {
+            NewStatus |= SRWF_Link;
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus)
+            {
+                RtlpSrwWake(SRWLock, NewStatus);
+                return;
+            }
+        }
+        OldStatus = CurrStatus;
+    }
+}
+
+BOOLEAN NTAPI RtlTryAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+{
+    return RtlpMarkSrwHeld(&SRWLock->Ptr) == 0;
+}
+
+BOOLEAN NTAPI RtlTryAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
+{
+    ULONG backoff = 0;
+    SRW_STATE NewStatus;
+    SRW_STATE CurrStatus;
+    SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)((1 << SRW_COUNT_BIT) | SRWF_Hold), NULL);
+    if (OldStatus == 0) return TRUE;
+    while (1)
+    {
+        if ((OldStatus & SRWF_Hold) && ((OldStatus & SRWF_Wait) || (OldStatus & SRWM_ITEM) == (SRW_STATE)NULL))
+            return FALSE;
+        if (OldStatus & SRWF_Wait) NewStatus = OldStatus | SRWF_Hold;
+        else NewStatus = OldStatus + (1 << SRW_COUNT_BIT);
+        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+        if (CurrStatus == OldStatus) return TRUE;
+        RtlpBackoffExp(&backoff);
+        OldStatus = (SRW_STATE)SRWLock->Ptr;
+    }
 }
