@@ -716,7 +716,9 @@ GetParentProcessPeb(
     HANDLE hParent;
     PROCESS_BASIC_INFORMATION pbi;
     ULONG retLen;
+#ifdef _M_AMD64	
     PVOID peb32Addr;
+#endif	
 
     if (!ParentProcessHandle || !ParentPeb)
         return FALSE;
@@ -742,13 +744,16 @@ GetParentProcessPeb(
     if (!NT_SUCCESS(status))
         return FALSE;
 
+#ifdef _M_AMD64
+
     /* 1) Tentar descobrir se é WOW64 */
     peb32Addr = NULL;
     status = NtQueryInformationProcess(
         hParent,
         ProcessWow64Information,
         &peb32Addr,
-        sizeof(peb32Addr),
+        sizeof(
+		),
         &retLen
     );
 
@@ -773,6 +778,7 @@ GetParentProcessPeb(
         }
     }
     else
+#endif		
     {
         /* Processo pai é nativo */
         status = NtQueryInformationProcess(
@@ -831,7 +837,7 @@ RtlGetVersionInternal(
     {
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMajor = (Peb->OSCSDVersion >> 8) & 0xFF;
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMinor = Peb->OSCSDVersion & 0xFF;
-        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(USER_SHARED_DATA->SuiteMask&0xffff);
+        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(SharedUserData->SuiteMask&0xffff);
         ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = 0;
         if (RtlGetNtProductType( &NtProductType )) {
             ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = (UCHAR)NtProductType;
@@ -853,12 +859,9 @@ RtlGetVersionHook(
 	PPEB Peb;
 	HANDLE parentHandle;
 	PEB ParentPeb;
-	NT_PRODUCT_TYPE NtProductType;
-	PWCHAR p;
 	WCHAR emuPath[MAX_PATH];
 	WCHAR msiPath[MAX_PATH];
 	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
-	BOOLEAN isOCACompatFound = FALSE;
 	WCHAR parentPath[MAX_PATH];
 	ULONG_PTR parentPid;
 	BOOLEAN IsWow64Parent = FALSE;
@@ -878,6 +881,7 @@ RtlGetVersionHook(
         {
             if (IsWow64Parent)
             {
+#ifdef _M_AMD64				
                 /* Interpretar ParentPeb como PEB32 */
                 PEB32 *Peb32 = (PEB32 *)(void *)&ParentPeb;
 
@@ -886,6 +890,7 @@ RtlGetVersionHook(
                 Peb->OSBuildNumber  = Peb32->OSBuildNumber;
 			    Peb->OSCSDVersion   = Peb32->OSCSDVersion;
                 Peb->OSPlatformId   = Peb32->OSPlatformId;
+#endif				
             }
             else
             {
@@ -1072,7 +1077,7 @@ RtlVerifyVersionInfoCompatHook(
     RtlZeroMemory( &CurrVersion, sizeof(OSVERSIONINFOEXW) );
     CurrVersion.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
-    Status = RtlGetVersionCompatHook((PRTL_OSVERSIONINFOW)&CurrVersion);
+    Status = RtlGetVersionHook((PRTL_OSVERSIONINFOW)&CurrVersion);
     if (Status != STATUS_SUCCESS)
                     return Status;
 
