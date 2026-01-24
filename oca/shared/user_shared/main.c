@@ -87,9 +87,10 @@ PVOID TryGetProcedure(char* procedureName){
 		if(procedureAddress){
 			//FreeLibrary(userbaseModule);
 			return procedureAddress;
-		}else{
-			DbgPrint("TryGetProcedure:: failed to get procedureAddress\n");
 		}
+		// else{
+			// //DbgPrint("TryGetProcedure:: failed to get procedureAddress\n");
+		// }
 	}else{
 		DbgPrint("TryGetProcedure:: failed to get userBaseHinst\n");
 	}

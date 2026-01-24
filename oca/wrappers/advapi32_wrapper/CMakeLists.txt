@@ -18,7 +18,7 @@ list(APPEND SOURCE
     forwards.c
     efs.c
     eventlog.c
-	hooks.c
+	#hooks.c
 	main.c
 	perf.c
 	process.c

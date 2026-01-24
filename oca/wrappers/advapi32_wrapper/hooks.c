@@ -271,18 +271,6 @@ GetNamedSecurityInfoWNative(
 
 LSTATUS 
 WINAPI 
-RegGetValueWNative(
-    HKEY hkey, 
-    LPCWSTR lpSubKey, 
-    LPCWSTR lpValue, 
-    DWORD dwFlags, 
-    LPDWORD pdwType, 
-    PVOID pvData, 
-    LPDWORD pcbData
-);
-
-LSTATUS 
-WINAPI 
 RegNotifyChangeKeyValueNative(
     HKEY   hKey,
 	BOOL   bWatchSubtree,
@@ -2004,8 +1992,16 @@ RegGetValueWInternal(
         // Call RegGetValueW from PythonWin7, which is confirmed to fix this exact sceneraio.
         return Py_RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
     }
-    // Otherwise, call RegGetValueW like normal.
-    return RegGetValueWNative(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+	
+	InitNativeProcs();
+	
+	//Check if original advapi32 has RegGetValueW, then, return original
+    if (pRegGetValueW){
+		return pRegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+	}
+	
+    // Otherwise, call RegGetValueW like normal.	
+    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
 
 LSTATUS 
@@ -2067,7 +2063,7 @@ IsHklmWindowsNT(HANDLE hKey)
 #define LOCAL_QUERY_BUFFER 256
 #define INFO_BASE offsetof(KEY_VALUE_PARTIAL_INFORMATION, Data)
 
-LONG WINAPI Hook_RegQueryValueExW(
+LSTATUS WINAPI Hook_RegQueryValueExW(
     HKEY hKey,
     LPCWSTR lpValueName,
     LPDWORD lpReserved,
@@ -2137,7 +2133,7 @@ LONG WINAPI Hook_RegQueryValueExW(
 }
 
 
-LONG WINAPI Hook_RegQueryValueExA(
+LSTATUS WINAPI Hook_RegQueryValueExA(
     HKEY hKey,
     LPCSTR lpValueName,
     LPDWORD lpReserved,
@@ -2204,7 +2200,7 @@ LONG WINAPI Hook_RegQueryValueExA(
     return ERROR_SUCCESS;
 }
 
-LONG WINAPI Hook_RegQueryValueW(
+LSTATUS WINAPI Hook_RegQueryValueW(
     HKEY hKey,
     LPCWSTR lpSubKey,
     LPWSTR lpData,
@@ -2253,7 +2249,7 @@ LONG WINAPI Hook_RegQueryValueW(
     return ERROR_SUCCESS;
 }
 
-LONG WINAPI Hook_RegQueryValueA(
+LSTATUS WINAPI Hook_RegQueryValueA(
     HKEY hKey,
     LPCSTR lpSubKey,
     LPSTR lpData,
