@@ -21,49 +21,27 @@ Revision History:
 #include "main.h"
 #include <ntstrsafe.h>
 
-
-//
-// Use bit 63 to indicate that the new style bit layout is followed.
-//
-#define NEW_STYLE_BIT_MASK              0x8000000000000000
-
-
-//
-// Condition extractor for the old style mask.
-//
-#define OLD_CONDITION(_m_,_t_)  (ULONG)((_m_&(0xff<<(1<<_t_)))>>(1<<_t_))
-
-//
-// Test to see  if the mask is an old style mask.
-//
-#define OLD_STYLE_CONDITION_MASK(_m_)  (((_m_) & NEW_STYLE_BIT_MASK)  == 0)
-
-#define RTL_GET_CONDITION(_m_, _t_) \
-        (OLD_STYLE_CONDITION_MASK(_m_) ? (OLD_CONDITION(_m_,_t_)) : \
-                RtlpVerGetConditionMask((_m_), (_t_)))
-
-#define LEXICAL_COMPARISON        1     /* Do string comparison. Used for minor numbers */
-#define MAX_STRING_LENGTH         20    /* Maximum number of digits for sprintf */
-
-ULONG
-RtlpVerGetConditionMask(
-        ULONGLONG       ConditionMask,
-        ULONG   TypeMask
-        );
-		
 #define MAX_PATH 260
 
 static WCHAR SECTION_COMMON_NAME[] = L"\\BaseNamedObjects\\SharedAppCompat";
 static WCHAR SECTION_MSI_NAME[] = L"\\BaseNamedObjects\\SharedAppCompatMsi";
 static WCHAR SECTION_EXE_TO_MSI_NAME[] = L"\\BaseNamedObjects\\SharedAppCompatExeMsi";
+static WCHAR SECTION_MSI_TYPE_NAME[] = L"\\BaseNamedObjects\\SharedAppCompatMsiType";
+
+typedef enum _MSI_INSTALLATION_TYPE{
+	MsiServerCalledFromMsi,
+	MsiServerCalledFromExe,	
+	MsiServerCalledFromMsiFromExe
+}MSI_INSTALLATION_TYPE;
 
 typedef struct _OCA_COMPATIBILITY_INFO{
 	ULONG MajorVersion;
 	ULONG MinorVersion;
 	ULONG BuildNumber;
     UCHAR CSDVersion;	
+    ULONG OSPlatformId;	
 	WCHAR emuPath[MAX_PATH];
-	WCHAR msiPath[MAX_PATH];	
+	ULONG MsiInstallationType;	
 }OCA_COMPATIBILITY_INFO, *POCA_COMPATIBILITY_INFO;
 
 void SanitizeFilenameForRegistry(const WCHAR* src, WCHAR* dst, size_t dstSize)
@@ -200,36 +178,43 @@ extract:
     return TRUE;
 }
 
+static PSECURITY_DESCRIPTOR g_Sd = NULL;
+
+static
 BOOLEAN
-BuildWorldSecurityDescriptor(
+GetWorldSecurityDescriptor(
     PSECURITY_DESCRIPTOR *OutSd
 )
 {
-    PSECURITY_DESCRIPTOR sd;
+    if (g_Sd)
+    {
+        *OutSd = g_Sd;
+        return TRUE;
+    }
 
-    sd = (PSECURITY_DESCRIPTOR)RtlAllocateHeap(
+    g_Sd = (PSECURITY_DESCRIPTOR)RtlAllocateHeap(
         RtlProcessHeap(),
         0,
         SECURITY_DESCRIPTOR_MIN_LENGTH
     );
 
-    if (!sd)
+    if (!g_Sd)
         return FALSE;
 
     if (!NT_SUCCESS(RtlCreateSecurityDescriptor(
-            sd,
+            g_Sd,
             SECURITY_DESCRIPTOR_REVISION)))
         return FALSE;
 
-    /* NULL DACL = total access */
+    /* NULL DACL = full access */
     if (!NT_SUCCESS(RtlSetDaclSecurityDescriptor(
-            sd,
+            g_Sd,
             TRUE,
             NULL,
             FALSE)))
         return FALSE;
 
-    *OutSd = sd;
+    *OutSd = g_Sd;
     return TRUE;
 }
 
@@ -245,7 +230,7 @@ StoreInSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo, const PWCHAR Storage
     NTSTATUS status;
 	PSECURITY_DESCRIPTOR sd = NULL;
 	
-	BuildWorldSecurityDescriptor(&sd);
+	GetWorldSecurityDescriptor(&sd);
 
     RtlInitUnicodeString(&sectionName, StorageType);
     InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, sd);
@@ -313,9 +298,12 @@ LoadFromSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo, const PWCHAR Storag
     HANDLE hSection = NULL;
     NTSTATUS status;
     OBJECT_ATTRIBUTES objAttr;
+	PSECURITY_DESCRIPTOR sd = NULL;
+	
+	GetWorldSecurityDescriptor(&sd);	
 
     RtlInitUnicodeString(&sectionName, StorageType);
-    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, NULL);
+    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, sd);
 	
 	status = NtOpenSection(
 		&hSection,
@@ -351,6 +339,136 @@ LoadFromSharedSection(POCA_COMPATIBILITY_INFO OcaCompatInfo, const PWCHAR Storag
 	}
 
 	memcpy(OcaCompatInfo, baseAddress, sizeof(OCA_COMPATIBILITY_INFO));
+		
+	NtUnmapViewOfSection((HANDLE)-1, baseAddress);
+
+	NtClose(hSection);		
+
+	return TRUE;
+}
+
+BOOLEAN
+StoreMsiInstallationTypeInSharedSection(ULONG MsiInstallationType, const PWCHAR StorageType)
+{
+    UNICODE_STRING sectionName;
+    PVOID baseAddress;
+    SIZE_T viewSize;
+    OBJECT_ATTRIBUTES objAttr;
+    HANDLE hSection = NULL;
+    LARGE_INTEGER maxSize;
+    NTSTATUS status;
+	PSECURITY_DESCRIPTOR sd = NULL;
+	ULONG msiType = MsiInstallationType;
+	
+	GetWorldSecurityDescriptor(&sd);
+
+    RtlInitUnicodeString(&sectionName, StorageType);
+    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, sd);
+
+    maxSize.QuadPart = sizeof(ULONG);
+
+    status = NtCreateSection(
+        &hSection,
+        SECTION_ALL_ACCESS,
+        &objAttr,
+        &maxSize,
+        PAGE_READWRITE,
+        SEC_COMMIT,
+        NULL
+    );
+	
+    if (status == STATUS_OBJECT_NAME_COLLISION)
+    {
+        status = NtOpenSection(
+            &hSection,
+            SECTION_MAP_READ | SECTION_MAP_WRITE,
+            &objAttr
+        );
+    }	
+
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[StoreInSharedSection] NtCreateSection failed: 0x%08X\n", status);
+        return FALSE;
+    }
+
+    baseAddress = NULL;
+    viewSize = (SIZE_T)maxSize.QuadPart;
+
+    status = NtMapViewOfSection(
+        hSection,
+        (HANDLE)-1,  // Current process
+        &baseAddress,
+        0,
+        0,
+        NULL,
+        &viewSize,
+        ViewShare,
+        0,
+        PAGE_READWRITE
+    );
+
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[StoreInSharedSection] NtMapViewOfSection failed: 0x%08X\n", status);
+        NtUnmapViewOfSection((HANDLE)-1, baseAddress);		
+        NtClose(hSection);
+        return FALSE;
+    }
+
+    memcpy(baseAddress, &msiType, sizeof(ULONG));
+
+    return TRUE;
+}
+
+BOOLEAN
+LoadMsiInstallationTypeFromSharedSection(PULONG MsiInstallationType, const PWCHAR StorageType)
+{
+    UNICODE_STRING sectionName;
+    PVOID baseAddress;
+    SIZE_T viewSize;
+    HANDLE hSection = NULL;
+    NTSTATUS status;
+    OBJECT_ATTRIBUTES objAttr;
+	PSECURITY_DESCRIPTOR sd = NULL;
+	
+	GetWorldSecurityDescriptor(&sd);	
+
+    RtlInitUnicodeString(&sectionName, StorageType);
+    InitializeObjectAttributes(&objAttr, &sectionName, OBJ_CASE_INSENSITIVE, NULL, sd);
+	
+	status = NtOpenSection(
+		&hSection,
+		SECTION_MAP_READ,
+		&objAttr
+	);
+
+	if (!NT_SUCCESS(status)) {
+		DbgPrint("[LoadFromSharedSection] Error NtOpenSection: 0x%08X\n", status);
+		return FALSE;
+	}
+
+	baseAddress = NULL;
+	viewSize = 0;
+
+	status = NtMapViewOfSection(
+		hSection,
+		(HANDLE)-1,
+		&baseAddress,
+		0,
+		0,
+		NULL,
+		&viewSize,
+		ViewShare,
+		0,
+		PAGE_READONLY
+	);
+
+	if (!NT_SUCCESS(status)) {
+		DbgPrint("[LoadFromSharedSection] Error NtMapViewOfSection: 0x%08X\n", status);
+		NtClose(hSection);
+		return FALSE;
+	}
+
+	memcpy(MsiInstallationType, baseAddress, sizeof(ULONG));
 		
 	NtUnmapViewOfSection((HANDLE)-1, baseAddress);
 
@@ -438,7 +556,7 @@ GetProcessFullPathByPid(
     RtlCopyMemory(Buffer, img->Buffer, img->Length);
     Buffer[img->Length / sizeof(WCHAR)] = L'\0';
 
-    DbgPrint("[OCA][PATH] ImagePath (NT): %ws\n", Buffer);
+    //DbgPrint("[OCA][PATH] Parent ImagePath (NT): %ws\n", Buffer);
 
     RtlFreeHeap(RtlProcessHeap(), 0, img);
     NtClose(hProcess);
@@ -455,7 +573,7 @@ ReadEmulatedVersion(
     WCHAR SanitizedPath[MAX_PATH];
     WCHAR FullKeyPath[MAX_PATH];
     WCHAR buffer[128];
-    UNICODE_STRING UnicodeKey;
+    UNICODE_STRING KeyName;
     UNICODE_STRING valueKeyName;
     OBJECT_ATTRIBUTES Obj;
     HANDLE Handle;
@@ -469,23 +587,30 @@ ReadEmulatedVersion(
     RtlZeroMemory(buffer, sizeof(buffer));
 
     KeyInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
+	
+	if(FilePath){
+		SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
 
-    SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
-
-    swprintf(
-        FullKeyPath,
-        L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings\\%s",
-        SanitizedPath
-    );
-
-    RtlInitUnicodeString(&UnicodeKey, FullKeyPath);
-    InitializeObjectAttributes(&Obj, &UnicodeKey, OBJ_CASE_INSENSITIVE, NULL, NULL);
+		swprintf(
+			FullKeyPath,
+			L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings\\%s",
+			SanitizedPath
+		);		
+		RtlInitUnicodeString(&KeyName, FullKeyPath);
+		RtlInitUnicodeString(&valueKeyName, L"CompatWindowsVersion");
+	}else{
+		RtlInitUnicodeString(
+			&KeyName,
+			L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings"
+		);	
+		RtlInitUnicodeString(&valueKeyName, L"GlobalVersion");
+	}
+    
+    InitializeObjectAttributes(&Obj, &KeyName, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
     status = NtOpenKey(&Handle, GENERIC_READ, &Obj);
     if (!NT_SUCCESS(status))
-        return FALSE;
-
-    RtlInitUnicodeString(&valueKeyName, L"CompatWindowsVersion");
+        return FALSE;   
 
     status = NtQueryValueKey(
         Handle,
@@ -525,91 +650,6 @@ ReadEmulatedVersion(
     return FALSE;
 }
 
-BOOLEAN
-ReadGlobalEmulationVersion(
-    PUNICODE_STRING EmulatedVersion
-)
-{
-    OBJECT_ATTRIBUTES Obj;
-    UNICODE_STRING KeyName;
-    UNICODE_STRING ValueName;
-    HANDLE KeyHandle = NULL;
-    NTSTATUS status;
-
-    WCHAR buffer[128];
-    PKEY_VALUE_PARTIAL_INFORMATION KeyInfo;
-    ULONG informationLength;
-
-    PWSTR heapBuf;
-    SIZE_T lenChars;
-    SIZE_T lenBytes;
-
-    RtlZeroMemory(EmulatedVersion, sizeof(*EmulatedVersion));
-    KeyInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
-    RtlZeroMemory(buffer, sizeof(buffer));
-
-    RtlInitUnicodeString(
-        &KeyName,
-        L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings"
-    );
-
-    InitializeObjectAttributes(
-        &Obj,
-        &KeyName,
-        OBJ_CASE_INSENSITIVE,
-        NULL,
-        NULL
-    );
-
-    status = NtOpenKey(&KeyHandle, GENERIC_READ, &Obj);
-    if (!NT_SUCCESS(status))
-        return FALSE;
-
-    RtlInitUnicodeString(&ValueName, L"GlobalVersion");
-
-    status = NtQueryValueKey(
-        KeyHandle,
-        &ValueName,
-        KeyValuePartialInformation,
-        KeyInfo,
-        sizeof(buffer),
-        &informationLength
-    );
-
-    if (!NT_SUCCESS(status) || KeyInfo->Type != REG_SZ)
-    {
-        NtClose(KeyHandle);
-        return FALSE;
-    }
-
-    lenChars = wcslen((PWSTR)KeyInfo->Data) + 1;
-    lenBytes = lenChars * sizeof(WCHAR);
-
-    heapBuf = (PWSTR)RtlAllocateHeap(
-        RtlProcessHeap(),
-        0,
-        lenBytes
-    );
-
-    if (!heapBuf)
-    {
-        NtClose(KeyHandle);
-        return FALSE;
-    }
-
-    RtlCopyMemory(heapBuf, KeyInfo->Data, lenBytes);
-
-    EmulatedVersion->Buffer = heapBuf;
-    EmulatedVersion->Length =
-        (USHORT)((lenChars - 1) * sizeof(WCHAR));
-    EmulatedVersion->MaximumLength =
-        (USHORT)lenBytes;
-
-    NtClose(KeyHandle);
-	
-    return TRUE;
-}
-
 BOOLEAN CheckIsUnsafeExe(LPWSTR ExePath){
 	if(wcsstr(ExePath, L"svchost") != NULL || 
 	   wcsstr(ExePath, L"explorer") != NULL || 
@@ -627,18 +667,12 @@ BOOLEAN CheckIsUnsafeExe(LPWSTR ExePath){
 	return FALSE;
 }
 
-BOOLEAN CheckIsMsiExec(LPWSTR ExePath){
-	if(wcsstr(ExePath, L"msiexec") != NULL) {
-		return TRUE;
-	}
-	return FALSE;
-}
+BOOLEAN CheckIsMsiOrServicesExec(LPWSTR path, BOOLEAN isMsi){
+    LPCWSTR name = wcsrchr(path, L'\\');
+    if (!name) name = path;
+    else name++;
 
-BOOLEAN CheckIsServices(LPWSTR ExePath){
-	if(wcsstr(ExePath, L"services") != NULL) {
-		return TRUE;
-	}
-	return FALSE;
+    return isMsi ? (_wcsicmp(name, L"msiexec.exe") == 0) : (_wcsicmp(name, L"services.exe") == 0);
 }
 
 void ParseEmulationVersionAndApplyOnPeb(UNICODE_STRING EmulatedVersion, PPEB Peb){
@@ -666,7 +700,12 @@ void ParseEmulationVersionAndApplyOnPeb(UNICODE_STRING EmulatedVersion, PPEB Peb
     Peb->OSPlatformId = GetNextPointValue( &p, &len );	
 }
 
-void CreateCompatVersionAndStore(PPEB Peb, PWCHAR emuPath, const PWCHAR storageType){
+void 
+CreateCompatVersionAndStore(
+	PPEB Peb, 
+	PWCHAR emuPath, 
+	const PWCHAR storageType
+){
 	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
 	
 	OcaCompatInfo.MajorVersion = Peb->OSMajorVersion;
@@ -675,7 +714,14 @@ void CreateCompatVersionAndStore(PPEB Peb, PWCHAR emuPath, const PWCHAR storageT
 						
 	wcscpy(OcaCompatInfo.emuPath, emuPath);				
 						
-	StoreInSharedSection(&OcaCompatInfo, storageType);		
+	StoreInSharedSection(&OcaCompatInfo, storageType);
+}
+
+VOID SaveMsiInstallationType(MSI_INSTALLATION_TYPE MsiInstallationType){
+	OCA_COMPATIBILITY_INFO MsiInstallTypeInfo = {0};
+
+	MsiInstallTypeInfo.MsiInstallationType = MsiInstallationType;
+	StoreInSharedSection(&MsiInstallTypeInfo, SECTION_MSI_TYPE_NAME);	
 }
 
 ULONG_PTR
@@ -716,9 +762,7 @@ GetParentProcessPeb(
     HANDLE hParent;
     PROCESS_BASIC_INFORMATION pbi;
     ULONG retLen;
-#ifdef _M_AMD64	
     PVOID peb32Addr;
-#endif	
 
     if (!ParentProcessHandle || !ParentPeb)
         return FALSE;
@@ -744,16 +788,13 @@ GetParentProcessPeb(
     if (!NT_SUCCESS(status))
         return FALSE;
 
-#ifdef _M_AMD64
-
     /* 1) Tentar descobrir se é WOW64 */
     peb32Addr = NULL;
     status = NtQueryInformationProcess(
         hParent,
         ProcessWow64Information,
         &peb32Addr,
-        sizeof(
-		),
+        sizeof(peb32Addr),
         &retLen
     );
 
@@ -778,7 +819,6 @@ GetParentProcessPeb(
         }
     }
     else
-#endif		
     {
         /* Processo pai é nativo */
         status = NtQueryInformationProcess(
@@ -837,11 +877,14 @@ RtlGetVersionInternal(
     {
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMajor = (Peb->OSCSDVersion >> 8) & 0xFF;
         ((POSVERSIONINFOEXW)lpVersionInformation)->wServicePackMinor = Peb->OSCSDVersion & 0xFF;
-        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(SharedUserData->SuiteMask&0xffff);
+        ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = (USHORT)(USER_SHARED_DATA->SuiteMask&0xffff);
         ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = 0;
         if (RtlGetNtProductType( &NtProductType )) {
             ((POSVERSIONINFOEXW)lpVersionInformation)->wProductType = (UCHAR)NtProductType;
             if (NtProductType == VER_NT_WORKSTATION) {
+               //
+               // For workstation product never return VER_SUITE_TERMINAL
+               //
                 ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask = ((POSVERSIONINFOEXW)lpVersionInformation)->wSuiteMask & 0xffef;
             }
 
@@ -851,37 +894,64 @@ RtlGetVersionInternal(
     return STATUS_SUCCESS;
 }
 
+VOID 
+SetPebVersionValuesByOcaCompatibilitySettings(
+	PPEB Peb, 
+	OCA_COMPATIBILITY_INFO OcaCompatInfo
+)
+{
+	Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+	Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+	Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+	Peb->OSCSDVersion  = (USHORT)OcaCompatInfo.CSDVersion;
+	Peb->OSPlatformId  = OcaCompatInfo.OSPlatformId;
+}
+
 NTSTATUS
-RtlGetVersionHook(
+RtlGetVersion(
     OUT  PRTL_OSVERSIONINFOW lpVersionInformation
     )
 {
 	PPEB Peb;
 	HANDLE parentHandle;
 	PEB ParentPeb;
+	NT_PRODUCT_TYPE NtProductType;
+	PWCHAR p;
 	WCHAR emuPath[MAX_PATH];
 	WCHAR msiPath[MAX_PATH];
-	OCA_COMPATIBILITY_INFO OcaCompatInfo = {0};
+	OCA_COMPATIBILITY_INFO OcaCompatInfo;
+	BOOLEAN isOCACompatFound = FALSE;
 	WCHAR parentPath[MAX_PATH];
 	ULONG_PTR parentPid;
 	BOOLEAN IsWow64Parent = FALSE;
+	static volatile LONG g_RtlGetVersionInitialized = 0;
 		
 	Peb = NtCurrentPeb();
-
+	
+	if (g_RtlGetVersionInitialized > 0)
+	{
+		return RtlGetVersionInternal(lpVersionInformation);
+	}	
+	
+	memset(&OcaCompatInfo, 0, sizeof(OCA_COMPATIBILITY_INFO));
+		
 	//Copy the current image path to emulation path on start
-	wcscpy(emuPath, Peb->ProcessParameters->ImagePathName.Buffer);
+	memcpy(emuPath,
+       Peb->ProcessParameters->ImagePathName.Buffer,
+       MAX_PATH * sizeof(WCHAR));		
 
 	//Check if is the executable name is in whitlist
 	if (!CheckIsUnsafeExe(emuPath))
-	{
-		UNICODE_STRING EmulatedVersion;
+	{		
+		UNICODE_STRING EmulatedVersionGlobal;		
+			
+		RtlZeroMemory(&EmulatedVersionGlobal, sizeof(EmulatedVersionGlobal));
 		RtlZeroMemory(&ParentPeb, sizeof(PEB));		
 		
         if (GetParentProcessPeb(&parentHandle, &ParentPeb, &IsWow64Parent))
         {
             if (IsWow64Parent)
             {
-#ifdef _M_AMD64				
                 /* Interpretar ParentPeb como PEB32 */
                 PEB32 *Peb32 = (PEB32 *)(void *)&ParentPeb;
 
@@ -890,7 +960,6 @@ RtlGetVersionHook(
                 Peb->OSBuildNumber  = Peb32->OSBuildNumber;
 			    Peb->OSCSDVersion   = Peb32->OSCSDVersion;
                 Peb->OSPlatformId   = Peb32->OSPlatformId;
-#endif				
             }
             else
             {
@@ -903,110 +972,136 @@ RtlGetVersionHook(
             }
         }
 		//Check if the global emulation version key is filled
-		if(ReadGlobalEmulationVersion(&EmulatedVersion)){
-			ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
-			RtlFreeUnicodeString(&EmulatedVersion);	
+		if(ReadEmulatedVersion(&EmulatedVersionGlobal, NULL)){
+			ParseEmulationVersionAndApplyOnPeb(EmulatedVersionGlobal, Peb);
+			RtlFreeUnicodeString(&EmulatedVersionGlobal);	
 			return RtlGetVersionInternal(lpVersionInformation);			
 		}
-		// Check if is msiexec.exe
-		if (CheckIsMsiExec(emuPath))
+
+		if (!CheckIsMsiOrServicesExec(emuPath, TRUE))
 		{		
-			UNICODE_STRING EmulatedVersionMsi = {0};
+			UNICODE_STRING EmulatedVersion;
+			
+			RtlZeroMemory(&EmulatedVersion, sizeof(EmulatedVersion));
+
+			if (ReadEmulatedVersion(&EmulatedVersion, emuPath))
+			{		 
+				ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);			
+				RtlFreeUnicodeString(&EmulatedVersion);	
+				CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+				StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);			
+				goto Exit;
+			}
+			else{
+				parentPid = GetParentProcessId();
+				
+				if(GetProcessFullPathByPid((HANDLE)(ULONG_PTR)parentPid, parentPath, MAX_PATH)){
+					if (ReadEmulatedVersion(&EmulatedVersion, parentPath))
+					{		 
+							ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+							StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);
+							RtlFreeUnicodeString(&EmulatedVersion);				
+							return RtlGetVersionInternal(lpVersionInformation);	
+					}					
+					else if (CheckIsMsiOrServicesExec(parentPath, TRUE)){
+						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+							StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);							
+							return RtlGetVersionInternal(lpVersionInformation);					
+						}						
+					} else if(CheckIsMsiOrServicesExec(parentPath, FALSE)){
+						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+							StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);
+							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);							
+							return RtlGetVersionInternal(lpVersionInformation);					
+						}
+						//Workaround to get chrome for Windows 7 working and not affecting anothers executables child of services.exe
+						if(wcsstr(Peb->ProcessParameters->CommandLine.Buffer, L"/svc") != NULL){
+							if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
+								Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+								Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+								Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+								StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);
+								return RtlGetVersionInternal(lpVersionInformation);					
+							}								
+						}						
+					}
+				}				
+			}
+			
+			CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
+			StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromExe, SECTION_MSI_TYPE_NAME);	
+			g_RtlGetVersionInitialized++;
+			return RtlGetVersionInternal(lpVersionInformation);				
+		}else{
+			
 			if (GetMsiPathFromCommandLine(Peb->ProcessParameters->CommandLine.Buffer,
 										  msiPath,
 										  260))
 			{
+				UNICODE_STRING EmulatedVersionMsi;	
+
+				memset(&EmulatedVersionMsi, 0, sizeof(UNICODE_STRING));
+				
 				wcscpy(emuPath, msiPath);				
 				if (ReadEmulatedVersion(&EmulatedVersionMsi, emuPath)){
 					ParseEmulationVersionAndApplyOnPeb(EmulatedVersionMsi, Peb);
 					CreateCompatVersionAndStore(Peb, emuPath, SECTION_MSI_NAME);
+					StoreMsiInstallationTypeInSharedSection(MsiServerCalledFromMsi, SECTION_MSI_TYPE_NAME);
 					RtlFreeUnicodeString(&EmulatedVersionMsi);	
 					return RtlGetVersionInternal(lpVersionInformation);	
-				}else{
-					if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
-						Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-						Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-						Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-						CreateCompatVersionAndStore(Peb, emuPath, SECTION_EXE_TO_MSI_NAME);
-						return RtlGetVersionInternal(lpVersionInformation);						
-					}						
 				}
-				//DbgPrint("[EMU] MSI path extracted: %ws\n", msiPath);
-			}				
-			else
-			{	
-				if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
-					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-					return RtlGetVersionInternal(lpVersionInformation);			
-				}					
-				if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
-					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-					return RtlGetVersionInternal(lpVersionInformation);		
-				} 
-				else if(LoadFromSharedSection(&OcaCompatInfo, SECTION_EXE_TO_MSI_NAME)){
-					Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-					Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-					Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-					return RtlGetVersionInternal(lpVersionInformation);		
-				}	
-				return RtlGetVersionInternal(lpVersionInformation);	
-			}				
-		}else{
-			if (ReadEmulatedVersion(&EmulatedVersion, emuPath))
-			{		 
-				ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
-				CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
-				RtlFreeUnicodeString(&EmulatedVersion);	
-			} else {
-				parentPid = GetParentProcessId();
-				
-				if(GetProcessFullPathByPid((HANDLE)(ULONG_PTR)parentPid, parentPath, MAX_PATH)){
-					if (CheckIsMsiExec(parentPath)){
-						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
-							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
-							return RtlGetVersionInternal(lpVersionInformation);					
-						}						
-					} else if(CheckIsServices(parentPath)){
-						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
-							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
-							return RtlGetVersionInternal(lpVersionInformation);					
-						}
-						if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
-							Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
-							Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
-							Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
-							return RtlGetVersionInternal(lpVersionInformation);					
-						}							
-					}else{
-						if (ReadEmulatedVersion(&EmulatedVersion, parentPath))
-						{		 
-							ParseEmulationVersionAndApplyOnPeb(EmulatedVersion, Peb);
-							CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
-							RtlFreeUnicodeString(&EmulatedVersion);				
-							return RtlGetVersionInternal(lpVersionInformation);	
-						}
+			}else{	
+			   	ULONG MsiType; 
+				if(LoadMsiInstallationTypeFromSharedSection(&MsiType, SECTION_MSI_TYPE_NAME)){
+					DbgPrint("MsiInstallationType salvo: %d\n", MsiType);
+					
+					switch(MsiType){
+						case MsiServerCalledFromMsi:
+							if(LoadFromSharedSection(&OcaCompatInfo, SECTION_MSI_NAME)){
+								Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+								Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+								Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+								return RtlGetVersionInternal(lpVersionInformation);		
+							}
+                            break;
+						case MsiServerCalledFromMsiFromExe:
+							if(LoadFromSharedSection(&OcaCompatInfo, SECTION_EXE_TO_MSI_NAME)){
+								Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+								Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+								Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+								return RtlGetVersionInternal(lpVersionInformation);		
+							}
+							break;
+						case MsiServerCalledFromExe:
+							if(LoadFromSharedSection(&OcaCompatInfo, SECTION_COMMON_NAME)){
+								Peb->OSMajorVersion = OcaCompatInfo.MajorVersion;
+								Peb->OSMinorVersion = OcaCompatInfo.MinorVersion;
+								Peb->OSBuildNumber  = (USHORT)OcaCompatInfo.BuildNumber;
+								return RtlGetVersionInternal(lpVersionInformation);			
+							}
+							break;
+						default:
+						    break;
 					}
 				}
-			
 			}
-			
-			CreateCompatVersionAndStore(Peb, emuPath, SECTION_COMMON_NAME);
-			return RtlGetVersionInternal(lpVersionInformation);			
 		}
 	}
-	
+
+Exit:
+	g_RtlGetVersionInitialized++;
 	return RtlGetVersionInternal(lpVersionInformation);	
 }
+#endif
+
 
 BOOLEAN
 RtlpVerCompare(
@@ -1055,12 +1150,33 @@ RtlpVerCompare(
 
 
 NTSTATUS
-NTAPI
-RtlVerifyVersionInfoCompatHook(
+RtlVerifyVersionInfo(
     IN PRTL_OSVERSIONINFOEXW VersionInfo,
     IN ULONG TypeMask,
     IN ULONGLONG  ConditionMask
     )
+
+/*+++
+    This function verifies a version condition.  Basically, this
+    function lets an app query the system to see if the app is
+    running on a specific version combination.
+
+
+Arguments:
+
+    VersionInfo     - a version structure containing the comparison data
+    TypeMask        - a mask comtaining the data types to look at
+    ConditionMask   - a mask containing conditionals for doing the comparisons
+
+
+Return Value:
+
+    STATUS_INVALID_PARAMETER if the parameters are not valid.
+    STATUS_REVISION_MISMATCH if the versions don't match.
+    STATUS_SUCCESS if the versions match.
+
+--*/
+
 {
     ULONG i;
     OSVERSIONINFOEXW CurrVersion;
@@ -1077,7 +1193,7 @@ RtlVerifyVersionInfoCompatHook(
     RtlZeroMemory( &CurrVersion, sizeof(OSVERSIONINFOEXW) );
     CurrVersion.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
-    Status = RtlGetVersionHook((PRTL_OSVERSIONINFOW)&CurrVersion);
+    Status = RtlGetVersion((PRTL_OSVERSIONINFOW)&CurrVersion);
     if (Status != STATUS_SUCCESS)
                     return Status;
 
