@@ -25,6 +25,10 @@ static BOOL (WINAPI *pGetNumaNodeProcessorMask)(UCHAR, PULONGLONG);
 
 BOOL
 WINAPI
+GetNumaHighestNodeNumber(OUT PULONG HighestNodeNumber);
+
+BOOL
+WINAPI
 GetNumaNodeProcessorMask(
     UCHAR Node,
     PULONGLONG ProcessorMask
@@ -99,17 +103,41 @@ BOOL WINAPI GetNumaProcessorNodeEx(PPROCESSOR_NUMBER Processor, PUSHORT NodeNumb
 /***********************************************************************
  *           GetNumaProximityNode (KERNEL32.@)
  */
-BOOL WINAPI GetNumaProximityNode(ULONG  proximity_id, PUCHAR node_number)
+BOOL WINAPI GetNumaProximityNode(ULONG proximity_id, PUCHAR node_number)
 {
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
+    // A proximity domain identifier is an index to a NUMA node on a NUMA system. This is queried by ACPI, which
+    // we will mess with later. In order to avoid applications from straightup failing, we have to stub proximity 
+    // domain identifiers such that proximity_cluster[proximity_id] == node_number.
+    ULONG highest_node_number;
+    
+    if (!node_number) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    } else if (!GetNumaHighestNodeNumber(&highest_node_number))
+        return FALSE;
+    
+    *node_number = (proximity_id > highest_node_number) ? 0xFF : proximity_id;
+    return TRUE;
 }
 
 /***********************************************************************
  *           GetNumaProximityNodeEx (KERNEL32.@)
  */
-BOOL WINAPI GetNumaProximityNodeEx(ULONG  proximity_id, PUSHORT node_number)
+BOOL WINAPI GetNumaProximityNodeEx(ULONG proximity_id, PUSHORT node_number)
 {
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+    UCHAR node;
+    
+    if (!node_number) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    } else if (!GetNumaProximityNode(proximity_id, &node))
+        return FALSE;
+    *node_number = node;
+    return TRUE;
+}
+
+BOOL WINAPI GetNumaNodeNumberFromHandle(HANDLE FileInformation, PUSHORT NodeNumber) {
+    // Pre Win-7, NUMA nodes can't be extracted from file handles.
+    SetLastError(0);
     return FALSE;
 }

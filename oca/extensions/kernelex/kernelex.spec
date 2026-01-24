@@ -1307,6 +1307,7 @@
 @ stdcall GetNumaAvailableMemoryNodeEx(long ptr)
 @ stdcall GetNumaNodeProcessorMaskEx(long ptr)
 @ stdcall GetNumaProcessorNodeEx(ptr ptr)
+@ stdcall GetNumaNodeNumberFromHandle(long ptr)
 @ stdcall GetNumaProximityNodeEx(long ptr)
 @ stdcall GetProcessGroupAffinity(long ptr ptr)
 @ stdcall GetProcessPreferredUILanguages(long ptr wstr ptr)

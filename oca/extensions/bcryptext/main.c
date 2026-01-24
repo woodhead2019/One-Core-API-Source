@@ -369,6 +369,95 @@ BCryptDeriveKeyCapi(
     return _Status;
 }
 
+NTSTATUS WINAPI BCryptKeyDerivation(
+	BCRYPT_KEY_HANDLE handle,
+	BCryptBufferDesc *params,
+	PUCHAR derived_key,
+	ULONG derived_size,
+	PULONG result_length,
+	ULONG flags) 
+{
+	return STATUS_NOT_IMPLEMENTED;
+/*
+	NTSTATUS Status;
+	LPWSTR AlgorithmName;
+	BCRYPT_ALG_HANDLE NewAlgorithm;
+	DWORD TempSize;
+	ULONGLONG IterCount = 10000;
+	PVOID Salt;
+	DWORD SaltSize;
+	
+	if (!handle || !params || !result_length)
+		return STATUS_INVALID_PARAMETER;
+	
+	Status = BCryptGetProperty(handle, BCRYPT_ALGORITHM_NAME, NULL, 0, &TempSize, 0);
+	if (!NT_SUCCESS(Status))
+		return Status;
+	
+	AlgorithmName = (LPWSTR)malloc(TempSize);
+	if (!AlgorithmName)
+		return STATUS_OUT_OF_MEMORY;
+	
+	Status = BCryptGetProperty(handle, BCRYPT_ALGORITHM_NAME, AlgorithmName, TempSize, &TempSize, 0);
+	if (!NT_SUCCESS(Status)) {
+		free(AlgorithmName);
+		return Status;
+	}
+	
+	if (wcscmp(AlgorithmName, BCRYPT_PBKDF2_ALGORITHM) != 0) {
+		ERR("BCryptKeyDerivation error: unimplemented algorithm %ws\n", AlgorithmName);
+		free(AlgorithmName);
+		return STATUS_NOT_IMPLEMENTED;
+	}
+	free(AlgorithmName);
+	
+	if (params->ulVersion != BCRYPTBUFFER_VERSION)
+		return STATUS_INVALID_PARAMETER;
+	
+	for (int i = 0; i < params->cBuffers, i++) {
+		PBCryptBuffer Buffer = &params->pBuffers[Index];
+		switch (Buffer->BufferType) {
+			case KDF_HASH_ALGORITHM:
+				AlgorithmName = (LPWSTR)Buffer->pvBuffer;
+				break;
+			case KDF_SALT:
+				Salt = Buffer->pvBuffer;
+				SaltSize = Buffer->cbBuffer;
+				break;
+			case KDF_ITERATION_COUNT:
+				IterCount = *((ULONGLONG*)Buffer->pvBuffer);
+				break;
+			default:
+				ERR("BCryptKeyDerivation error: unimplemented property %i\n", Buffer->BufferType);
+				break;
+		}
+	}
+	
+	Status = BCryptOpenAlgorithmProvider(
+		&NewAlgorithm,
+		AlgorithmType,
+		NULL,
+		BCRYPT_ALG_HANDLE_HMAC_FLAG);
+	
+	if (!NT_SUCCESS(Status))
+		return Status;
+	
+	// ??? how do we derive key without getting the raw secret?
+	Status = BCryptDeriveKeyPBKDF2(
+		NewAlgorithm,
+		Key->Data.Symmetric.Secret,
+		Key->Data.Symmetric.SecretLength,
+		Salt,
+		SaltSize,
+		IterCount,
+		derived_key,
+		derived_size,
+		0);
+	BCryptCloseAlgorithmProvider(&NewAlgorithm);
+	return Status;
+*/
+}
+
 // NTSTATUS 
 // WINAPI 
 // BCryptGenerateSymmetricKeyInternal( 
