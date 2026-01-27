@@ -86,5 +86,9 @@ BOOL WINAPI PhysicalToLogicalPointForPerMonitorDPI(
 	// lpPoint->y = 0;
 	// return TRUE;
     // Since Windows 8.1, this function does nothing
-    return TRUE;	
+    return PhysicalToLogicalPoint(hWnd, lpPoint);	
+}
+
+BOOL WINAPI LogicalToPhysicalPointForPerMonitorDPI(HWND hWnd, LPPOINT lpPoint) {
+    return LogicalToPhysicalPoint(hWnd, lpPoint);
 }
