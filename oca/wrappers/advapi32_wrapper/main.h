@@ -20,6 +20,7 @@
 #include <aclapi.h>
 #include <winefs.h>
 #include <wct.h>
+#include "sddl.h"
 
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
@@ -30,6 +31,8 @@
 #include <wine/heap.h>
 
 #define REG_SECURE_CONNECTION  1
+
+#define REG_NOTIFY_THREAD_AGNOSTIC   0x10000000
 
 #define SECURITY_APP_PACKAGE_AUTHORITY {0,0,0,0,0,15}
 #define SECURITY_APP_PACKAGE_BASE_RID           __MSABI_LONG(0x000000002)
@@ -267,4 +270,21 @@ DWORD SetUserFileEncryptionKey(
   PENCRYPTION_CERTIFICATE pEncryptionCertificate
 );
 
-static NTSTATUS MapDefaultKey (PHANDLE ParentKey, HKEY Key);
+LSTATUS Py_RegGetValueW(HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
+    DWORD dwFlags, LPDWORD pdwType, PVOID pvData,
+    LPDWORD pcbData);
+	
+BOOL WINAPI CreateWellKnownSidImpl( WELL_KNOWN_SID_TYPE type, PSID domain, PSID sid, DWORD *size );	
+
+BOOL 
+WINAPI
+DECLSPEC_HOTPATCH 
+ConvertStringSecurityDescriptorToSecurityDescriptorWImpl(
+        const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size );
+		
+BOOL 
+WINAPI 
+DECLSPEC_HOTPATCH 
+ConvertStringSidToSidWImpl( const WCHAR *string, PSID *sid );	
+
+BOOL WINAPI IsWellKnownSidImpl( PSID sid, WELL_KNOWN_SID_TYPE type );	

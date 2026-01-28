@@ -57,7 +57,7 @@ typedef LONG (WINAPI *REG_CONNECT_REGISTRY_EX_W)(
 	PHKEY);
 
 typedef LONG (WINAPI *REG_DISABLE_PREDEFINED_CACHE_EX)(
-    VOID);
+    VOID);		
 
 static const UNICODE_STRING HKLM_ClassesPath = RTL_CONSTANT_STRING(L"\\Registry\\Machine\\Software\\Classes");
 
@@ -93,62 +93,6 @@ static NTSTATUS OpenClassesRootKey(PHANDLE KeyHandle);
 static NTSTATUS OpenLocalMachineKey (PHANDLE KeyHandle);
 static NTSTATUS OpenUsersKey (PHANDLE KeyHandle);
 static NTSTATUS OpenCurrentConfigKey(PHANDLE KeyHandle);
-
-/* check if value type needs string conversion (Ansi<->Unicode) */
-static FORCEINLINE BOOL is_string( DWORD type )
-{
-    return (type == REG_SZ) || (type == REG_EXPAND_SZ) || (type == REG_MULTI_SZ);
-}
-
-/******************************************************************************
- * apply_restrictions   [internal]
- *
- * Helper function for RegGetValueA/W.
- */
-static void apply_restrictions( DWORD dwFlags, DWORD dwType, DWORD cbData, PLONG ret )
-{
-    /* Check if the type is restricted by the passed flags */
-    if (*ret == ERROR_SUCCESS || *ret == ERROR_MORE_DATA)
-    {
-        DWORD dwMask = 0;
-
-        switch (dwType)
-        {
-        case REG_NONE: dwMask = RRF_RT_REG_NONE; break;
-        case REG_SZ: dwMask = RRF_RT_REG_SZ; break;
-        case REG_EXPAND_SZ: dwMask = RRF_RT_REG_EXPAND_SZ; break;
-        case REG_MULTI_SZ: dwMask = RRF_RT_REG_MULTI_SZ; break;
-        case REG_BINARY: dwMask = RRF_RT_REG_BINARY; break;
-        case REG_DWORD: dwMask = RRF_RT_REG_DWORD; break;
-        case REG_QWORD: dwMask = RRF_RT_REG_QWORD; break;
-        }
-
-        if (dwFlags & dwMask)
-        {
-            /* Type is not restricted, check for size mismatch */
-            if (dwType == REG_BINARY)
-            {
-                DWORD cbExpect = 0;
-
-                if ((dwFlags & RRF_RT_ANY) == RRF_RT_DWORD)
-                    cbExpect = 4;
-                else if ((dwFlags & RRF_RT_ANY) == RRF_RT_QWORD)
-                    cbExpect = 8;
-
-                if (cbExpect && cbData != cbExpect)
-                    *ret = ERROR_DATATYPE_MISMATCH;
-            }
-        }
-        else *ret = ERROR_UNSUPPORTED_TYPE;
-    }
-}
-
-FORCEINLINE
-void
-MakeHKCRKey(_Inout_ HKEY* hKey)
-{
-    *hKey = (HKEY)((ULONG_PTR)(*hKey) | 0x2);
-}
 
 /************************************************************************
  *  RegInitDefaultHandles
@@ -1298,27 +1242,10 @@ cleanup:
  * RegRenameKey [ADVAPI32.@]
  *
  */
-// If the NtRenameKey syscall isn't avaliable, this won't work.
-LSTATUS WINAPI RegRenameKey( HKEY hkey, LPCWSTR subkey_name, LPCWSTR new_name )
+LSTATUS WINAPI RegRenameKey( HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpNewName )
 {
-    UNICODE_STRING str;
-    LSTATUS ret;
-    HKEY subkey;
-
-    TRACE("%p, %s, %s.\n", hkey, debugstr_w(subkey_name), debugstr_w(new_name));
-
-    RtlInitUnicodeString(&str, new_name);
-
-    if (!subkey_name)
-        return RtlNtStatusToDosError( NtRenameKey( hkey, &str ));
-
-    if ((ret = RegOpenKeyExW( hkey, subkey_name, 0, KEY_WRITE, &subkey )))
-        return ret;
-
-    ret = RtlNtStatusToDosError( NtRenameKey( subkey, &str ));
-    RegCloseKey( subkey );
-
-    return ret;
+    FIXME("(%p,%s,%s): stub\n", hkey, debugstr_w(lpSubKey), debugstr_w(lpNewName));
+    return ERROR_CALL_NOT_IMPLEMENTED;
 }
 
 /******************************************************************************
@@ -1332,7 +1259,8 @@ LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD 
     if (!file || reserved)
         return ERROR_INVALID_PARAMETER;
 
-    return RegOpenKeyExA(HKEY_CURRENT_USER, "", KEY_ALL_ACCESS, 0, result);
+    *result = (HKEY)0xdeadbeef;
+    return ERROR_SUCCESS;
 }
 
 /******************************************************************************
@@ -1346,7 +1274,8 @@ LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD
     if (!file || reserved)
         return ERROR_INVALID_PARAMETER;
 
-    return RegOpenKeyExW(HKEY_CURRENT_USER, L"", KEY_ALL_ACCESS, 0, result);
+    *result = (HKEY)0xdeadbeef;
+    return ERROR_SUCCESS;
 }
 
 LSTATUS 
@@ -1852,33 +1781,27 @@ RegConnectRegistryExA(
 LONG 
 WINAPI 
 RegConnectRegistryExW(
-    LPCWSTR lpMachineName,
-    HKEY hKey,
-    ULONG Flags,
-    PHKEY phkResult
+	LPCWSTR lpMachineName,
+	HKEY hKey,
+	ULONG Flags,
+	PHKEY phkResult
 )
 {
-    REG_CONNECT_REGISTRY_EX_W regConnectRegistryExW;
+	REG_CONNECT_REGISTRY_EX_W regConnectRegistryExW;
     regConnectRegistryExW = (REG_CONNECT_REGISTRY_EX_W) GetProcAddress(
-                            GetModuleHandle(TEXT("advapi32.dll")),
-                            "RegConnectRegistryExW");    
-    if (regConnectRegistryExW) {
-        return regConnectRegistryExW(lpMachineName,
-                                     hKey,
-                                     Flags,
-                                     phkResult);
-    }
-    // Fallback implementation.
-    
-    if (Flags & ~REG_SECURE_CONNECTION)
-        return ERROR_INVALID_PARAMETER;
-    
-    // REG_SECURE_CONNECTION indicates the caller wants to establish a secure connection, so this is easily ignorable.
-    if (Flags & REG_SECURE_CONNECTION)
-        FIXME("RegConnectRegisterExW: REG_SECURE_CONNECTION flag called.\n");
-
-    return RegConnectRegistryW(lpMachineName, hKey, phkResult);
+                            GetModuleHandle(TEXT("advapibase.dll")),
+                            "RegConnectRegistryExW");	
+	if(regConnectRegistryExW == NULL){
+		FIXME("RegConnectRegistryExW UNIMPLEMENTED!\n");
+		return ERROR_CALL_NOT_IMPLEMENTED;
+	}else{
+		return regConnectRegistryExW(lpMachineName,
+									 hKey,
+									 Flags,
+									 phkResult);
+	} 	
 }
+
 
 /******************************************************************************
  * RegpApplyRestrictions   [internal]
@@ -1956,241 +1879,16 @@ RegpApplyRestrictions(DWORD dwFlags,
  *    An exception is the case where RRF_RT_ANY is specified, because then
  *    RRF_NOEXPAND is allowed.
  */
-// LSTATUS WINAPI
-// RegGetValueW(HKEY hKey,
-             // LPCWSTR pszSubKey,
-             // LPCWSTR pszValue,
-             // DWORD dwFlags,
-             // LPDWORD pdwType,
-             // PVOID pvData,
-             // LPDWORD pcbData)
-// {
-    // DWORD dwType, cbData = pcbData ? *pcbData : 0;
-    // PVOID pvBuf = NULL;
-    // LONG ret;
-
-    // TRACE("(%p,%s,%s,%ld,%p,%p,%p=%ld)\n",
-          // hKey, debugstr_w(pszSubKey), debugstr_w(pszValue), dwFlags, pdwType,
-          // pvData, pcbData, cbData);
-
-    // if (pvData && !pcbData)
-        // return ERROR_INVALID_PARAMETER;
-    // if ((dwFlags & RRF_RT_REG_EXPAND_SZ) && !(dwFlags & RRF_NOEXPAND) &&
-            // ((dwFlags & RRF_RT_ANY) != RRF_RT_ANY))
-        // return ERROR_INVALID_PARAMETER;
-
-    // if (pszSubKey && pszSubKey[0])
-    // {
-        // ret = RegOpenKeyExW(hKey, pszSubKey, 0, KEY_QUERY_VALUE, &hKey);
-        // if (ret != ERROR_SUCCESS) return ret;
-    // }
-
-    // ret = RegQueryValueExW(hKey, pszValue, NULL, &dwType, pvData, &cbData);
-
-    // If we are going to expand we need to read in the whole the value even
-     // * if the passed buffer was too small as the expanded string might be
-     // * smaller than the unexpanded one and could fit into cbData bytes.
-    // if ((ret == ERROR_SUCCESS || ret == ERROR_MORE_DATA) &&
-        // dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND))
-    // {
-        // do
-        // {
-            // HeapFree(GetProcessHeap(), 0, pvBuf);
-
-            // pvBuf = HeapAlloc(GetProcessHeap(), 0, cbData);
-            // if (!pvBuf)
-            // {
-                // ret = ERROR_NOT_ENOUGH_MEMORY;
-                // break;
-            // }
-
-            // if (ret == ERROR_MORE_DATA || !pvData)
-                // ret = RegQueryValueExW(hKey, pszValue, NULL,
-                                       // &dwType, pvBuf, &cbData);
-            // else
-            // {
-                // Even if cbData was large enough we have to copy the
-                 // * string since ExpandEnvironmentStrings can't handle
-                 // * overlapping buffers.
-                // CopyMemory(pvBuf, pvData, cbData);
-            // }
-
-            // Both the type or the value itself could have been modified in
-             // * between so we have to keep retrying until the buffer is large
-             // * enough or we no longer have to expand the value.
-        // }
-        // while (dwType == REG_EXPAND_SZ && ret == ERROR_MORE_DATA);
-
-        // if (ret == ERROR_SUCCESS)
-        // {
-            // Recheck dwType in case it changed since the first call
-            // if (dwType == REG_EXPAND_SZ)
-            // {
-                // cbData = ExpandEnvironmentStringsW(pvBuf, pvData,
-                                                   // pcbData ? *pcbData : 0) * sizeof(WCHAR);
-                // dwType = REG_SZ;
-                // if (pvData && pcbData && cbData > *pcbData)
-                    // ret = ERROR_MORE_DATA;
-            // }
-            // else if (pvData)
-                // CopyMemory(pvData, pvBuf, *pcbData);
-        // }
-
-        // HeapFree(GetProcessHeap(), 0, pvBuf);
-    // }
-
-    // if (pszSubKey && pszSubKey[0])
-        // RegCloseKey(hKey);
-
-    // RegpApplyRestrictions(dwFlags, dwType, cbData, &ret);
-
-    // if (pvData && ret != ERROR_SUCCESS && (dwFlags & RRF_ZEROONFAILURE))
-        // ZeroMemory(pvData, *pcbData);
-
-    // if (pdwType)
-        // *pdwType = dwType;
-
-    // if (pcbData)
-        // *pcbData = cbData;
-
-    // return ret;
-// }
-
-
-// /******************************************************************************
- // * RegGetValueA   [ADVAPI32.@]
- // *
- // * See RegGetValueW.
- // */
-// LSTATUS WINAPI
-// RegGetValueA(HKEY hKey,
-             // LPCSTR pszSubKey,
-             // LPCSTR pszValue,
-             // DWORD dwFlags,
-             // LPDWORD pdwType,
-             // PVOID pvData,
-             // LPDWORD pcbData)
-// {
-    // DWORD dwType, cbData = pcbData ? *pcbData : 0;
-    // PVOID pvBuf = NULL;
-    // LONG ret;
-
-    // TRACE("(%p,%s,%s,%ld,%p,%p,%p=%ld)\n",
-          // hKey, pszSubKey, pszValue, dwFlags, pdwType, pvData, pcbData,
-          // cbData);
-
-    // if (pvData && !pcbData)
-        // return ERROR_INVALID_PARAMETER;
-    // if ((dwFlags & RRF_RT_REG_EXPAND_SZ) && !(dwFlags & RRF_NOEXPAND) &&
-            // ((dwFlags & RRF_RT_ANY) != RRF_RT_ANY))
-        // return ERROR_INVALID_PARAMETER;
-
-    // if (pszSubKey && pszSubKey[0])
-    // {
-        // ret = RegOpenKeyExA(hKey, pszSubKey, 0, KEY_QUERY_VALUE, &hKey);
-        // if (ret != ERROR_SUCCESS) return ret;
-    // }
-
-    // ret = RegQueryValueExA(hKey, pszValue, NULL, &dwType, pvData, &cbData);
-
-    // /* If we are going to expand we need to read in the whole the value even
-     // * if the passed buffer was too small as the expanded string might be
-     // * smaller than the unexpanded one and could fit into cbData bytes. */
-    // if ((ret == ERROR_SUCCESS || ret == ERROR_MORE_DATA) &&
-        // (dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND)))
-    // {
-        // do {
-            // HeapFree(GetProcessHeap(), 0, pvBuf);
-
-            // pvBuf = HeapAlloc(GetProcessHeap(), 0, cbData);
-            // if (!pvBuf)
-            // {
-                // ret = ERROR_NOT_ENOUGH_MEMORY;
-                // break;
-            // }
-
-            // if (ret == ERROR_MORE_DATA || !pvData)
-                // ret = RegQueryValueExA(hKey, pszValue, NULL,
-                                       // &dwType, pvBuf, &cbData);
-            // else
-            // {
-                // /* Even if cbData was large enough we have to copy the
-                 // * string since ExpandEnvironmentStrings can't handle
-                 // * overlapping buffers. */
-                // CopyMemory(pvBuf, pvData, cbData);
-            // }
-
-            // /* Both the type or the value itself could have been modified in
-             // * between so we have to keep retrying until the buffer is large
-             // * enough or we no longer have to expand the value. */
-        // } while (dwType == REG_EXPAND_SZ && ret == ERROR_MORE_DATA);
-
-        // if (ret == ERROR_SUCCESS)
-        // {
-            // /* Recheck dwType in case it changed since the first call */
-            // if (dwType == REG_EXPAND_SZ)
-            // {
-                // cbData = ExpandEnvironmentStringsA(pvBuf, pvData,
-                                                   // pcbData ? *pcbData : 0);
-                // dwType = REG_SZ;
-                // if(pvData && pcbData && cbData > *pcbData)
-                    // ret = ERROR_MORE_DATA;
-            // }
-            // else if (pvData)
-                // CopyMemory(pvData, pvBuf, *pcbData);
-        // }
-
-        // HeapFree(GetProcessHeap(), 0, pvBuf);
-    // }
-
-    // if (pszSubKey && pszSubKey[0])
-        // RegCloseKey(hKey);
-
-    // RegpApplyRestrictions(dwFlags, dwType, cbData, &ret);
-
-    // if (pvData && ret != ERROR_SUCCESS && (dwFlags & RRF_ZEROONFAILURE))
-        // ZeroMemory(pvData, *pcbData);
-
-    // if (pdwType) *pdwType = dwType;
-    // if (pcbData) *pcbData = cbData;
-
-    // return ret;
-// }
-
-/******************************************************************************
- * RegGetValueW   (kernelbase.@)
- *
- * Retrieves the type and data for a value name associated with a key,
- * optionally expanding its content and restricting its type.
- *
- * PARAMS
- *  hKey      [I] Handle to an open key.
- *  pszSubKey [I] Name of the subkey of hKey.
- *  pszValue  [I] Name of value under hKey/szSubKey to query.
- *  dwFlags   [I] Flags restricting the value type to retrieve.
- *  pdwType   [O] Destination for the values type, may be NULL.
- *  pvData    [O] Destination for the values content, may be NULL.
- *  pcbData   [I/O] Size of pvData, updated with the size in bytes required to
- *                  retrieve the whole content, including the trailing '\0'
- *                  for strings.
- *
- * RETURNS
- *  Success: ERROR_SUCCESS
- *  Failure: nonzero error code from Winerror.h
- *
- * NOTES
- *  - Unless RRF_NOEXPAND is specified, REG_EXPAND_SZ values are automatically
- *    expanded and pdwType is set to REG_SZ instead.
- *  - Restrictions are applied after expanding, using RRF_RT_REG_EXPAND_SZ
- *    without RRF_NOEXPAND is thus not allowed.
- *    An exception is the case where RRF_RT_ANY is specified, because then
- *    RRF_NOEXPAND is allowed.
- */
-LSTATUS WINAPI RegGetValueW( HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
-                          DWORD dwFlags, LPDWORD pdwType, PVOID pvData,
-                          LPDWORD pcbData )
+LSTATUS WINAPI
+RegGetValueW(HKEY hKey,
+             LPCWSTR pszSubKey,
+             LPCWSTR pszValue,
+             DWORD dwFlags,
+             LPDWORD pdwType,
+             PVOID pvData,
+             LPDWORD pcbData)
 {
-    DWORD dwType, cbData = (pvData && pcbData) ? *pcbData : 0;
+    DWORD dwType, cbData = pcbData ? *pcbData : 0;
     PVOID pvBuf = NULL;
     LONG ret;
 
@@ -2200,39 +1898,29 @@ LSTATUS WINAPI RegGetValueW( HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
 
     if (pvData && !pcbData)
         return ERROR_INVALID_PARAMETER;
-
     if ((dwFlags & RRF_RT_REG_EXPAND_SZ) && !(dwFlags & RRF_NOEXPAND) &&
             ((dwFlags & RRF_RT_ANY) != RRF_RT_ANY))
         return ERROR_INVALID_PARAMETER;
 
-    if ((dwFlags & RRF_WOW64_MASK) == RRF_WOW64_MASK)
-        return ERROR_INVALID_PARAMETER;
-
     if (pszSubKey && pszSubKey[0])
     {
-        REGSAM samDesired = KEY_QUERY_VALUE;
-
-        if (dwFlags & RRF_WOW64_MASK)
-            samDesired |= (dwFlags & RRF_SUBKEY_WOW6432KEY) ? KEY_WOW64_32KEY : KEY_WOW64_64KEY;
-
-        ret = RegOpenKeyExW(hKey, pszSubKey, 0, samDesired, &hKey);
+        ret = RegOpenKeyExW(hKey, pszSubKey, 0, KEY_QUERY_VALUE, &hKey);
         if (ret != ERROR_SUCCESS) return ret;
     }
 
     ret = RegQueryValueExW(hKey, pszValue, NULL, &dwType, pvData, &cbData);
 
-    /* If the value is a string, we need to read in the whole value to be able
-     * to know exactly how many bytes are needed after expanding the string and
-     * ensuring that it is null-terminated. */
-    if (is_string(dwType) &&
-        (ret == ERROR_MORE_DATA ||
-         (ret == ERROR_SUCCESS && dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND)) ||
-         (ret == ERROR_SUCCESS && (cbData < sizeof(WCHAR) || (pvData && *((WCHAR *)pvData + cbData / sizeof(WCHAR) - 1))))))
+    /* If we are going to expand we need to read in the whole the value even
+     * if the passed buffer was too small as the expanded string might be
+     * smaller than the unexpanded one and could fit into cbData bytes. */
+    if ((ret == ERROR_SUCCESS || ret == ERROR_MORE_DATA) &&
+        dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND))
     {
-        do {
-            heap_free(pvBuf);
+        do
+        {
+            HeapFree(GetProcessHeap(), 0, pvBuf);
 
-            pvBuf = heap_alloc(cbData + sizeof(WCHAR));
+            pvBuf = HeapAlloc(GetProcessHeap(), 0, cbData);
             if (!pvBuf)
             {
                 ret = ERROR_NOT_ENOUGH_MEMORY;
@@ -2249,105 +1937,95 @@ LSTATUS WINAPI RegGetValueW( HKEY hKey, LPCWSTR pszSubKey, LPCWSTR pszValue,
                  * overlapping buffers. */
                 CopyMemory(pvBuf, pvData, cbData);
             }
-        } while (ret == ERROR_MORE_DATA);
+
+            /* Both the type or the value itself could have been modified in
+             * between so we have to keep retrying until the buffer is large
+             * enough or we no longer have to expand the value. */
+        }
+        while (dwType == REG_EXPAND_SZ && ret == ERROR_MORE_DATA);
 
         if (ret == ERROR_SUCCESS)
         {
-            /* Ensure null termination */
-            if (cbData < sizeof(WCHAR) || *((WCHAR *)pvBuf + cbData / sizeof(WCHAR) - 1))
-            {
-                *((WCHAR *)pvBuf + cbData / sizeof(WCHAR)) = 0;
-                cbData += sizeof(WCHAR);
-            }
-
             /* Recheck dwType in case it changed since the first call */
-            if (dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND))
+            if (dwType == REG_EXPAND_SZ)
             {
                 cbData = ExpandEnvironmentStringsW(pvBuf, pvData,
                                                    pcbData ? *pcbData : 0) * sizeof(WCHAR);
                 dwType = REG_SZ;
-                if (pvData && cbData > *pcbData)
+                if (pvData && pcbData && cbData > *pcbData)
                     ret = ERROR_MORE_DATA;
             }
             else if (pvData)
-            {
-                if (cbData > *pcbData)
-                    ret = ERROR_MORE_DATA;
-                else
-                    CopyMemory(pvData, pvBuf, cbData);
-            }
+                CopyMemory(pvData, pvBuf, *pcbData);
         }
 
-        heap_free(pvBuf);
+        HeapFree(GetProcessHeap(), 0, pvBuf);
     }
 
     if (pszSubKey && pszSubKey[0])
         RegCloseKey(hKey);
 
-    apply_restrictions(dwFlags, dwType, cbData, &ret);
+    RegpApplyRestrictions(dwFlags, dwType, cbData, &ret);
 
     if (pvData && ret != ERROR_SUCCESS && (dwFlags & RRF_ZEROONFAILURE))
         ZeroMemory(pvData, *pcbData);
 
-    if (pdwType) *pdwType = dwType;
-    if (pcbData) *pcbData = cbData;
+    if (pdwType)
+        *pdwType = dwType;
+
+    if (pcbData)
+        *pcbData = cbData;
 
     return ret;
 }
 
 
 /******************************************************************************
- * RegGetValueA   (kernelbase.@)
+ * RegGetValueA   [ADVAPI32.@]
  *
  * See RegGetValueW.
  */
-LSTATUS WINAPI RegGetValueA( HKEY hKey, LPCSTR pszSubKey, LPCSTR pszValue,
-                             DWORD dwFlags, LPDWORD pdwType, PVOID pvData,
-                             LPDWORD pcbData )
+LSTATUS WINAPI
+RegGetValueA(HKEY hKey,
+             LPCSTR pszSubKey,
+             LPCSTR pszValue,
+             DWORD dwFlags,
+             LPDWORD pdwType,
+             PVOID pvData,
+             LPDWORD pcbData)
 {
-    DWORD dwType, cbData = (pvData && pcbData) ? *pcbData : 0;
+    DWORD dwType, cbData = pcbData ? *pcbData : 0;
     PVOID pvBuf = NULL;
     LONG ret;
 
     TRACE("(%p,%s,%s,%ld,%p,%p,%p=%ld)\n",
-          hKey, debugstr_a(pszSubKey), debugstr_a(pszValue), dwFlags,
-          pdwType, pvData, pcbData, cbData);
+          hKey, pszSubKey, pszValue, dwFlags, pdwType, pvData, pcbData,
+          cbData);
 
     if (pvData && !pcbData)
         return ERROR_INVALID_PARAMETER;
-
     if ((dwFlags & RRF_RT_REG_EXPAND_SZ) && !(dwFlags & RRF_NOEXPAND) &&
             ((dwFlags & RRF_RT_ANY) != RRF_RT_ANY))
         return ERROR_INVALID_PARAMETER;
 
-    if ((dwFlags & RRF_WOW64_MASK) == RRF_WOW64_MASK)
-        return ERROR_INVALID_PARAMETER;
-
     if (pszSubKey && pszSubKey[0])
     {
-        REGSAM samDesired = KEY_QUERY_VALUE;
-
-        if (dwFlags & RRF_WOW64_MASK)
-            samDesired |= (dwFlags & RRF_SUBKEY_WOW6432KEY) ? KEY_WOW64_32KEY : KEY_WOW64_64KEY;
-
-        ret = RegOpenKeyExA(hKey, pszSubKey, 0, samDesired, &hKey);
+        ret = RegOpenKeyExA(hKey, pszSubKey, 0, KEY_QUERY_VALUE, &hKey);
         if (ret != ERROR_SUCCESS) return ret;
     }
 
     ret = RegQueryValueExA(hKey, pszValue, NULL, &dwType, pvData, &cbData);
 
-    /* If the value is a string, we need to read in the whole value to be able
-     * to know exactly how many bytes are needed after expanding the string and
-     * ensuring that it is null-terminated. */
-    if (is_string(dwType) &&
-        (ret == ERROR_MORE_DATA ||
-         (ret == ERROR_SUCCESS && dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND)) ||
-         (ret == ERROR_SUCCESS && (!cbData || (pvData && *((char *)pvData + cbData - 1))))))
+    /* If we are going to expand we need to read in the whole the value even
+     * if the passed buffer was too small as the expanded string might be
+     * smaller than the unexpanded one and could fit into cbData bytes. */
+    if ((ret == ERROR_SUCCESS || ret == ERROR_MORE_DATA) &&
+        (dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND)))
     {
         do {
-            heap_free(pvBuf);
+            HeapFree(GetProcessHeap(), 0, pvBuf);
 
-            pvBuf = heap_alloc(cbData + 1);
+            pvBuf = HeapAlloc(GetProcessHeap(), 0, cbData);
             if (!pvBuf)
             {
                 ret = ERROR_NOT_ENOUGH_MEMORY;
@@ -2364,42 +2042,34 @@ LSTATUS WINAPI RegGetValueA( HKEY hKey, LPCSTR pszSubKey, LPCSTR pszValue,
                  * overlapping buffers. */
                 CopyMemory(pvBuf, pvData, cbData);
             }
-        } while (ret == ERROR_MORE_DATA);
+
+            /* Both the type or the value itself could have been modified in
+             * between so we have to keep retrying until the buffer is large
+             * enough or we no longer have to expand the value. */
+        } while (dwType == REG_EXPAND_SZ && ret == ERROR_MORE_DATA);
 
         if (ret == ERROR_SUCCESS)
         {
-            /* Ensure null termination */
-            if (!cbData || *((char *)pvBuf + cbData - 1))
-            {
-                *((char *)pvBuf + cbData) = 0;
-                cbData++;
-            }
-
             /* Recheck dwType in case it changed since the first call */
-            if (dwType == REG_EXPAND_SZ && !(dwFlags & RRF_NOEXPAND))
+            if (dwType == REG_EXPAND_SZ)
             {
                 cbData = ExpandEnvironmentStringsA(pvBuf, pvData,
                                                    pcbData ? *pcbData : 0);
                 dwType = REG_SZ;
-                if (pvData && cbData > *pcbData)
+                if(pvData && pcbData && cbData > *pcbData)
                     ret = ERROR_MORE_DATA;
             }
             else if (pvData)
-            {
-                if (cbData > *pcbData)
-                    ret = ERROR_MORE_DATA;
-                else
-                    CopyMemory(pvData, pvBuf, cbData);
-            }
+                CopyMemory(pvData, pvBuf, *pcbData);
         }
 
-        heap_free(pvBuf);
+        HeapFree(GetProcessHeap(), 0, pvBuf);
     }
 
     if (pszSubKey && pszSubKey[0])
         RegCloseKey(hKey);
 
-    apply_restrictions(dwFlags, dwType, cbData, &ret);
+    RegpApplyRestrictions(dwFlags, dwType, cbData, &ret);
 
     if (pvData && ret != ERROR_SUCCESS && (dwFlags & RRF_ZEROONFAILURE))
         ZeroMemory(pvData, *pcbData);
@@ -2418,8 +2088,12 @@ LSTATUS WINAPI RegGetValueA( HKEY hKey, LPCSTR pszSubKey, LPCSTR pszValue,
 LONG WINAPI
 RegDisablePredefinedCacheEx(VOID)
 {
-    // Implementing this requires deep modifications to advapi32.dll, so do it this way.
-    return RegDisablePredefinedCache();
+    RegInitialize(); /* HACK until delay-loading is implemented */
+    RtlEnterCriticalSection(&HandleTableCS);
+    DefaultHandlesDisabled = TRUE;
+    DefaultHandleHKUDisabled = TRUE;
+    RtlLeaveCriticalSection(&HandleTableCS);
+    return ERROR_SUCCESS;
 }
 
 /************************************************************************
@@ -2547,4 +2221,257 @@ RegDeleteKeyTransactedW(
 						   lpSubKey,
 						   samDesired,
 						   Reserved);
+}
+
+/* check if value type needs string conversion (Ansi<->Unicode) */
+static inline BOOL is_string( DWORD type )
+{
+    return (type == REG_SZ) || (type == REG_EXPAND_SZ) || (type == REG_MULTI_SZ);
+}
+
+LONG
+WINAPI
+QueryHKCRValue(
+    _In_ HKEY hKey,
+    _In_ LPCWSTR Name,
+    _In_ LPDWORD Reserved,
+    _In_ LPDWORD Type,
+    _In_ LPBYTE Data,
+    _In_ LPDWORD Count)
+{
+    HKEY QueriedKey;
+    LONG ErrorCode;
+
+    ASSERT(IsHKCRKey(hKey));
+
+    /* Remove the HKCR flag while we're working */
+    hKey = (HKEY)(((ULONG_PTR)hKey) & ~0x2);
+
+    ErrorCode = GetPreferredHKCRKey(hKey, &QueriedKey);
+
+    if (ErrorCode == ERROR_FILE_NOT_FOUND)
+    {
+        /* The key doesn't exist on HKCU side, no chance for a value in it */
+        return RegQueryValueExW(hKey, Name, Reserved, Type, Data, Count);
+    }
+
+    if (ErrorCode != ERROR_SUCCESS)
+    {
+        /* Somehow we failed for another reason (maybe deleted key or whatever) */
+        return ErrorCode;
+    }
+
+    ErrorCode = RegQueryValueExW(QueriedKey, Name, Reserved, Type, Data, Count);
+
+    /* Close it if we must */
+    if (QueriedKey != hKey)
+    {
+        /* The original key is on the machine view */
+        RegCloseKey(QueriedKey);
+    }
+
+    /* Anything else than ERROR_FILE_NOT_FOUND means that we found it, even if it is with failures. */
+    if (ErrorCode != ERROR_FILE_NOT_FOUND)
+        return ErrorCode;
+
+    /* If we're here, we must open from HKLM key. */
+    ErrorCode = GetFallbackHKCRKey(hKey, &QueriedKey, FALSE);
+    if (ErrorCode != ERROR_SUCCESS)
+    {
+        /* Maybe the key doesn't exist in the HKLM view */
+        return ErrorCode;
+    }
+
+    ErrorCode = RegQueryValueExW(QueriedKey, Name, Reserved, Type, Data, Count);
+
+    /* Close it if we must */
+    if (QueriedKey != hKey)
+    {
+        RegCloseKey(QueriedKey);
+    }
+
+    return ErrorCode;
+}
+
+/************************************************************************
+ *  RegQueryValueExW
+ *
+ * @implemented
+ */
+LONG
+WINAPI
+RegQueryValueExW(
+    _In_ HKEY hkeyorg,
+    _In_ LPCWSTR name,
+    _In_ LPDWORD reserved,
+    _In_ LPDWORD type,
+    _In_ LPBYTE data,
+    _In_ LPDWORD count)
+{
+    HANDLE hkey;
+    NTSTATUS status;
+    UNICODE_STRING name_str;
+    DWORD total_size;
+    char buffer[256], *buf_ptr = buffer;
+    KEY_VALUE_PARTIAL_INFORMATION *info = (KEY_VALUE_PARTIAL_INFORMATION *)buffer;
+    static const int info_size = offsetof( KEY_VALUE_PARTIAL_INFORMATION, Data );
+
+    TRACE("(%p,%s,%p,%p,%p,%p=%d)\n",
+          hkeyorg, debugstr_w(name), reserved, type, data, count,
+          (count && data) ? *count : 0 );
+
+    if ((data && !count) || reserved) return ERROR_INVALID_PARAMETER;
+
+    status = MapDefaultKey(&hkey, hkeyorg);
+    if (!NT_SUCCESS(status))
+    {
+        return RtlNtStatusToDosError(status);
+    }
+
+    if (IsHKCRKey(hkey))
+    {
+        LONG ErrorCode = QueryHKCRValue(hkey, name, reserved, type, data, count);
+        ClosePredefKey(hkey);
+        return ErrorCode;
+    }
+
+    RtlInitUnicodeString( &name_str, name );
+
+    if (data)
+        total_size = min( sizeof(buffer), *count + info_size );
+    else
+        total_size = info_size;
+
+
+    status = NtQueryValueKey( hkey, &name_str, KeyValuePartialInformation,
+                              buffer, total_size, &total_size );
+
+    if (!NT_SUCCESS(status) && status != STATUS_BUFFER_OVERFLOW)
+    {
+        // NT: Valid handles with inexistant/null values or invalid (but not NULL) handles sets type to REG_NONE
+        // On windows these conditions are likely to be side effects of the implementation...
+        if (status == STATUS_INVALID_HANDLE && hkey)
+        {
+            if (type) *type = REG_NONE;
+            if (count) *count = 0;
+        }
+        else if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+        {
+            if (type) *type = REG_NONE;
+            if (data == NULL && count) *count = 0;
+        }
+        goto done;
+    }
+
+    if (data)
+    {
+        /* retry with a dynamically allocated buffer */
+        while (status == STATUS_BUFFER_OVERFLOW && total_size - info_size <= *count)
+        {
+            if (buf_ptr != buffer) HeapFree( GetProcessHeap(), 0, buf_ptr );
+            if (!(buf_ptr = HeapAlloc( GetProcessHeap(), 0, total_size )))
+            {
+                ClosePredefKey(hkey);
+                return ERROR_NOT_ENOUGH_MEMORY;
+            }
+            info = (KEY_VALUE_PARTIAL_INFORMATION *)buf_ptr;
+            status = NtQueryValueKey( hkey, &name_str, KeyValuePartialInformation,
+                                      buf_ptr, total_size, &total_size );
+        }
+
+        if (NT_SUCCESS(status))
+        {
+            memcpy( data, buf_ptr + info_size, total_size - info_size );
+            /* if the type is REG_SZ and data is not 0-terminated
+             * and there is enough space in the buffer NT appends a \0 */
+            if (is_string(info->Type) && total_size - info_size <= *count-sizeof(WCHAR))
+            {
+                WCHAR *ptr = (WCHAR *)(data + total_size - info_size);
+                if (ptr > (WCHAR *)data && ptr[-1]) *ptr = 0;
+            }
+        }
+        else if (status != STATUS_BUFFER_OVERFLOW) goto done;
+    }
+    else status = STATUS_SUCCESS;
+
+    if (type) *type = info->Type;
+    if (count) *count = total_size - info_size;
+
+ done:
+    if (buf_ptr != buffer) HeapFree( GetProcessHeap(), 0, buf_ptr );
+    ClosePredefKey(hkey);
+    return RtlNtStatusToDosError(status);
+}
+
+
+/************************************************************************
+ *  RegQueryValueA
+ *
+ * @implemented
+ */
+LSTATUS WINAPI RegQueryValueA( HKEY hkey, LPCSTR name, LPSTR data, LPLONG count )
+{
+    DWORD ret;
+    HKEY subkey = hkey;
+
+    TRACE("(%p,%s,%p,%d)\n", hkey, debugstr_a(name), data, count ? *count : 0 );
+
+    if (name && name[0])
+    {
+    if ((ret = RegOpenKeyA( hkey, name, &subkey )) != ERROR_SUCCESS) return ret;
+    }
+    ret = RegQueryValueExA( subkey, NULL, NULL, NULL, (LPBYTE)data, (LPDWORD)count );
+    if (subkey != hkey) RegCloseKey( subkey );
+    if (ret == ERROR_FILE_NOT_FOUND)
+    {
+    /* return empty string if default value not found */
+    if (data) *data = 0;
+    if (count) *count = 1;
+    ret = ERROR_SUCCESS;
+    }
+    return ret;
+}
+
+
+/************************************************************************
+ *  RegQueryValueW
+ *
+ * @implemented
+ */
+LSTATUS WINAPI RegQueryValueW( HKEY hkey, LPCWSTR name, LPWSTR data, LPLONG count )
+{
+    DWORD ret;
+    HKEY subkey = hkey;
+
+    TRACE("(%p,%s,%p,%d)\n", hkey, debugstr_w(name), data, count ? *count : 0 );
+    if (hkey == NULL)
+    {
+       return ERROR_INVALID_HANDLE;
+    }
+    if (name && name[0])
+    {
+        ret = RegOpenKeyW( hkey, name, &subkey);
+        if (ret != ERROR_SUCCESS)
+        {
+            return ret;
+        }
+    }
+
+    ret = RegQueryValueExW( subkey, NULL, NULL, NULL, (LPBYTE)data, (LPDWORD)count );
+
+    if (subkey != hkey)
+    {
+        RegCloseKey( subkey );
+    }
+
+    if (ret == ERROR_FILE_NOT_FOUND)
+    {
+        /* return empty string if default value not found */
+        if (data)
+            *data = 0;
+        if (count)
+            *count = sizeof(WCHAR);
+        ret = ERROR_SUCCESS;
+    }
+    return ret;
 }
