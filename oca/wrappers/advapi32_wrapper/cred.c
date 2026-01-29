@@ -19,7 +19,6 @@ Revision History:
 --*/
 
 #include "main.h"
-#include "wincred.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(cred);
 
@@ -36,6 +35,10 @@ CredProtectA(
   _Out_    CRED_PROTECTION_TYPE *ProtectionType
 )
 {
+	if(pCredProtectA){
+		return pCredProtectA(fAsSelf, pszCredentials, cchCredentials, pszProtectedCredentials, pcchMaxChars, ProtectionType);
+	}
+	
 	if (!pszProtectedCredentials || !pszCredentials) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -62,6 +65,10 @@ CredProtectW(
   _Out_    CRED_PROTECTION_TYPE *ProtectionType
 )
 {
+	if(pCredProtectW){
+		return pCredProtectW(fAsSelf, pszCredentials, cchCredentials, pszProtectedCredentials, pcchMaxChars, ProtectionType);
+	}	
+	
 	if (!pszProtectedCredentials || !pszCredentials) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -87,6 +94,10 @@ CredUnprotectA(
   _Inout_  DWORD *pcchMaxChars
 )
 {
+	if(pCredUnprotectA){
+		return pCredUnprotectA(fAsSelf, pszProtectedCredentials, cchCredentials, pszCredentials, pcchMaxChars);
+	}
+	
 	if (!pszProtectedCredentials || !pszCredentials) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -110,6 +121,10 @@ CredUnprotectW(
   _Inout_  DWORD *pcchMaxChars
 )
 {
+	if(pCredUnprotectW){
+		return pCredUnprotectW(fAsSelf, pszProtectedCredentials, cchCredentials, pszCredentials, pcchMaxChars);
+	}
+	
 	if (!pszProtectedCredentials || !pszCredentials) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -126,9 +141,13 @@ CredUnprotectW(
 BOOL 
 WINAPI 
 CredIsProtectedA(
-  _In_   LPWSTR pszProtectedCredentials,
+  _In_   LPCSTR pszProtectedCredentials,
   _Out_  CRED_PROTECTION_TYPE *pProtectionType
-) {
+) {	
+	if(pCredIsProtectedA){
+		return pCredIsProtectedA(pszProtectedCredentials, pProtectionType);
+	}	
+	
 	if (!pProtectionType) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -143,6 +162,10 @@ CredIsProtectedW(
   _In_   LPWSTR pszProtectedCredentials,
   _Out_  CRED_PROTECTION_TYPE *pProtectionType
 ) {
+	if(pCredIsProtectedW){
+		return pCredIsProtectedW(pszProtectedCredentials, pProtectionType);
+	}	
+	
 	if (!pProtectionType) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -160,6 +183,10 @@ CredFindBestCredentialA(
   _Out_  PCREDENTIALA *Credential
 )
 {
+	if(pCredFindBestCredentialA){
+		return pCredFindBestCredentialA(TargetName, Type, Flags, Credential);
+	}
+	
 	WARN("UNIMPL: CredFindBestCredential called\n");
 	*Credential = NULL;
 	return TRUE;
@@ -174,6 +201,9 @@ CredFindBestCredentialW(
   _Out_  PCREDENTIALW *Credential
 )
 {
+	if(pCredFindBestCredentialW){
+		return pCredFindBestCredentialW(TargetName, Type, Flags, Credential);
+	}	
 	WARN("UNIMPL: CredFindBestCredential called\n");
 	*Credential = NULL;
 	return TRUE;

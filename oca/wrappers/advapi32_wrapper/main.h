@@ -20,7 +20,8 @@
 #include <aclapi.h>
 #include <winefs.h>
 #include <wct.h>
-#include "sddl.h"
+#include <sddl.h>
+#include <wincred.h>
 
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
@@ -71,6 +72,8 @@ IsHKCRKey(_In_ HKEY hKey)
 typedef PVOID IELF_HANDLE;
 
 typedef ULONG64 TRACEHANDLE, *PTRACEHANDLE;
+
+typedef ULONG64 CONTROLTRACE_ID;
 
 typedef struct _ENABLE_TRACE_PARAMETERS
 {
@@ -287,4 +290,184 @@ WINAPI
 DECLSPEC_HOTPATCH 
 ConvertStringSidToSidWImpl( const WCHAR *string, PSID *sid );	
 
-BOOL WINAPI IsWellKnownSidImpl( PSID sid, WELL_KNOWN_SID_TYPE type );	
+BOOL WINAPI IsWellKnownSidImpl( PSID sid, WELL_KNOWN_SID_TYPE type );
+
+//Procedure to try get addresses
+BOOL InitNativeProcs(void);
+
+typedef BOOL (WINAPI *ELF_REPORT_EVENT_AND_SOURCE)(
+						 HANDLE,
+                         ULONG,
+                         PUNICODE_STRING,
+                         USHORT,
+                         USHORT,
+                         ULONG,
+                         PSID,
+                         PUNICODE_STRING,
+                         USHORT,
+                         ULONG,
+                         PUNICODE_STRING*,
+                         PVOID,
+                         USHORT,
+                         PULONG,
+                         PULONG);
+
+static DWORD (WINAPI *pAddMandatoryAce)(
+    PACL, DWORD, DWORD, DWORD, PSID
+) = NULL;
+
+static BOOL (WINAPI *pCredFindBestCredentialA)(
+    LPCSTR, DWORD, DWORD, PCREDENTIALA*
+) = NULL;
+
+static BOOL (WINAPI *pCredFindBestCredentialW)(
+    LPCWSTR, DWORD, DWORD, PCREDENTIALW*
+) = NULL;
+
+static BOOL (WINAPI *pCredIsProtectedA)(
+    LPCSTR, CRED_PROTECTION_TYPE*
+) = NULL;
+
+static BOOL (WINAPI *pCredIsProtectedW)(
+    LPCWSTR, CRED_PROTECTION_TYPE*
+) = NULL;
+
+static BOOL (WINAPI *pCredProtectA)(
+    BOOL, LPSTR, DWORD, LPSTR, DWORD*, CRED_PROTECTION_TYPE*
+) = NULL;
+
+static BOOL (WINAPI *pCredProtectW)(
+    BOOL, LPWSTR, DWORD, LPWSTR, DWORD*, CRED_PROTECTION_TYPE*
+) = NULL;
+
+static BOOL (WINAPI *pCredUnprotectA)(
+    BOOL, LPSTR, DWORD, LPSTR, DWORD*
+) = NULL;
+
+static BOOL (WINAPI *pCredUnprotectW)(
+    BOOL, LPWSTR, DWORD, LPWSTR, DWORD*
+) = NULL;
+
+static VOID (WINAPI *pCloseThreadWaitChainSession)(PVOID) = NULL;
+
+static ULONG (WINAPI *pEventRegister)(
+    LPCGUID, PVOID, PVOID, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pEventUnregister)(
+    ULONGLONG
+) = NULL;
+
+static ULONG (WINAPI *pEventWrite)(
+    ULONGLONG, PVOID, ULONG, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pEventWriteTransfer)(
+    ULONGLONG, LPCGUID, LPCGUID, PVOID, ULONG, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pEventWriteString)(
+    ULONGLONG, UCHAR, ULONGLONG, LPCWSTR
+) = NULL;
+
+static ULONG (WINAPI *pEventActivityIdControl)(
+    ULONG, LPGUID
+) = NULL;
+
+static BOOLEAN (WINAPI *pEventEnabled)(
+    ULONGLONG, PVOID
+) = NULL;
+
+static BOOLEAN (WINAPI *pEventProviderEnabled)(
+    ULONGLONG, UCHAR, ULONGLONG
+) = NULL;
+
+static ULONG (WINAPI *pEventAccessControl)(
+    LPCGUID, ULONG, PSID, ULONG, BOOLEAN 
+) = NULL;
+
+static ULONG (WINAPI *pEventWriteEx)(
+    REGHANDLE, PCEVENT_DESCRIPTOR, ULONG64, ULONG, LPCGUID,
+    LPCGUID, ULONG, PEVENT_DATA_DESCRIPTOR
+) = NULL;
+
+static ULONG (WINAPI *pEventWriteStartScenario)(
+    ULONGLONG, PVOID, ULONG, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pEventWriteEndScenario)(
+    ULONGLONG, PVOID, ULONG, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pEnableTraceEx)(
+    LPCGUID, LPCGUID, TRACEHANDLE, ULONG, UCHAR,
+    ULONGLONG, ULONGLONG, ULONG, PEVENT_FILTER_DESCRIPTOR
+) = NULL;
+
+static ULONG (WINAPI *pEnableTraceEx2)(
+    CONTROLTRACE_ID, LPCGUID, ULONG, UCHAR,
+    ULONGLONG, ULONGLONG, ULONG, PENABLE_TRACE_PARAMETERS
+) = NULL;
+
+static BOOL (WINAPI *pOpenThreadWaitChainSession)(
+    DWORD, PVOID*
+) = NULL;
+
+static BOOL (WINAPI *pGetThreadWaitChain)(
+    PVOID, DWORD, DWORD, DWORD,
+    PDWORD, PVOID, PDWORD
+) = NULL;
+
+static BOOL (WINAPI *pInitiateShutdownA)(
+    LPCSTR, LPCSTR, DWORD, DWORD, DWORD
+) = NULL;
+
+static BOOL (WINAPI *pInitiateShutdownW)(
+    LPCWSTR, LPCWSTR, DWORD, DWORD, DWORD
+) = NULL;
+
+static DWORD (WINAPI *pNotifyServiceStatusChangeA)(
+    SC_HANDLE, DWORD, PVOID
+) = NULL;
+
+static DWORD (WINAPI *pNotifyServiceStatusChangeW)(
+    SC_HANDLE, DWORD, PVOID
+) = NULL;
+
+static ULONG (WINAPI *pPerfOpenQueryHandle)(ULONG, HANDLE*) = NULL;
+static ULONG (WINAPI *pPerfCloseQueryHandle)(HANDLE) = NULL;
+
+static ULONG (WINAPI *pPerfAddCounters)(HANDLE, PVOID, ULONG) = NULL;
+static ULONG (WINAPI *pPerfDeleteCounters)(HANDLE, PVOID, ULONG) = NULL;
+
+static ULONG (WINAPI *pPerfCreateInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
+static ULONG (WINAPI *pPerfDeleteInstance)(HANDLE, PVOID) = NULL;
+
+static ULONG (WINAPI *pPerfEnumerateCounterSet)(ULONG, PVOID, ULONG, PULONG) = NULL;
+static ULONG (WINAPI *pPerfEnumerateCounterSetInstances)(
+    LPCWSTR, PVOID, PVOID, ULONG, PULONG
+) = NULL;
+
+static ULONG (WINAPI *pPerfQueryCounterData)(HANDLE, PVOID, ULONG, PULONG) = NULL;
+static ULONG (WINAPI *pPerfQueryCounterInfo)(HANDLE, PVOID, ULONG, PULONG) = NULL;
+static ULONG (WINAPI *pPerfQueryInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
+
+static ULONG (WINAPI *pPerfQueryCounterSetRegistrationInfo)(
+    ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG
+) = NULL;
+
+static ULONG (WINAPI *pPerfSetCounterRefValue)(HANDLE, PVOID, ULONG, PVOID) = NULL;
+static ULONG (WINAPI *pPerfSetCounterSetInfo)(HANDLE, PVOID, ULONG) = NULL;
+
+static ULONG (WINAPI *pPerfSetULongCounterValue)(HANDLE, PVOID, ULONG, ULONG) = NULL;
+static ULONG (WINAPI *pPerfSetULongLongCounterValue)(HANDLE, PVOID, ULONG, ULONGLONG) = NULL;
+
+static ULONG (WINAPI *pPerfIncrementULongCounterValue)(HANDLE, PVOID, ULONG, ULONG) = NULL;
+static ULONG (WINAPI *pPerfIncrementULongLongCounterValue)(HANDLE, PVOID, ULONG, ULONGLONG) = NULL;
+
+static ULONG (WINAPI *pPerfDecrementULongCounterValue)(HANDLE, PVOID, ULONG, ULONG) = NULL;
+static ULONG (WINAPI *pPerfDecrementULongLongCounterValue)(HANDLE, PVOID, ULONG, ULONGLONG) = NULL;
+
+static ULONG (WINAPI *pPerfStartProvider)(LPGUID, PVOID, HANDLE*) = NULL;
+static ULONG (WINAPI *pPerfStartProviderEx)(LPGUID, PVOID, HANDLE*) = NULL;
+static ULONG (WINAPI *pPerfStopProvider)(HANDLE) = NULL;

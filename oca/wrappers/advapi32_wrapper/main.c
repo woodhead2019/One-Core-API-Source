@@ -30,6 +30,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     {
         case DLL_PROCESS_ATTACH:
            RegInitialize();		
+           InitNativeProcs();		
            break;
     }
 

@@ -20,23 +20,6 @@ Revision History:
 
 #include "main.h"
 
-typedef BOOL (WINAPI *ELF_REPORT_EVENT_AND_SOURCE)(
-						 HANDLE,
-                         ULONG,
-                         PUNICODE_STRING,
-                         USHORT,
-                         USHORT,
-                         ULONG,
-                         PSID,
-                         PUNICODE_STRING,
-                         USHORT,
-                         ULONG,
-                         PUNICODE_STRING*,
-                         PVOID,
-                         USHORT,
-                         PULONG,
-                         PULONG);
-
 ULONG 
 WINAPI
 EventWriteEndScenario(
@@ -45,6 +28,9 @@ EventWriteEndScenario(
     ULONG UserDataCount,
     PEVENT_DATA_DESCRIPTOR UserData)
 {
+	if(pEventWriteEndScenario){
+		pEventWriteEndScenario(RegHandle, EventDescriptor, UserDataCount, UserData);
+	}		
 	//return EtwEventWriteEndScenario(RegHandle, EventDescriptor, UserDataCount, UserData);
 	return ERROR_SUCCESS;
 }
@@ -57,6 +43,9 @@ EventWriteStartScenario(
     ULONG UserDataCount,
     PEVENT_DATA_DESCRIPTOR UserData)
 {
+	if(pEventWriteStartScenario){
+		pEventWriteStartScenario(RegHandle, EventDescriptor, UserDataCount, UserData);
+	}	
 	//return EtwEventWriteStartScenario(RegHandle, EventDescriptor, UserDataCount, UserData);
 	return ERROR_SUCCESS;
 }
@@ -75,6 +64,9 @@ EventWriteEx(
   _In_opt_  PEVENT_DATA_DESCRIPTOR UserData
 )
 {
+	if(pEventWriteEx){
+		pEventWriteEx(RegHandle, EventDescriptor, Filter, Flags, ActivityId, RelatedActivityId, UserDataCount, UserData);
+	}	
 	return ERROR_SUCCESS;
 }
 
@@ -92,6 +84,9 @@ EnableTraceEx(
   _In_opt_  PEVENT_FILTER_DESCRIPTOR EnableFilterDesc
 )
 {
+	if(pEnableTraceEx){
+		pEnableTraceEx(ProviderId, SourceId, TraceHandle, IsEnabled, Level, MatchAnyKeyword, MatchAllKeyword, EnableProperty, EnableFilterDesc);
+	}	
 	return ERROR_SUCCESS;	
 }
 
@@ -106,13 +101,17 @@ EventAccessControl(
   _In_  BOOLEAN AllowOrDeny
 )
 {
+	if(pEventAccessControl){
+		pEventAccessControl(Guid, Operation, Sid, Rights, AllowOrDeny);
+	}
+	
 	return ERROR_SUCCESS;
 }
 
 ULONG 
 WINAPI
 EnableTraceEx2(
-  _In_     TRACEHANDLE              TraceHandle,
+  _In_     CONTROLTRACE_ID          TraceId,
   _In_     LPCGUID                  ProviderId,
   _In_     ULONG                    ControlCode,
   _In_     UCHAR                    Level,
@@ -122,6 +121,10 @@ EnableTraceEx2(
   _In_opt_ PENABLE_TRACE_PARAMETERS EnableParameters
 )
 {
+	if(pEnableTraceEx2){
+		pEnableTraceEx2(TraceId, ProviderId, ControlCode, Level, MatchAnyKeyword, MatchAllKeyword, Timeout, EnableParameters);
+	}
+	
 	return ERROR_SUCCESS;
 }
 
@@ -152,12 +155,7 @@ ElfReportEventAndSourceW(
     elfReportEventAndSource = (ELF_REPORT_EVENT_AND_SOURCE) GetProcAddress(
                             GetModuleHandle(TEXT("advapibase.dll")),
                             "ElfReportEventAndSourceW");
-    if (NULL == elfReportEventAndSource) 
-    {	
-
-		return STATUS_NOT_IMPLEMENTED;
-
-    }else{
+    if(elfReportEventAndSource){
 		return (NTSTATUS)elfReportEventAndSource(hEventLog, 
 											Time,
 											ComputerName,
@@ -174,6 +172,8 @@ ElfReportEventAndSourceW(
 											RecordNumber,
 											TimeWritten);
 	}
+	
+	return STATUS_NOT_IMPLEMENTED;
 }	
 
 BOOL 

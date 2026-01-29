@@ -21,6 +21,7 @@ list(APPEND SOURCE
 	hooks.c
 	main.c
 	perf.c
+	procedures.c
 	process.c
 	reg.c
 	scm.c

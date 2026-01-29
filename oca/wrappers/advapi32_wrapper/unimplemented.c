@@ -49,6 +49,9 @@ void WINAPI RegisterWaitChainCOMCallback(PCOGETCALLSTATE call_state_cb,
 }
 
 void WINAPI CloseThreadWaitChainSession(HWCT handle){
+	if(pCloseThreadWaitChainSession){
+		pCloseThreadWaitChainSession(handle);
+	}		
     FIXME("%p\n", handle);	
 }
 

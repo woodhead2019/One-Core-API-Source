@@ -915,24 +915,28 @@ AddMandatoryAce(
 	PSID pLabelSid
 )
 {
-  NTSTATUS Status; // eax@1
-  BOOL result; // eax@2
+    NTSTATUS Status; // eax@1
+    BOOL result; // eax@2
+  
+    if(pAddMandatoryAce){
+		return pAddMandatoryAce(pAcl, dwAceRevision, AceFlags, MandatoryPolicy, pLabelSid);
+    } 
 
-  Status = RtlAddMandatoryAce(pAcl, 
+    Status = RtlAddMandatoryAce(pAcl, 
 							  dwAceRevision, 
 							  AceFlags, 
 							  MandatoryPolicy, 
 							  SYSTEM_MANDATORY_LABEL_ACE_TYPE, 
 							  pLabelSid);
-  if ( !NT_SUCCESS(Status))
-  {
-    result = FALSE;
-  }
-  else
-  {
-    result = TRUE;
-  }
-  return result;
+    if ( !NT_SUCCESS(Status))
+    {
+        result = FALSE;
+    }
+    else
+    {
+        result = TRUE;
+    }
+    return result;
 }
 
 /*
