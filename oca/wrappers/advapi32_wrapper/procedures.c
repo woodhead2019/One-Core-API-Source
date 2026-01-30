@@ -58,6 +58,51 @@ BOOL InitNativeProcs(void)
     pEventWriteEndScenario       = (void*)GetProcAddress(ghAdvapi32, "EventWriteEndScenario");
     pEnableTraceEx               = (void*)GetProcAddress(ghAdvapi32, "EnableTraceEx");
     pEnableTraceEx2               = (void*)GetProcAddress(ghAdvapi32, "EnableTraceEx2");
+    pPerfOpenQueryHandle = (void*)GetProcAddress(ghAdvapi32, "PerfOpenQueryHandle");
+    pPerfCloseQueryHandle = (void*)GetProcAddress(ghAdvapi32, "PerfCloseQueryHandle");
+
+    pPerfAddCounters = (void*)GetProcAddress(ghAdvapi32, "PerfAddCounters");
+    pPerfDeleteCounters = (void*)GetProcAddress(ghAdvapi32, "PerfDeleteCounters");
+
+    pPerfCreateInstance = (void*)GetProcAddress(ghAdvapi32, "PerfCreateInstance");
+    pPerfDeleteInstance = (void*)GetProcAddress(ghAdvapi32, "PerfDeleteInstance");
+
+    pPerfEnumerateCounterSet = (void*)GetProcAddress(ghAdvapi32, "PerfEnumerateCounterSet");
+    pPerfEnumerateCounterSetInstances =
+        (void*)GetProcAddress(ghAdvapi32, "PerfEnumerateCounterSetInstances");
+
+    pPerfQueryCounterData = (void*)GetProcAddress(ghAdvapi32, "PerfQueryCounterData");
+    pPerfQueryCounterInfo = (void*)GetProcAddress(ghAdvapi32, "PerfQueryCounterInfo");
+    pPerfQueryInstance = (void*)GetProcAddress(ghAdvapi32, "PerfQueryInstance");
+
+    pPerfQueryCounterSetRegistrationInfo =
+        (void*)GetProcAddress(ghAdvapi32, "PerfQueryCounterSetRegistrationInfo");
+
+    pPerfSetCounterRefValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfSetCounterRefValue");
+    pPerfSetCounterSetInfo =
+        (void*)GetProcAddress(ghAdvapi32, "PerfSetCounterSetInfo");
+
+    pPerfSetULongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfSetULongCounterValue");
+    pPerfSetULongLongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfSetULongLongCounterValue");
+
+    pPerfIncrementULongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfIncrementULongCounterValue");
+    pPerfIncrementULongLongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfIncrementULongLongCounterValue");
+
+    pPerfDecrementULongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfDecrementULongCounterValue");
+    pPerfDecrementULongLongCounterValue =
+        (void*)GetProcAddress(ghAdvapi32, "PerfDecrementULongLongCounterValue");
+    pPerfStartProvider =
+        (void*)GetProcAddress(ghAdvapi32, "PerfStartProvider");
+    pPerfStartProviderEx =
+        (void*)GetProcAddress(ghAdvapi32, "PerfStartProviderEx");
+    pPerfStopProvider =
+        (void*)GetProcAddress(ghAdvapi32, "PerfStopProvider");	
 
     // /* getprocaddress - use exact exported names */
     // pRegGetValueW = (void*) GetProcAddress(ghAdvapi32, "RegGetValueW");

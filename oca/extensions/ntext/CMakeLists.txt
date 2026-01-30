@@ -33,6 +33,7 @@ list(APPEND SOURCE
 	#ldr/toolhelp.c
 	rtl/acl.c
 	rtl/actctx.c
+	rtl/appcompat.c
 	rtl/atom.c
 	rtl/avl.c	
 	rtl/boundary.c

@@ -1694,11 +1694,6 @@ VOID NTAPI RtlWakeAddressAll(
 #endif
 #define SRWM_FLAG  (~SRWM_ITEM)
 
-#define SRWF_Hold   0x1 /* lock has been currently held */
-#define SRWF_Wait   0x2 /* a thread is waiting on a lock */
-#define SRWF_Link   0x4 /* lock is in the process of being released. */
-#define SRWF_Many   0x8 /* multiple threads are waiting on lock */
-
 #define SRW_COUNT_BIT   4
 #define SRW_HOLD_BIT    0
 #define NODE_SPIN_BIT   1

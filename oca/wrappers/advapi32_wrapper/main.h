@@ -256,6 +256,52 @@ typedef enum _CRED_PROTECTION_TYPE {
   CredForSystemProtection
 } CRED_PROTECTION_TYPE, *PCRED_PROTECTION_TYPE;
 
+struct counterset_template
+{
+    PERF_COUNTERSET_INFO counterset;
+    PERF_COUNTER_INFO counter[1];
+};
+
+struct counterset_instance
+{
+    struct list entry;
+    struct counterset_template *template;
+    PERF_COUNTERSET_INSTANCE instance;
+};
+
+struct perf_provider
+{
+    GUID guid;
+    PERFLIBREQUEST callback;
+    struct counterset_template **countersets;
+    unsigned int counterset_count;
+
+    struct list instance_list;
+};
+
+static struct perf_provider *perf_provider_from_handle(HANDLE prov)
+{
+    return (struct perf_provider *)prov;
+}
+
+typedef struct _PERF_INSTANCE_HEADER {
+    ULONG Size;
+    ULONG InstanceId;
+} PERF_INSTANCE_HEADER, *PPERF_INSTANCE_HEADER;
+
+typedef enum _PerfRegInfoType {
+    PERF_REG_COUNTERSET_STRUCT = 1,
+    PERF_REG_COUNTER_STRUCT,
+    PERF_REG_COUNTERSET_NAME_STRING,
+    PERF_REG_COUNTERSET_HELP_STRING,
+    PERF_REG_COUNTER_NAME_STRINGS,
+    PERF_REG_COUNTER_HELP_STRINGS,
+    PERF_REG_PROVIDER_NAME,
+    PERF_REG_PROVIDER_GUID,
+    PERF_REG_COUNTERSET_ENGLISH_NAME,
+    PERF_REG_COUNTER_ENGLISH_NAMES
+} PerfRegInfoType;
+
 /* memory allocation functions */
 
 static inline WCHAR *strdupAW( const char *src )
@@ -434,26 +480,26 @@ static DWORD (WINAPI *pNotifyServiceStatusChangeW)(
     SC_HANDLE, DWORD, PVOID
 ) = NULL;
 
-static ULONG (WINAPI *pPerfOpenQueryHandle)(ULONG, HANDLE*) = NULL;
+static ULONG (WINAPI *pPerfOpenQueryHandle)(LPCWSTR, HANDLE*) = NULL;
 static ULONG (WINAPI *pPerfCloseQueryHandle)(HANDLE) = NULL;
 
 static ULONG (WINAPI *pPerfAddCounters)(HANDLE, PVOID, ULONG) = NULL;
 static ULONG (WINAPI *pPerfDeleteCounters)(HANDLE, PVOID, ULONG) = NULL;
 
-static ULONG (WINAPI *pPerfCreateInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
+static PPERF_COUNTERSET_INSTANCE (WINAPI *pPerfCreateInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
 static ULONG (WINAPI *pPerfDeleteInstance)(HANDLE, PVOID) = NULL;
 
-static ULONG (WINAPI *pPerfEnumerateCounterSet)(ULONG, PVOID, ULONG, PULONG) = NULL;
+static ULONG (WINAPI *pPerfEnumerateCounterSet)(LPCWSTR, PVOID, ULONG, PULONG) = NULL;
 static ULONG (WINAPI *pPerfEnumerateCounterSetInstances)(
-    LPCWSTR, PVOID, PVOID, ULONG, PULONG
+    LPCWSTR, PVOID, PERF_INSTANCE_HEADER, ULONG, PULONG
 ) = NULL;
 
 static ULONG (WINAPI *pPerfQueryCounterData)(HANDLE, PVOID, ULONG, PULONG) = NULL;
 static ULONG (WINAPI *pPerfQueryCounterInfo)(HANDLE, PVOID, ULONG, PULONG) = NULL;
-static ULONG (WINAPI *pPerfQueryInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
+static PPERF_COUNTERSET_INSTANCE (WINAPI *pPerfQueryInstance)(HANDLE, PVOID, LPCWSTR, ULONG) = NULL;
 
 static ULONG (WINAPI *pPerfQueryCounterSetRegistrationInfo)(
-    ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG
+    LPCWSTR, LPCGUID, PerfRegInfoType, ULONG, LPBYTE, ULONG, ULONG*
 ) = NULL;
 
 static ULONG (WINAPI *pPerfSetCounterRefValue)(HANDLE, PVOID, ULONG, PVOID) = NULL;
@@ -469,5 +515,5 @@ static ULONG (WINAPI *pPerfDecrementULongCounterValue)(HANDLE, PVOID, ULONG, ULO
 static ULONG (WINAPI *pPerfDecrementULongLongCounterValue)(HANDLE, PVOID, ULONG, ULONGLONG) = NULL;
 
 static ULONG (WINAPI *pPerfStartProvider)(LPGUID, PVOID, HANDLE*) = NULL;
-static ULONG (WINAPI *pPerfStartProviderEx)(LPGUID, PVOID, HANDLE*) = NULL;
+static ULONG (WINAPI *pPerfStartProviderEx)(LPGUID, PERF_PROVIDER_CONTEXT*, HANDLE*) = NULL;
 static ULONG (WINAPI *pPerfStopProvider)(HANDLE) = NULL;

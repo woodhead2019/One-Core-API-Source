@@ -1071,10 +1071,10 @@ typedef size_t SYNCSTATUS;
 #define SRWM_COUNT	SRWM_ITEM
 
 #define SRWF_Free	0	//空闲
-#define SRWF_Hold	1	//有线程拥有了锁
-#define SRWF_Wait	2	//有线程正在等待
-#define SRWF_Link	4	//修改链表的操作进行中
-#define SRWF_Many	8	//独占请求之前有多个共享锁并存
+#define SRWF_Hold   0x1 /* lock has been currently held */
+#define SRWF_Wait   0x2 /* a thread is waiting on a lock */
+#define SRWF_Link   0x4 /* lock is in the process of being released. */
+#define SRWF_Many   0x8 /* multiple threads are waiting on lock */
 
 #define CVM_COUNT	0x00000007
 #define CVM_FLAG	0x0000000F
@@ -1376,3 +1376,112 @@ typedef struct _XSTATE
     ULONG64 Reserved[6];
     YMMCONTEXT YmmContext;
 } XSTATE, *PXSTATE;
+
+typedef struct _PEB32
+{
+    BOOLEAN                      InheritedAddressSpace;             /* 0000 */
+    BOOLEAN                      ReadImageFileExecOptions;          /* 0001 */
+    BOOLEAN                      BeingDebugged;                     /* 0002 */
+    UCHAR                        ImageUsedLargePages : 1;           /* 0003 */
+    UCHAR                        IsProtectedProcess : 1;
+    UCHAR                        IsImageDynamicallyRelocated : 1;
+    UCHAR                        SkipPatchingUser32Forwarders : 1;
+    UCHAR                        IsPackagedProcess : 1;
+    UCHAR                        IsAppContainer: 1;
+    UCHAR                        IsProtectedProcessLight : 1;
+    UCHAR                        IsLongPathAwareProcess : 1;
+    ULONG                        Mutant;                            /* 0004 */
+    ULONG                        ImageBaseAddress;                  /* 0008 */
+    ULONG                        LdrData;                           /* 000c */
+    ULONG                        ProcessParameters;                 /* 0010 */
+    ULONG                        SubSystemData;                     /* 0014 */
+    ULONG                        ProcessHeap;                       /* 0018 */
+    ULONG                        FastPebLock;                       /* 001c */
+    ULONG                        AtlThunkSListPtr;                  /* 0020 */
+    ULONG                        IFEOKey;                           /* 0024 */
+    ULONG                        ProcessInJob : 1;                  /* 0028 */
+    ULONG                        ProcessInitializing : 1;
+    ULONG                        ProcessUsingVEH : 1;
+    ULONG                        ProcessUsingVCH : 1;
+    ULONG                        ProcessUsingFTH : 1;
+    ULONG                        ProcessPreviouslyThrottled : 1;
+    ULONG                        ProcessCurrentlyThrottled : 1;
+    ULONG                        ProcessImagesHotPatched : 1;
+    ULONG                        ReservedBits0 : 24;
+    ULONG                        KernelCallbackTable;               /* 002c */
+    ULONG                        Reserved;                          /* 0030 */
+    ULONG                        AtlThunkSListPtr32;                /* 0034 */
+    ULONG                        ApiSetMap;                         /* 0038 */
+    ULONG                        TlsExpansionCounter;               /* 003c */
+    ULONG                        TlsBitmap;                         /* 0040 */
+    ULONG                        TlsBitmapBits[2];                  /* 0044 */
+    ULONG                        ReadOnlySharedMemoryBase;          /* 004c */
+    ULONG                        SharedData;                        /* 0050 */
+    ULONG                        ReadOnlyStaticServerData;          /* 0054 */
+    ULONG                        AnsiCodePageData;                  /* 0058 */
+    ULONG                        OemCodePageData;                   /* 005c */
+    ULONG                        UnicodeCaseTableData;              /* 0060 */
+    ULONG                        NumberOfProcessors;                /* 0064 */
+    ULONG                        NtGlobalFlag;                      /* 0068 */
+    LARGE_INTEGER                CriticalSectionTimeout;            /* 0070 */
+    ULONG                        HeapSegmentReserve;                /* 0078 */
+    ULONG                        HeapSegmentCommit;                 /* 007c */
+    ULONG                        HeapDeCommitTotalFreeThreshold;    /* 0080 */
+    ULONG                        HeapDeCommitFreeBlockThreshold;    /* 0084 */
+    ULONG                        NumberOfHeaps;                     /* 0088 */
+    ULONG                        MaximumNumberOfHeaps;              /* 008c */
+    ULONG                        ProcessHeaps;                      /* 0090 */
+    ULONG                        GdiSharedHandleTable;              /* 0094 */
+    ULONG                        ProcessStarterHelper;              /* 0098 */
+    ULONG                        GdiDCAttributeList;                /* 009c */
+    ULONG                        LoaderLock;                        /* 00a0 */
+    ULONG                        OSMajorVersion;                    /* 00a4 */
+    ULONG                        OSMinorVersion;                    /* 00a8 */
+    ULONG                        OSBuildNumber;                     /* 00ac */
+    ULONG                        OSCSDVersion;                     /* 00ac */
+    ULONG                        OSPlatformId;                      /* 00b0 */
+    ULONG                        ImageSubSystem;                    /* 00b4 */
+    ULONG                        ImageSubSystemMajorVersion;        /* 00b8 */
+    ULONG                        ImageSubSystemMinorVersion;        /* 00bc */
+    ULONG                        ActiveProcessAffinityMask;         /* 00c0 */
+    ULONG                        GdiHandleBuffer[34];               /* 00c4 */
+    ULONG                        PostProcessInitRoutine;            /* 014c */
+    ULONG                        TlsExpansionBitmap;                /* 0150 */
+    ULONG                        TlsExpansionBitmapBits[32];        /* 0154 */
+    ULONG                        SessionId;                         /* 01d4 */
+    ULARGE_INTEGER               AppCompatFlags;                    /* 01d8 */
+    ULARGE_INTEGER               AppCompatFlagsUser;                /* 01e0 */
+    ULONG                        ShimData;                          /* 01e8 */
+    ULONG                        AppCompatInfo;                     /* 01ec */
+    UNICODE_STRING32             CSDVersion;                        /* 01f0 */
+    ULONG                        ActivationContextData;             /* 01f8 */
+    ULONG                        ProcessAssemblyStorageMap;         /* 01fc */
+    ULONG                        SystemDefaultActivationData;       /* 0200 */
+    ULONG                        SystemAssemblyStorageMap;          /* 0204 */
+    ULONG                        MinimumStackCommit;                /* 0208 */
+    ULONG                        FlsCallback;                       /* 020c */
+    LIST_ENTRY32                 FlsListHead;                       /* 0210 */
+    ULONG                        FlsBitmap;                         /* 0218 */
+    ULONG                        FlsBitmapBits[4];                  /* 021c */
+    ULONG                        FlsHighIndex;                      /* 022c */
+    ULONG                        WerRegistrationData;               /* 0230 */
+    ULONG                        WerShipAssertPtr;                  /* 0234 */
+    ULONG                        pUnused;                           /* 0238 */
+    ULONG                        pImageHeaderHash;                  /* 023c */
+    ULONG                        HeapTracingEnabled : 1;            /* 0240 */
+    ULONG                        CritSecTracingEnabled : 1;
+    ULONG                        LibLoaderTracingEnabled : 1;
+    ULONG                        SpareTracingBits : 29;
+    ULONGLONG                    CsrServerReadOnlySharedMemoryBase; /* 0248 */
+    ULONG                        TppWorkerpListLock;                /* 0250 */
+    LIST_ENTRY32                 TppWorkerpList;                    /* 0254 */
+    ULONG                        WaitOnAddressHashTable [0x80];     /* 025c */
+    ULONG                        TelemetryCoverageHeader;           /* 045c */
+    ULONG                        CloudFileFlags;                    /* 0460 */
+    ULONG                        CloudFileDiagFlags;                /* 0464 */
+    CHAR                         PlaceholderCompatibilityMode;      /* 0468 */
+    CHAR                         PlaceholderCompatibilityModeReserved[7]; /* 0469 */
+    ULONG                        LeapSecondData;                    /* 0470 */
+    ULONG                        LeapSecondFlags;                   /* 0474 */
+    ULONG                        NtGlobalFlag2;                     /* 0478 */
+} PEB32;

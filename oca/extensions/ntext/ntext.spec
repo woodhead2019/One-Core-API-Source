@@ -1289,7 +1289,7 @@
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
-@ stdcall RtlGetVersionHook(ptr)
+@ stdcall RtlGetVersionAppCompat(ptr)
 
 #Missing on XP and Server 2003 RTM
 @ stdcall -arch=i386 KiFastSystemCall() ntdll.KiFastSystemCall

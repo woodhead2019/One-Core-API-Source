@@ -22,52 +22,6 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(perf);
 
-struct counterset_template
-{
-    PERF_COUNTERSET_INFO counterset;
-    PERF_COUNTER_INFO counter[1];
-};
-
-struct counterset_instance
-{
-    struct list entry;
-    struct counterset_template *template;
-    PERF_COUNTERSET_INSTANCE instance;
-};
-
-struct perf_provider
-{
-    GUID guid;
-    PERFLIBREQUEST callback;
-    struct counterset_template **countersets;
-    unsigned int counterset_count;
-
-    struct list instance_list;
-};
-
-static struct perf_provider *perf_provider_from_handle(HANDLE prov)
-{
-    return (struct perf_provider *)prov;
-}
-
-typedef struct _PERF_INSTANCE_HEADER {
-    ULONG Size;
-    ULONG InstanceId;
-} PERF_INSTANCE_HEADER, *PPERF_INSTANCE_HEADER;
-
-typedef enum _PerfRegInfoType {
-    PERF_REG_COUNTERSET_STRUCT = 1,
-    PERF_REG_COUNTER_STRUCT,
-    PERF_REG_COUNTERSET_NAME_STRING,
-    PERF_REG_COUNTERSET_HELP_STRING,
-    PERF_REG_COUNTER_NAME_STRINGS,
-    PERF_REG_COUNTER_HELP_STRINGS,
-    PERF_REG_PROVIDER_NAME,
-    PERF_REG_PROVIDER_GUID,
-    PERF_REG_COUNTERSET_ENGLISH_NAME,
-    PERF_REG_COUNTER_ENGLISH_NAMES
-} PerfRegInfoType;
-
 /***********************************************************************
  *           PerfCreateInstance   (kernelex.@)
  */
@@ -82,6 +36,10 @@ PPERF_COUNTERSET_INSTANCE WINAPI PerfCreateInstance(
     struct counterset_instance *inst;
     unsigned int i;
     ULONG size;
+	
+	if(pPerfCreateInstance){
+		return pPerfCreateInstance(handle, guid, name, id);
+	}	
 
     FIXME( "handle %p, guid %s, name %s, id %u semi-stub.\n", handle, debugstr_guid(guid), debugstr_w(name), id );
 
@@ -141,6 +99,10 @@ ULONG WINAPI PerfDeleteInstance(HANDLE provider, PERF_COUNTERSET_INSTANCE *block
 {
     struct perf_provider *prov = perf_provider_from_handle( provider );
     struct counterset_instance *inst;
+	
+	if(pPerfDeleteInstance){
+		return pPerfDeleteInstance(provider, block);
+	}	
 
     TRACE( "provider %p, block %p.\n", provider, block );
 
@@ -162,6 +124,10 @@ ULONG WINAPI PerfSetCounterSetInfo( HANDLE handle, PERF_COUNTERSET_INFO *templat
     struct counterset_template **new_array;
     struct counterset_template *new;
     unsigned int i;
+	
+	if(pPerfSetCounterSetInfo){
+		return pPerfSetCounterSetInfo(handle, template, size);
+	}	
 
     FIXME( "handle %p, template %p, size %u semi-stub.\n", handle, template, size );
 
@@ -208,7 +174,11 @@ ULONG WINAPI PerfSetCounterRefValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *i
     struct perf_provider *prov = perf_provider_from_handle( provider );
     struct counterset_template *template;
     struct counterset_instance *inst;
-    unsigned int i;
+    unsigned int i;	
+	
+	if(pPerfSetCounterRefValue){
+		return pPerfSetCounterRefValue(provider, instance, counterid, address);
+	}		
 
     FIXME( "provider %p, instance %p, counterid %u, address %p semi-stub.\n",
            provider, instance, counterid, address );
@@ -233,6 +203,10 @@ ULONG WINAPI PerfSetCounterRefValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *i
 ULONG WINAPI PerfStartProviderEx( GUID *guid, PERF_PROVIDER_CONTEXT *context, HANDLE *provider )
 {
     struct perf_provider *prov;
+	
+	if(pPerfStartProviderEx){
+		return pPerfStartProviderEx(guid, context, provider);
+	}	
 
     FIXME( "guid %s, context %p, provider %p semi-stub.\n", debugstr_guid(guid), context, provider );
 
@@ -257,6 +231,10 @@ ULONG WINAPI PerfStartProviderEx( GUID *guid, PERF_PROVIDER_CONTEXT *context, HA
 ULONG WINAPI PerfStartProvider( GUID *guid, PERFLIBREQUEST callback, HANDLE *provider )
 {
     PERF_PROVIDER_CONTEXT ctx;
+	
+	if(pPerfStartProvider){
+		return pPerfStartProvider(guid, callback, provider);
+	}	
 
     FIXME( "guid %s, callback %p, provider %p semi-stub.\n", debugstr_guid(guid), callback, provider );
 
@@ -275,6 +253,10 @@ ULONG WINAPI PerfStopProvider(HANDLE handle)
     struct perf_provider *prov = perf_provider_from_handle( handle );
     struct counterset_instance *inst, *next;
     unsigned int i;
+	
+	if(pPerfStopProvider){
+		return pPerfStopProvider(handle);
+	}	
 
     TRACE( "handle %p.\n", handle );
 
@@ -296,6 +278,10 @@ ULONG WINAPI PerfStopProvider(HANDLE handle)
 
 LONG WINAPI PerfCloseQueryHandle( HANDLE query )
 {
+	if(pPerfCloseQueryHandle){
+		return pPerfCloseQueryHandle(query);
+	}	
+	
     FIXME( "query %p stub.\n", query );
 
     return ERROR_SUCCESS;
@@ -303,6 +289,9 @@ LONG WINAPI PerfCloseQueryHandle( HANDLE query )
 
 ULONG WINAPI PerfOpenQueryHandle( const WCHAR *machine, HANDLE *query )
 {
+	if(pPerfOpenQueryHandle){
+		return pPerfOpenQueryHandle(machine, query);
+	}	
     FIXME( "machine %s, query %p.\n", debugstr_w(machine), query );
 
     if (!query) return ERROR_INVALID_PARAMETER;
@@ -313,6 +302,10 @@ ULONG WINAPI PerfOpenQueryHandle( const WCHAR *machine, HANDLE *query )
 
 ULONG WINAPI PerfAddCounters( HANDLE query, PERF_COUNTER_IDENTIFIER *id, DWORD size )
 {
+	if(pPerfAddCounters){
+		return pPerfAddCounters(query, id, size);
+	}	
+	
     FIXME( "query %p, id %p, size %lu stub.\n", query, id, size );
 
     if (!id || size < sizeof(*id) || id->Size < sizeof(*id)) return ERROR_INVALID_PARAMETER;
@@ -323,6 +316,10 @@ ULONG WINAPI PerfAddCounters( HANDLE query, PERF_COUNTER_IDENTIFIER *id, DWORD s
 
 ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD data_size, DWORD *size_needed )
 {
+	if(pPerfQueryCounterData){
+		return pPerfQueryCounterData(query, data, data_size, size_needed);
+	}	
+	
     FIXME( "query %p, data %p, data_size %lu, size_needed %p stub.\n", query, data, data_size, size_needed );
 
     if (!size_needed) return ERROR_INVALID_PARAMETER;
@@ -348,6 +345,9 @@ ULONG WINAPI PerfSetULongCounterValue(
   ULONG                     Value
 )
 {
+	if(pPerfSetULongCounterValue){
+		return pPerfSetULongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -358,6 +358,9 @@ ULONG WINAPI PerfSetULongLongCounterValue(
   ULONGLONG                 Value
 )
 {
+	if(pPerfSetULongLongCounterValue){
+		return pPerfSetULongLongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -368,6 +371,9 @@ ULONG WINAPI PerfDecrementULongCounterValue(
   ULONG                     Value
 )
 {
+	if(pPerfDecrementULongCounterValue){
+		return pPerfDecrementULongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -378,6 +384,9 @@ ULONG WINAPI PerfDecrementULongLongCounterValue(
   ULONGLONG                 Value
 )
 {
+	if(pPerfDecrementULongLongCounterValue){
+		return pPerfDecrementULongLongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -387,6 +396,9 @@ ULONG WINAPI PerfDeleteCounters(
   DWORD                    cbCounters
 )
 {
+	if(pPerfDeleteCounters){
+		return pPerfDeleteCounters(hQuery, pCounters,cbCounters);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -397,6 +409,9 @@ ULONG WINAPI PerfEnumerateCounterSet(
    DWORD *pcCounterSetIdsActual
 )
 {
+	if(pPerfEnumerateCounterSet){
+		return pPerfEnumerateCounterSet(szMachine, pCounterSetIds, cCounterSetIds, pcCounterSetIdsActual);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -408,6 +423,9 @@ ULONG WINAPI PerfEnumerateCounterSetInstances(
    DWORD               *pcbInstancesActual
 )
 {
+	if(pPerfEnumerateCounterSetInstances){
+		return pPerfEnumerateCounterSetInstances(szMachine, pCounterSetId, pInstances, cbInstances, pcbInstancesActual);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -418,6 +436,9 @@ ULONG WINAPI PerfIncrementULongCounterValue(
    ULONG                     Value
 )
 {
+	if(pPerfIncrementULongCounterValue){
+		return pPerfIncrementULongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -428,6 +449,9 @@ ULONG WINAPI PerfIncrementULongLongCounterValue(
    ULONGLONG                 Value
 )
 {
+	if(pPerfIncrementULongLongCounterValue){
+		return pPerfIncrementULongLongCounterValue(Provider, Instance, CounterId, Value);
+	}	
     return ERROR_SUCCESS;
 }
 
@@ -442,6 +466,10 @@ PPERF_COUNTERSET_INSTANCE WINAPI PerfQueryInstance(
     struct counterset_template *template;
     struct counterset_instance *inst;
     unsigned int i;
+	
+	if(pPerfQueryInstance){
+		return pPerfQueryInstance(handle, guid, name, id);
+	}	
 
     FIXME( "handle %p, guid %s, name %s, id %u semi-stub.\n", handle, debugstr_guid(guid), debugstr_w(name), id );
 
@@ -477,6 +505,10 @@ PPERF_COUNTERSET_INSTANCE WINAPI PerfQueryInstance(
 
 ULONG WINAPI PerfQueryCounterInfo( HANDLE query, PPERF_COUNTER_IDENTIFIER data, DWORD data_size, DWORD *size_needed )
 {
+	if(pPerfQueryCounterInfo){
+		return pPerfQueryCounterInfo(query, data, data_size, size_needed);
+	}	
+	
     FIXME( "query %p, data %p, data_size %lu, size_needed %p stub.\n", query, data, data_size, size_needed );
 
     // if (!size_needed) return ERROR_INVALID_PARAMETER;
@@ -505,5 +537,9 @@ ULONG PerfQueryCounterSetRegistrationInfo(
     DWORD           *pcbRegInfoActual
 )
 {
-	 return ERROR_NOT_FOUND;
+	if(pPerfQueryCounterSetRegistrationInfo){
+		return pPerfQueryCounterSetRegistrationInfo(szMachine, pCounterSetId, requestCode, requestLangId, pbRegInfo, cbRegInfo, pcbRegInfoActual);
+	}	
+	
+	return ERROR_NOT_FOUND;
 }
