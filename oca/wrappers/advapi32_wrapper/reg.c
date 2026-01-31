@@ -620,6 +620,9 @@ LSTATUS WINAPI RegCopyTreeW( HKEY hsrc, const WCHAR *subkey, HKEY hdst )
     BYTE *value_buf = NULL;
     HKEY hkey;
     LONG ret;
+	
+    if (pRegCopyTreeW)
+        return pRegCopyTreeW(hsrc, subkey, hdst);	
 
     TRACE( "(%p, %s, %p)\n", hsrc, debugstr_w(subkey), hdst );
 

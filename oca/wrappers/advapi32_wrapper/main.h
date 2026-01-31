@@ -455,8 +455,8 @@ static ULONG (WINAPI *pEnableTraceEx2)(
     ULONGLONG, ULONGLONG, ULONG, PENABLE_TRACE_PARAMETERS
 ) = NULL;
 
-static BOOL (WINAPI *pOpenThreadWaitChainSession)(
-    DWORD, PVOID*
+static HWCT (WINAPI *pOpenThreadWaitChainSession)(
+    DWORD, PWAITCHAINCALLBACK
 ) = NULL;
 
 static BOOL (WINAPI *pGetThreadWaitChain)(
@@ -517,3 +517,72 @@ static ULONG (WINAPI *pPerfDecrementULongLongCounterValue)(HANDLE, PVOID, ULONG,
 static ULONG (WINAPI *pPerfStartProvider)(LPGUID, PVOID, HANDLE*) = NULL;
 static ULONG (WINAPI *pPerfStartProviderEx)(LPGUID, PERF_PROVIDER_CONTEXT*, HANDLE*) = NULL;
 static ULONG (WINAPI *pPerfStopProvider)(HANDLE) = NULL;
+static VOID (WINAPI *pProcessIdleTasksW)(VOID) = NULL;
+static BOOL (WINAPI *pQuerySecurityAccessMask)(SECURITY_INFORMATION, LPDWORD) = NULL;
+static LSTATUS (WINAPI *pRegCopyTreeA)(HKEY, LPCSTR, HKEY) = NULL;
+static LSTATUS (WINAPI *pRegCopyTreeW)(HKEY, LPCWSTR, HKEY) = NULL;
+
+static LSTATUS (WINAPI *pRegDeleteTreeA)(HKEY, LPCSTR) = NULL;
+static LSTATUS (WINAPI *pRegDeleteTreeW)(HKEY, LPCWSTR) = NULL;
+
+static LSTATUS (WINAPI *pRegDeleteKeyValueA)(HKEY, LPCSTR, LPCSTR) = NULL;
+static LSTATUS (WINAPI *pRegDeleteKeyValueW)(HKEY, LPCWSTR, LPCWSTR) = NULL;
+
+static LSTATUS (WINAPI *pRegSetKeyValueA)(
+    HKEY, LPCSTR, LPCSTR, DWORD, LPCVOID, DWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegSetKeyValueW)(
+    HKEY, LPCWSTR, LPCWSTR, DWORD, LPCVOID, DWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegRenameKey)(HKEY, LPCWSTR, LPCWSTR) = NULL;
+
+static LSTATUS (WINAPI *pRegLoadAppKeyA)(
+    LPCSTR, PHKEY, REGSAM, DWORD, DWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegLoadAppKeyW)(
+    LPCWSTR, PHKEY, REGSAM, DWORD, DWORD
+) = NULL;
+
+static LSTATUS (WINAPI *pRegLoadMUIStringA)(
+    HKEY, LPCSTR, LPSTR, DWORD, LPDWORD, DWORD, LPCSTR
+) = NULL;
+
+static LSTATUS (WINAPI *pRegLoadMUIStringW)(
+    HKEY, LPCWSTR, LPWSTR, DWORD, LPDWORD, DWORD, LPCWSTR
+) = NULL;
+
+static LSTATUS (WINAPI *pRegCreateKeyTransactedA)(
+    HKEY, LPCSTR, DWORD, LPSTR, DWORD, REGSAM,
+    LPSECURITY_ATTRIBUTES, PHKEY, LPDWORD,
+    HANDLE, PVOID
+) = NULL;
+
+static LSTATUS (WINAPI *pRegCreateKeyTransactedW)(
+    HKEY, LPCWSTR, DWORD, LPWSTR, DWORD, REGSAM,
+    LPSECURITY_ATTRIBUTES, PHKEY, LPDWORD,
+    HANDLE, PVOID
+) = NULL;
+
+static LSTATUS (WINAPI *pRegOpenKeyTransactedA)(
+    HKEY, LPCSTR, DWORD, REGSAM, PHKEY,
+    HANDLE, PVOID
+) = NULL;
+
+static LSTATUS (WINAPI *pRegOpenKeyTransactedW)(
+    HKEY, LPCWSTR, DWORD, REGSAM, PHKEY,
+    HANDLE, PVOID
+) = NULL;
+
+static LSTATUS (WINAPI *pRegDeleteKeyTransactedA)(
+    HKEY, LPCSTR, DWORD, DWORD, HANDLE, PVOID
+) = NULL;
+
+static LSTATUS (WINAPI *pRegDeleteKeyTransactedW)(
+    HKEY, LPCWSTR, DWORD, DWORD, HANDLE, PVOID
+) = NULL;
+static BOOL (WINAPI *pSetSecurityAccessMask)(SECURITY_INFORMATION, LPDWORD) = NULL;
+static DWORD (WINAPI *pSetUserFileEncryptionKeyEx)(PBYTE, DWORD, DWORD, PVOID) = NULL;
+static DWORD (WINAPI *pTreeSetNamedSecurityInfoW)(LPCWSTR, SE_OBJECT_TYPE, SECURITY_INFORMATION,PSID, PSID, PACL, PACL, DWORD) = NULL;

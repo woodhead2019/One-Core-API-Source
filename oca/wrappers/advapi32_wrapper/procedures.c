@@ -27,12 +27,15 @@ static HMODULE ghAdvapi32 = NULL;
 /* Initialize pointers using GetModuleHandleW (no LoadLibrary) */
 BOOL InitNativeProcs(void)
 {
-    HMODULE h;
-    if (ghAdvapi32) return TRUE; /* jÃ¡ inicializado */
+    if (ghAdvapi32)
+        return TRUE;
 
-    h = GetModuleHandleW(L"advapibase.dll");
-    if (!h) return FALSE;
-    ghAdvapi32 = h;
+    ghAdvapi32 = GetModuleHandleW(L"advapibase.dll");
+    if (!ghAdvapi32)
+        ghAdvapi32 = GetModuleHandleW(L"advapi32.dll");
+
+    if (!ghAdvapi32)
+        return FALSE;
 	
     pAddMandatoryAce             = (void*)GetProcAddress(ghAdvapi32, "AddMandatoryAce");
     pCredFindBestCredentialA     = (void*)GetProcAddress(ghAdvapi32, "CredFindBestCredentialA");
@@ -57,7 +60,13 @@ BOOL InitNativeProcs(void)
     pEventWriteStartScenario     = (void*)GetProcAddress(ghAdvapi32, "EventWriteStartScenario");
     pEventWriteEndScenario       = (void*)GetProcAddress(ghAdvapi32, "EventWriteEndScenario");
     pEnableTraceEx               = (void*)GetProcAddress(ghAdvapi32, "EnableTraceEx");
-    pEnableTraceEx2               = (void*)GetProcAddress(ghAdvapi32, "EnableTraceEx2");
+    pEnableTraceEx2              = (void*)GetProcAddress(ghAdvapi32, "EnableTraceEx2");
+    pGetThreadWaitChain  		 = (void*)GetProcAddress(ghAdvapi32, "GetThreadWaitChain");	
+    pInitiateShutdownA 			 = (void*)GetProcAddress(ghAdvapi32, "InitiateShutdownA");
+    pInitiateShutdownW 			 = (void*)GetProcAddress(ghAdvapi32, "InitiateShutdownW");
+    pNotifyServiceStatusChangeA  = (void*)GetProcAddress(ghAdvapi32, "NotifyServiceStatusChangeA");
+    pNotifyServiceStatusChangeW  = (void*)GetProcAddress(ghAdvapi32, "NotifyServiceStatusChangeW");
+    pOpenThreadWaitChainSession  = (void*)GetProcAddress(ghAdvapi32, "OpenThreadWaitChainSession");	
     pPerfOpenQueryHandle = (void*)GetProcAddress(ghAdvapi32, "PerfOpenQueryHandle");
     pPerfCloseQueryHandle = (void*)GetProcAddress(ghAdvapi32, "PerfCloseQueryHandle");
 
@@ -103,6 +112,35 @@ BOOL InitNativeProcs(void)
         (void*)GetProcAddress(ghAdvapi32, "PerfStartProviderEx");
     pPerfStopProvider =
         (void*)GetProcAddress(ghAdvapi32, "PerfStopProvider");	
+		
+    pProcessIdleTasksW =
+        (void*)GetProcAddress(ghAdvapi32, "ProcessIdleTasksW");	
+
+    pQuerySecurityAccessMask      = (void*)GetProcAddress(ghAdvapi32, "QuerySecurityAccessMask");
+    pSetSecurityAccessMask        = (void*)GetProcAddress(ghAdvapi32, "SetSecurityAccessMask");
+    pSetUserFileEncryptionKeyEx   = (void*)GetProcAddress(ghAdvapi32, "SetUserFileEncryptionKeyEx");
+    pTreeSetNamedSecurityInfoW    = (void*)GetProcAddress(ghAdvapi32, "TreeSetNamedSecurityInfoW");
+
+    pRegCopyTreeA                 = (void*)GetProcAddress(ghAdvapi32, "RegCopyTreeA");
+    pRegCopyTreeW                 = (void*)GetProcAddress(ghAdvapi32, "RegCopyTreeW");
+    pRegDeleteTreeA               = (void*)GetProcAddress(ghAdvapi32, "RegDeleteTreeA");
+    pRegDeleteTreeW               = (void*)GetProcAddress(ghAdvapi32, "RegDeleteTreeW");
+    pRegDeleteKeyValueA           = (void*)GetProcAddress(ghAdvapi32, "RegDeleteKeyValueA");
+    pRegDeleteKeyValueW           = (void*)GetProcAddress(ghAdvapi32, "RegDeleteKeyValueW");
+    pRegSetKeyValueA              = (void*)GetProcAddress(ghAdvapi32, "RegSetKeyValueA");
+    pRegSetKeyValueW              = (void*)GetProcAddress(ghAdvapi32, "RegSetKeyValueW");
+    pRegRenameKey                 = (void*)GetProcAddress(ghAdvapi32, "RegRenameKey");
+    pRegLoadAppKeyA               = (void*)GetProcAddress(ghAdvapi32, "RegLoadAppKeyA");
+    pRegLoadAppKeyW               = (void*)GetProcAddress(ghAdvapi32, "RegLoadAppKeyW");
+    pRegLoadMUIStringA            = (void*)GetProcAddress(ghAdvapi32, "RegLoadMUIStringA");
+    pRegLoadMUIStringW            = (void*)GetProcAddress(ghAdvapi32, "RegLoadMUIStringW");
+
+    pRegCreateKeyTransactedA      = (void*)GetProcAddress(ghAdvapi32, "RegCreateKeyTransactedA");
+    pRegCreateKeyTransactedW      = (void*)GetProcAddress(ghAdvapi32, "RegCreateKeyTransactedW");
+    pRegOpenKeyTransactedA        = (void*)GetProcAddress(ghAdvapi32, "RegOpenKeyTransactedA");
+    pRegOpenKeyTransactedW        = (void*)GetProcAddress(ghAdvapi32, "RegOpenKeyTransactedW");
+    pRegDeleteKeyTransactedA      = (void*)GetProcAddress(ghAdvapi32, "RegDeleteKeyTransactedA");
+    pRegDeleteKeyTransactedW      = (void*)GetProcAddress(ghAdvapi32, "RegDeleteKeyTransactedW");		
 
     // /* getprocaddress - use exact exported names */
     // pRegGetValueW = (void*) GetProcAddress(ghAdvapi32, "RegGetValueW");

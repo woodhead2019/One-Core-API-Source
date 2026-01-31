@@ -34,6 +34,11 @@ InitiateShutdownW(
 {
 	BOOL shutdown;
 	DWORD time = dwGracePeriod;
+	
+	if(pInitiateShutdownW){
+		pInitiateShutdownW(lpMachineName, lpMessage, dwGracePeriod, dwShutdownFlags, dwReason);
+	}	
+	
 	switch(dwShutdownFlags)
 	{
 		case SHUTDOWN_GRACE_OVERRIDE:
@@ -64,6 +69,11 @@ InitiateShutdownA(
 {
 	BOOL shutdown;
 	DWORD time = dwGracePeriod;
+	
+	if(pInitiateShutdownA){
+		pInitiateShutdownA(lpMachineName, lpMessage, dwGracePeriod, dwShutdownFlags, dwReason);
+	}	
+	
 	switch(dwShutdownFlags)
 	{
 		case SHUTDOWN_GRACE_OVERRIDE:

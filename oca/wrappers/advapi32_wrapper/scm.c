@@ -61,6 +61,10 @@ NotifyServiceStatusChangeW(
 	DWORD mask,
     SERVICE_NOTIFYW *notify_buffer )
 {
+	if(pNotifyServiceStatusChangeW){
+		pNotifyServiceStatusChangeW(service, mask, notify_buffer);
+	}
+	
 	return ERROR_SUCCESS;
 }	
 
@@ -76,5 +80,9 @@ NotifyServiceStatusChangeA(
 	DWORD mask, 
 	PSERVICE_NOTIFYA notify_buffer)
 {
+	if(pNotifyServiceStatusChangeA){
+		pNotifyServiceStatusChangeA(service, mask, notify_buffer);
+	}
+	
 	return ERROR_SUCCESS;
 }
