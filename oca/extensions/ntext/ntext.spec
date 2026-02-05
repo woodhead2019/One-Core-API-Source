@@ -1739,6 +1739,7 @@
 @ stdcall RtlWakeAddressAll(ptr)
 @ stdcall RtlWakeAddressSingle(ptr)
 @ stdcall WinSqmIsOptedInEx(long)
+@ stdcall NtQueryWnfStateData(ptr ptr ptr ptr ptr ptr)
 
 #Win10
 @ stdcall RtlGetDeviceFamilyInfoEnum(ptr ptr ptr)
