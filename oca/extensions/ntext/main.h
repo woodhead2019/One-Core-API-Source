@@ -1377,6 +1377,7 @@ typedef struct _XSTATE
     YMMCONTEXT YmmContext;
 } XSTATE, *PXSTATE;
 
+#ifdef __i386__
 typedef struct _PEB32
 {
     BOOLEAN                      InheritedAddressSpace;             /* 0000 */
@@ -1485,3 +1486,4 @@ typedef struct _PEB32
     ULONG                        LeapSecondFlags;                   /* 0474 */
     ULONG                        NtGlobalFlag2;                     /* 0478 */
 } PEB32;
+#endif
