@@ -70,6 +70,10 @@ NtQueryWnfStateData(
 
     Name = *(ULONGLONG *)StateName;
 
+    TRACE(
+        "NtQueryWnfStateData called! ([%08x,%08x], %p, %p, %p, %p, %p)\n", StateName->Data[0], StateName->Data[1],
+        TypeId, ExplicitScope, ChangeStamp, Buffer, BufferSize);
+
     // Set change stamp using system time as a reference
     if (ChangeStamp)
     {
@@ -85,7 +89,8 @@ NtQueryWnfStateData(
         case WNF_POWR_BATTERY_STATE:
         {
             SYSTEM_BATTERY_STATE BatteryState;
-            Status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)SystemBatteryState, &XpBattery, sizeof(XpBattery), NULL);
+            Status = NtQuerySystemInformation(
+                (SYSTEM_INFORMATION_CLASS)SystemBatteryState, &BatteryState, sizeof(BatteryState), NULL);
 
             if (NT_SUCCESS(Status))
             {
@@ -109,7 +114,7 @@ NtQueryWnfStateData(
 
         default:
             // TODO: Add more WNF state names
-			DbgPrint("ntext: Unknown WNF State Name: 0x%I64X\n", Name);
+            TRACE("NtQueryWnfStateData called! Unknown WNF State Name: 0x%I64X\n", Name);
             RequiredSize = 0;
             break;
     }
