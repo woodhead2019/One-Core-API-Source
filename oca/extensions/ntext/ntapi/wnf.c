@@ -32,7 +32,15 @@ typedef struct _WNF_STATE_NAME
     ULONG Data[2];
 } WNF_STATE_NAME, *PWNF_STATE_NAME;
 
+typedef const WNF_STATE_NAME *PCWNF_STATE_NAME;
 typedef ULONG WNF_CHANGE_STAMP, *PWNF_CHANGE_STAMP;
+
+typedef struct _WNF_TYPE_ID {
+    GUID TypeId;
+} WNF_TYPE_ID, *PWNF_TYPE_ID;
+
+typedef const WNF_TYPE_ID *PCWNF_TYPE_ID;
+typedef ULONG LOGICAL;
 
 typedef struct _WNF_BATTERY_STATE_DATA
 {
@@ -70,7 +78,7 @@ NtQueryWnfStateData(
 
     Name = *(ULONGLONG *)StateName;
 
-    TRACE(
+    DbgPrint(
         "NtQueryWnfStateData called! ([%08x,%08x], %p, %p, %p, %p, %p)\n", StateName->Data[0], StateName->Data[1],
         TypeId, ExplicitScope, ChangeStamp, Buffer, BufferSize);
 
@@ -114,7 +122,7 @@ NtQueryWnfStateData(
 
         default:
             // TODO: Add more WNF state names
-            TRACE("NtQueryWnfStateData called! Unknown WNF State Name: 0x%I64X\n", Name);
+            DbgPrint("NtQueryWnfStateData called! Unknown WNF State Name: 0x%I64X\n", Name);
             RequiredSize = 0;
             break;
     }
@@ -139,3 +147,32 @@ NtQueryWnfStateData(
 
     return STATUS_SUCCESS;
 }
+
+NTSTATUS
+NTAPI
+NtUpdateWnfStateData(
+    _In_ PCWNF_STATE_NAME StateName,
+    _In_reads_bytes_opt_(Length) const VOID *Buffer,
+    _In_opt_ ULONG Length,
+    _In_opt_ PCWNF_TYPE_ID TypeId,
+    _In_opt_ const PVOID ExplicitScope,
+    _In_ WNF_CHANGE_STAMP MatchingChangeStamp,
+    _In_ LOGICAL CheckStamp)
+{
+    ULONGLONG Name;
+
+    if (!StateName)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    Name = *(ULONGLONG *)StateName;
+
+    DbgPrint(
+        "NtUpdateWnfStateData called! ([%08x,%08x], Buf %p, Len %u, TypeId %p, Stamp %u, Check %u)\n",
+        StateName->Data[0], StateName->Data[1], Buffer, Length, TypeId, MatchingChangeStamp, CheckStamp);
+
+    // We don't actually store data, as we trying to emulate WNF
+    // So yeah, it's a stub function that always (perhaps) return STATUS_SUCCESS
+    return STATUS_SUCCESS;
+};
