@@ -11,6 +11,7 @@ spec2def(shlwapi_wrapper.dll shlwapi_wrapper.spec)
 
 list(APPEND SOURCE
     assoc.c
+    forwards.c
     istream.c
     main.c
     string.c
