@@ -585,15 +585,18 @@ ReadEmulatedVersion(
 )
 {
     WCHAR SanitizedPath[MAX_PATH];
-    WCHAR FullKeyPath[MAX_PATH];
-    WCHAR buffer[128];
+    WCHAR SubKeyPath[MAX_PATH];
+    WCHAR buffer[256];
+
     UNICODE_STRING KeyName;
-    UNICODE_STRING valueKeyName;
+    UNICODE_STRING ValueName;
     OBJECT_ATTRIBUTES Obj;
     HANDLE Handle;
+
     NTSTATUS status;
     PKEY_VALUE_PARTIAL_INFORMATION KeyInfo;
     ULONG informationLength;
+
     PWSTR heapBuf;
     SIZE_T lenChars, lenBytes;
 
@@ -601,34 +604,48 @@ ReadEmulatedVersion(
     RtlZeroMemory(buffer, sizeof(buffer));
 
     KeyInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
-	
-	if(FilePath){
-		SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
 
-		swprintf(
-			FullKeyPath,
-			L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings\\%s",
-			SanitizedPath
-		);		
-		RtlInitUnicodeString(&KeyName, FullKeyPath);
-		RtlInitUnicodeString(&valueKeyName, L"CompatWindowsVersion");
-	}else{
-		RtlInitUnicodeString(
-			&KeyName,
-			L"\\REGISTRY\\MACHINE\\SOFTWARE\\OCA\\Settings"
-		);	
-		RtlInitUnicodeString(&valueKeyName, L"GlobalVersion");
-	}
-    
-    InitializeObjectAttributes(&Obj, &KeyName, OBJ_CASE_INSENSITIVE, NULL, NULL);
+    /* Monta o caminho RELATIVO ao HKCU */
+    if (FilePath)
+    {
+        SanitizeFilenameForRegistry(FilePath, SanitizedPath, MAX_PATH);
 
-    status = NtOpenKey(&Handle, GENERIC_READ, &Obj);
+        swprintf(
+            SubKeyPath,
+            L"SOFTWARE\\OCA\\Settings\\%s",
+            SanitizedPath
+        );
+
+        RtlInitUnicodeString(&ValueName, L"CompatWindowsVersion");
+    }
+    else
+    {
+        RtlInitUnicodeString(
+            &KeyName,
+            L"SOFTWARE\\OCA\\Settings"
+        );
+
+        RtlInitUnicodeString(&ValueName, L"GlobalVersion");
+    }
+
+    if (FilePath)
+        RtlInitUnicodeString(&KeyName, SubKeyPath);
+
+    InitializeObjectAttributes(
+        &Obj,
+        &KeyName,
+        OBJ_CASE_INSENSITIVE,
+        HKEY_CURRENT_USER,   /* <<< AQUI está a correção */
+        NULL
+    );
+
+    status = NtOpenKey(&Handle, KEY_READ, &Obj);
     if (!NT_SUCCESS(status))
-        return FALSE;   
+        return FALSE;
 
     status = NtQueryValueKey(
         Handle,
-        &valueKeyName,
+        &ValueName,
         KeyValuePartialInformation,
         KeyInfo,
         sizeof(buffer),
@@ -643,7 +660,12 @@ ReadEmulatedVersion(
         lenChars = wcslen(regStr) + 1;
         lenBytes = lenChars * sizeof(WCHAR);
 
-        heapBuf = (PWSTR)RtlAllocateHeap(RtlProcessHeap(), 0, lenBytes);
+        heapBuf = (PWSTR)RtlAllocateHeap(
+            RtlProcessHeap(),
+            0,
+            lenBytes
+        );
+
         if (!heapBuf)
         {
             NtClose(Handle);
@@ -1041,6 +1063,7 @@ MsiChangeCachedVersion(
 }
 
 NTSTATUS
+NTAPI
 RtlGetVersionAppCompat(
     OUT  PRTL_OSVERSIONINFOW lpVersionInformation
     )
@@ -1310,6 +1333,7 @@ RtlpVerGetConditionMask(
 }
 
 NTSTATUS
+NTAPI
 RtlVerifyVersionInfoAppCompat(
     IN PRTL_OSVERSIONINFOEXW VersionInfo,
     IN ULONG TypeMask,
@@ -1331,7 +1355,7 @@ RtlVerifyVersionInfoAppCompat(
     RtlZeroMemory( &CurrVersion, sizeof(OSVERSIONINFOEXW) );
     CurrVersion.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
-    Status = RtlGetVersion((PRTL_OSVERSIONINFOW)&CurrVersion);
+    Status = RtlGetVersionAppCompat((PRTL_OSVERSIONINFOW)&CurrVersion);
     if (Status != STATUS_SUCCESS)
                     return Status;
 
