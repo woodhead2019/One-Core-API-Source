@@ -4,7 +4,6 @@
 4   stdcall  connect(long ptr long)
 5   stdcall  getpeername(long ptr ptr)
 6   stdcall  getsockname(long ptr ptr)
-7   stdcall  getsockopt(long long long ptr ptr) ;getsockoptInternal
 8   stdcall  htonl(long)
 9   stdcall  htons(long)
 10  stdcall  ioctlsocket(long long ptr)
@@ -18,7 +17,6 @@
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
 20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
-21  stdcall  setsockopt(long long long ptr long) setsockoptInternal
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)
 51  stdcall  gethostbyaddr(ptr long long)
@@ -154,6 +152,7 @@
 @ stdcall GetHostNameW(wstr long)
 
 #Hooks
+@ stdcall getsockopt(long long long ptr ptr) getsockoptInternal
 @ stdcall setsockopt(long long long ptr long) setsockoptInternal
 @ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
 @ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
