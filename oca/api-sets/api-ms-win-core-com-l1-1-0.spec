@@ -75,6 +75,8 @@
 @ stdcall ProgIDFromCLSID(ptr ptr) ole32.ProgIDFromCLSID
 @ stdcall PropVariantClear(ptr) ole32.PropVariantClear
 @ stdcall PropVariantCopy(ptr ptr) ole32.PropVariantCopy
+@ stdcall RoGetAgileReference(long long ptr ptr) combase.RoGetAgileReference
+@ stdcall RoSetErrorReportingFlags(long) combase.RoSetErrorReportingFlags
 @ stdcall StringFromCLSID(ptr ptr) ole32.StringFromCLSID
 @ stdcall StringFromGUID2(ptr ptr long) ole32.StringFromGUID2
 @ stdcall StringFromIID(ptr ptr) ole32.StringFromIID
