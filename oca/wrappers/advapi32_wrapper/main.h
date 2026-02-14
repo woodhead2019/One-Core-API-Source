@@ -302,6 +302,31 @@ typedef enum _PerfRegInfoType {
     PERF_REG_COUNTER_ENGLISH_NAMES
 } PerfRegInfoType;
 
+typedef enum _TRACE_QUERY_INFO_CLASS
+{
+    TraceGuidQueryList,
+    TraceGuidQueryInfo,
+    TraceGuidQueryProcess,
+    TraceStackTracingInfo,
+    TraceSystemTraceEnableFlagsInfo,
+    TraceSampledProfileIntervalInfo,
+    TraceProfileSourceConfigInfo,
+    TraceProfileSourceListInfo,
+    TracePmcEventListInfo,
+    TracePmcCounterListInfo,
+    TraceSetDisallowList,
+    TraceVersionInfo,
+    TraceGroupQueryList,
+    TraceGroupQueryInfo,
+    TraceDisallowListQuery,
+    TraceCompressionInfo,
+    TracePeriodicCaptureStateListInfo,
+    TracePeriodicCaptureStateInfo,
+    TraceProviderBinaryTracking,
+    TraceMaxLoggersQuery,
+    MaxTraceSetInfoClass
+} TRACE_QUERY_INFO_CLASS, TRACE_INFO_CLASS;
+
 /* memory allocation functions */
 
 static inline WCHAR *strdupAW( const char *src )
