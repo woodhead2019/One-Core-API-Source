@@ -786,6 +786,21 @@ typedef struct
     DWORD dwImageOffset;
 } ICONDIRENTRY;
 
+typedef enum {
+  POINTER_FEEDBACK_DEFAULT = 1,
+  POINTER_FEEDBACK_INDIRECT = 2,
+  POINTER_FEEDBACK_NONE = 3
+} POINTER_FEEDBACK_MODE;
+
+typedef struct tagPOINTER_TYPE_INFO {
+  POINTER_INPUT_TYPE type;
+  union {
+    POINTER_INFO       pointerInfo;
+    POINTER_TOUCH_INFO touchInfo;
+    POINTER_PEN_INFO   penInfo;
+  } DUMMYUNIONNAME;
+} POINTER_TYPE_INFO, *PPOINTER_TYPE_INFO;
+
 BOOL 
 WINAPI 
 IsProcessDPIAware();

@@ -181,3 +181,12 @@ setsockoptInternal(
 	
 	return setsockopt(s, level, optname, optval, optlen);
 }
+
+INT WINAPI getsockoptInternal(SOCKET s, int level, int optname, char *optval, int *optlen) {
+    // Unity 6 games require this hook for network connectivity.
+    if (level == IPPROTO_IPV6 && optname == IPV6_V6ONLY) {
+        *(PDWORD)optval = TRUE; // no dual-stack support :(
+        return 0;
+    }
+    return getsockopt(s, level, optname, optval, optlen);
+}

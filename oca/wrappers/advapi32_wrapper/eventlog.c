@@ -189,3 +189,15 @@ EvtRegisterPublisher(int a1, HMODULE hModule, int a3, int a4)
 {
 	return ERROR_SUCCESS;
 }
+
+ULONG WINAPI EnumerateTraceGuidsEx(
+  TRACE_QUERY_INFO_CLASS TraceQueryInfoClass,
+  PVOID                  InBuffer,
+  ULONG                  InBufferSize,
+  PVOID                  OutBuffer,
+  ULONG                  OutBufferSize,
+  PULONG                 ReturnLength
+) {
+    // TODO implement it on top of EnumerateTraceGuids
+    return STATUS_NOT_IMPLEMENTED;
+}

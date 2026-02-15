@@ -179,8 +179,6 @@
 186 stdcall ElfClearEventLogFileA(long ptr)
 187 stdcall ElfClearEventLogFileW(long ptr)
 188 stdcall ElfCloseEventLog(long)
-189 stdcall ElfDeregisterEventSource(long)
-190 stdcall ElfFlushEventLog(long)
 191 stdcall ElfNumberOfRecords(long ptr)
 192 stdcall ElfOldestRecord(long ptr)
 193 stdcall ElfOpenBackupEventLogA(ptr ptr ptr)
@@ -662,6 +660,10 @@
 477 stdcall RegEnableReflectionKey(ptr)	
 502 stdcall RegQueryReflectionKey(ptr ptr)	 ;native on Server 2003, but, missing on XP (needed for synchronization) 
 
+#Missing on XP SP1
+189 stdcall ElfDeregisterEventSource(long) advapibase.ElfDeregisterEventSource
+190 stdcall ElfFlushEventLog(long) advapibase.ElfFlushEventLog
+
 #Missing on Server 2003 RTM and XP 
 @ stdcall RegDisablePredefinedCacheEx() 
 486 stdcall RegGetValueA(long str str long ptr ptr ptr) 
@@ -687,6 +689,7 @@
 @ stdcall EventProviderEnabled(int64 long long long) ntext.EtwEventProviderEnabled
 @ stdcall EventRegister(ptr ptr ptr ptr) ntext.EtwEventRegister
 @ stdcall EnableTraceEx(ptr ptr int64 long long long long long long long ptr) 
+@ stdcall EnumerateTraceGuidsEx(long ptr long ptr long ptr)
 @ stdcall EventUnregister(long long) ntext.EtwEventUnregister
 @ stdcall EventWrite(long long ptr long ptr) ntext.EtwEventWrite
 @ stdcall EventWriteEndScenario(long long ptr long ptr)
@@ -787,7 +790,6 @@
 ; ; @ stdcall CredProfileUnloaded()
 ; ; @ stdcall CredReadByTokenHandle(long ptr long long long)
 ; ; @ stdcall CredRestoreCredentials(ptr ptr long long)
-; ; @ stdcall EnumerateTraceGuidsEx(long ptr long ptr long ptr)
 ; ; @ stdcall EventAccessQuery(ptr ptr ptr)
 ; ; @ stdcall EventAccessRemove(ptr)
 ; ; @ stdcall FlushEfsCache(ptr)

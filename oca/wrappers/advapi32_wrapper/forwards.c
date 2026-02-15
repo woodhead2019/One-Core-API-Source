@@ -785,6 +785,8 @@
 #pragma comment(linker, "/EXPORT:V_SHAFinal=advapicore.A_SHAFinal")
 #pragma comment(linker, "/EXPORT:V_SHAInit=advapicore.A_SHAInit")
 #pragma comment(linker, "/EXPORT:V_SHAUpdate=advapicore.A_SHAUpdate")
+#pragma comment(linker, "/EXPORT:EnumDynamicTimeZoneInformation=kernel32.EnumDynamicTimeZoneInformation")
+#pragma comment(linker, "/EXPORT:GetDynamicTimeZoneInformationEffectiveYears=kernel32.GetDynamicTimeZoneInformationEffectiveYears")
 // #pragma comment(linker, "/EXPORT:WdmWmiServiceMain=advapibase.WdmWmiServiceMain")
 // #pragma comment(linker, "/EXPORT:WmiCloseBlock=advapibase.WmiCloseBlock")
 // #pragma comment(linker, "/EXPORT:WmiCloseTraceWithCursor=advapibase.WmiCloseTraceWithCursor")
@@ -825,3 +827,12 @@
 // #pragma comment(linker, "/EXPORT:Wow64Win32ApiEntry=advapibase.Wow64Win32ApiEntry")
 // #pragma comment(linker, "/EXPORT:WriteEncryptedFileRaw=advapibase.WriteEncryptedFileRaw")
 // #pragma comment(linker, "/EXPORT:__OrdinalFunction1000=advapibase.#1000,@1000,NONAME")
+
+//For LH 5000 and 5001
+#pragma comment(linker, "/EXPORT:EtwCreateActivityId=advapibase.EtwCreateActivityId")
+#pragma comment(linker, "/EXPORT:EtwDeregister=advapibase.EtwDeregister")
+#pragma comment(linker, "/EXPORT:EtwGetActivityId=advapibase.EtwGetActivityId")
+#pragma comment(linker, "/EXPORT:EtwRegister=advapibase.EtwRegister")
+#pragma comment(linker, "/EXPORT:EtwSetActivityId=advapibase.EtwSetActivityId")
+#pragma comment(linker, "/EXPORT:EtwTraceEvent=advapibase.EtwTraceEvent")
+#pragma comment(linker, "/EXPORT:GetTraceEnableFilter=advapibase.GetTraceEnableFilter")
