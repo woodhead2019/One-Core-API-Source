@@ -1500,47 +1500,52 @@
 @ stdcall QueryIoRingCapabilities(ptr)
 @ stdcall TlsGetValue2(long)
 
+@ stdcall -stub QueryWin31IniFilesMappedToRegistry(long wstr long ptr)
+
+#API-SET functions
+@ stdcall QuirkIsEnabled3(ptr ptr)
+
 #Import from advapi32 or registry function
-@ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapi32.AccessCheck
-@ stdcall AccessCheckAndAuditAlarmW(wstr ptr wstr wstr ptr long ptr long ptr ptr ptr) advapi32.AccessCheckAndAuditAlarmW
-@ stdcall AccessCheckByType(ptr ptr long long ptr long ptr ptr ptr ptr ptr) advapi32.AccessCheckByType
-@ stdcall AccessCheckByTypeAndAuditAlarmW(wstr ptr wstr wstr ptr ptr long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeAndAuditAlarmW
+@ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) ;advapi32.AccessCheck
+@ stdcall AccessCheckAndAuditAlarmW(wstr ptr wstr wstr ptr long ptr long ptr ptr ptr) ;advapi32.AccessCheckAndAuditAlarmW
+@ stdcall AccessCheckByType(ptr ptr long long ptr long ptr ptr ptr ptr ptr) ;advapi32.AccessCheckByType
+@ stdcall AccessCheckByTypeAndAuditAlarmW(wstr ptr wstr wstr ptr ptr long long long ptr long ptr long ptr ptr ptr) ;advapi32.AccessCheckByTypeAndAuditAlarmW
 @ stdcall AccessCheckByTypeResultList(ptr ptr ptr long ptr long ptr ptr ptr ptr ptr)
-@ stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeResultListAndAuditAlarmByHandleW
-@ stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeResultListAndAuditAlarmW
-@ stdcall AddAccessAllowedAce(ptr long long ptr) advapi32.AddAccessAllowedAce
-@ stdcall AddAccessAllowedAceEx(ptr long long long ptr) advapi32.AddAccessAllowedAceEx
-@ stdcall AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr) advapi32.AddAccessAllowedObjectAce
-@ stdcall AddAccessDeniedAce(ptr long long ptr) advapi32.AddAccessDeniedAce
-@ stdcall AddAccessDeniedAceEx(ptr long long long ptr) advapi32.AddAccessDeniedAceEx
-@ stdcall AddAccessDeniedObjectAce(ptr long long long ptr ptr ptr) advapi32.AddAccessDeniedObjectAce
-@ stdcall AddAce(ptr long long ptr long) advapi32.AddAce
-@ stdcall AddAuditAccessAce(ptr long long ptr long long) advapi32.AddAuditAccessAce
-@ stdcall AddAuditAccessAceEx(ptr long long long ptr long long) advapi32.AddAuditAccessAceEx
-@ stdcall AddAuditAccessObjectAce(ptr long long long ptr ptr ptr long long) advapi32.AddAuditAccessObjectAce
+@ stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) ;advapi32.AccessCheckByTypeResultListAndAuditAlarmByHandleW
+@ stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) ;advapi32.AccessCheckByTypeResultListAndAuditAlarmW
+@ stdcall AddAccessAllowedAce(ptr long long ptr) ;advapi32.AddAccessAllowedAce
+@ stdcall AddAccessAllowedAceEx(ptr long long long ptr) ;advapi32.AddAccessAllowedAceEx
+@ stdcall AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr) ;advapi32.AddAccessAllowedObjectAce
+@ stdcall AddAccessDeniedAce(ptr long long ptr) ;advapi32.AddAccessDeniedAce
+@ stdcall AddAccessDeniedAceEx(ptr long long long ptr) ;advapi32.AddAccessDeniedAceEx
+@ stdcall AddAccessDeniedObjectAce(ptr long long long ptr ptr ptr) ;advapi32.AddAccessDeniedObjectAce
+@ stdcall AddAce(ptr long long ptr long) ;advapi32.AddAce
+@ stdcall AddAuditAccessAce(ptr long long ptr long long) ;advapi32.AddAuditAccessAce
+@ stdcall AddAuditAccessAceEx(ptr long long long ptr long long) ;advapi32.AddAuditAccessAceEx
+@ stdcall AddAuditAccessObjectAce(ptr long long long ptr ptr ptr long long) ;advapi32.AddAuditAccessObjectAce
 @ stdcall AddMandatoryAce(ptr long long long ptr)
-@ stdcall AdjustTokenGroups(long long ptr long ptr ptr) advapi32.AdjustTokenGroups
-@ stdcall AdjustTokenPrivileges(long long ptr long ptr ptr) advapi32.AdjustTokenPrivileges
-@ stdcall AllocateAndInitializeSid(ptr long long long long long long long long long ptr) advapi32.AllocateAndInitializeSid
-@ stdcall AllocateLocallyUniqueId(ptr) advapi32.AllocateLocallyUniqueId
-@ stdcall AreAllAccessesGranted(long long) advapi32.AreAllAccessesGranted
-@ stdcall AreAnyAccessesGranted(long long) advapi32.AreAnyAccessesGranted
-@ stdcall CheckTokenMembership(long ptr ptr) advapi32.CheckTokenMembership
-@ stdcall ConvertToAutoInheritPrivateObjectSecurity(ptr ptr ptr ptr long ptr) advapi32.ConvertToAutoInheritPrivateObjectSecurity
-@ stdcall CopySid(long ptr ptr) advapi32.CopySid
-@ stdcall CreatePrivateObjectSecurity(ptr ptr ptr long long ptr) advapi32.CreatePrivateObjectSecurity
-@ stdcall CreatePrivateObjectSecurityEx(ptr ptr ptr ptr long long long ptr) advapi32.CreatePrivateObjectSecurityEx
-@ stdcall CreatePrivateObjectSecurityWithMultipleInheritance(ptr ptr ptr ptr long long long long ptr) advapi32.CreatePrivateObjectSecurityWithMultipleInheritance
-@ stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) advapi32.CreateRestrictedToken
-@ stdcall CreateProcessAsUserA(long str str ptr ptr long long ptr str ptr ptr) advapi32.CreateProcessAsUserA
-@ stdcall CreateProcessAsUserW(long wstr wstr ptr ptr long long ptr wstr ptr ptr) advapi32.CreateProcessAsUserW
-@ stdcall CreateWellKnownSid(long ptr ptr ptr) advapi32.CreateWellKnownSid
-@ stdcall DeleteAce(ptr long) advapi32.DeleteAce
-@ stdcall DestroyPrivateObjectSecurity(ptr) advapi32.DestroyPrivateObjectSecurity
-@ stdcall DuplicateToken(long long ptr) advapi32.DuplicateToken
-@ stdcall DuplicateTokenEx(long long ptr long long ptr) advapi32.DuplicateTokenEx
-@ stdcall EqualPrefixSid(ptr ptr) advapi32.EqualPrefixSid
-@ stdcall EqualSid(ptr ptr) advapi32.EqualSid
+@ stdcall AdjustTokenGroups(long long ptr long ptr ptr) ;advapi32.AdjustTokenGroups
+@ stdcall AdjustTokenPrivileges(long long ptr long ptr ptr) ;advapi32.AdjustTokenPrivileges
+@ stdcall AllocateAndInitializeSid(ptr long long long long long long long long long ptr) ;advapi32.AllocateAndInitializeSid
+@ stdcall AllocateLocallyUniqueId(ptr) ;advapi32.AllocateLocallyUniqueId
+@ stdcall AreAllAccessesGranted(long long) ;advapi32.AreAllAccessesGranted
+@ stdcall AreAnyAccessesGranted(long long) ;advapi32.AreAnyAccessesGranted
+@ stdcall CheckTokenMembership(long ptr ptr) ;advapi32.CheckTokenMembership
+@ stdcall ConvertToAutoInheritPrivateObjectSecurity(ptr ptr ptr ptr long ptr) ;advapi32.ConvertToAutoInheritPrivateObjectSecurity
+@ stdcall CopySid(long ptr ptr) ;advapi32.CopySid
+@ stdcall CreatePrivateObjectSecurity(ptr ptr ptr long long ptr) ;advapi32.CreatePrivateObjectSecurity
+@ stdcall CreatePrivateObjectSecurityEx(ptr ptr ptr ptr long long long ptr) ;advapi32.CreatePrivateObjectSecurityEx
+@ stdcall CreatePrivateObjectSecurityWithMultipleInheritance(ptr ptr ptr ptr long long long long ptr) ;advapi32.CreatePrivateObjectSecurityWithMultipleInheritance
+@ stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) ;advapi32.CreateRestrictedToken
+@ stdcall CreateProcessAsUserA(long str str ptr ptr long long ptr str ptr ptr) ;advapi32.CreateProcessAsUserA
+@ stdcall CreateProcessAsUserW(long wstr wstr ptr ptr long long ptr wstr ptr ptr) ;advapi32.CreateProcessAsUserW
+@ stdcall CreateWellKnownSid(long ptr ptr ptr) ;advapi32.CreateWellKnownSid
+@ stdcall DeleteAce(ptr long) ;advapi32.DeleteAce
+@ stdcall DestroyPrivateObjectSecurity(ptr) ;advapi32.DestroyPrivateObjectSecurity
+@ stdcall DuplicateToken(long long ptr) ;advapi32.DuplicateToken
+@ stdcall DuplicateTokenEx(long long ptr long long ptr) ;advapi32.DuplicateTokenEx
+@ stdcall EqualPrefixSid(ptr ptr) ;advapi32.EqualPrefixSid
+@ stdcall EqualSid(ptr ptr) ;advapi32.EqualSid
 @ stdcall EventActivityIdControl(long ptr) ntext.EtwEventActivityIdControl
 @ stdcall EventEnabled(int64 ptr) ntext.EtwEventEnabled
 @ stdcall EventProviderEnabled(int64 long int64) ntext.EtwEventProviderEnabled
@@ -1549,57 +1554,57 @@
 @ stdcall EventWrite(int64 ptr long ptr) ntext.EtwEventWrite
 @ stdcall EventWriteString(int64 long int64 ptr) ntext.EtwEventWriteString
 @ stdcall EventWriteTransfer(int64 ptr ptr ptr long ptr) ntext.EtwEventWriteTransfer
-@ stdcall FindFirstFreeAce(ptr ptr) advapi32.FindFirstFreeAce
-@ stdcall FreeSid(ptr) advapi32.FreeSid
-@ stdcall GetAce(ptr long ptr) advapi32.GetAce
-@ stdcall GetAclInformation(ptr ptr long long) advapi32.GetAclInformation
-@ stdcall GetFileSecurityA(str long ptr long ptr) advapi32.GetFileSecurityA
-@ stdcall GetFileSecurityW(wstr long ptr long ptr) advapi32.GetFileSecurityW
-@ stdcall GetLengthSid(ptr) advapi32.GetLengthSid
-@ stdcall GetPrivateObjectSecurity(ptr long ptr long ptr) advapi32.GetPrivateObjectSecurity
-@ stdcall GetSecurityDescriptorControl(ptr ptr ptr) advapi32.GetSecurityDescriptorControl
-@ stdcall GetSecurityDescriptorDacl(ptr ptr ptr ptr) advapi32.GetSecurityDescriptorDacl
+@ stdcall FindFirstFreeAce(ptr ptr) ;advapi32.FindFirstFreeAce
+@ stdcall FreeSid(ptr) ;advapi32.FreeSid
+@ stdcall GetAce(ptr long ptr) ;advapi32.GetAce
+@ stdcall GetAclInformation(ptr ptr long long) ;advapi32.GetAclInformation
+@ stdcall GetFileSecurityA(str long ptr long ptr) ;advapi32.GetFileSecurityA
+@ stdcall GetFileSecurityW(wstr long ptr long ptr) ;advapi32.GetFileSecurityW
+@ stdcall GetLengthSid(ptr) ;advapi32.GetLengthSid
+@ stdcall GetPrivateObjectSecurity(ptr long ptr long ptr) ;advapi32.GetPrivateObjectSecurity
+@ stdcall GetSecurityDescriptorControl(ptr ptr ptr) ;advapi32.GetSecurityDescriptorControl
+@ stdcall GetSecurityDescriptorDacl(ptr ptr ptr ptr) ;advapi32.GetSecurityDescriptorDacl
 @ stdcall GetSecurityDescriptorLength(ptr) ntext.RtlLengthSecurityDescriptor
-@ stdcall GetSecurityDescriptorOwner(ptr ptr ptr) advapi32.GetSecurityDescriptorOwner
-@ stdcall GetSecurityDescriptorSacl(ptr ptr ptr ptr) advapi32.GetSecurityDescriptorSacl
-@ stdcall GetSidIdentifierAuthority(ptr) advapi32.GetSidIdentifierAuthority
-@ stdcall GetSidLengthRequired(long) advapi32.GetSidLengthRequired
-@ stdcall GetSidSubAuthority(ptr long) advapi32.GetSidSubAuthority
-@ stdcall GetSidSubAuthorityCount(ptr) advapi32.GetSidSubAuthorityCount
-@ stdcall GetTokenInformation(long long ptr long ptr) advapi32.GetTokenInformation
-@ stdcall GetTraceEnableFlags(int64) advapi32.GetTraceEnableFlags
-@ stdcall GetTraceEnableLevel(int64) advapi32.GetTraceEnableLevel
-@ stdcall -ret64 GetTraceLoggerHandle(ptr) advapi32.GetTraceLoggerHandle
-@ stdcall GetWindowsAccountDomainSid(ptr ptr ptr) advapi32.GetWindowsAccountDomainSid
-@ stdcall ImpersonateAnonymousToken(long) advapi32.ImpersonateAnonymousToken
-@ stdcall ImpersonateLoggedOnUser(long) advapi32.ImpersonateLoggedOnUser
-@ stdcall ImpersonateNamedPipeClient(long) advapi32.ImpersonateNamedPipeClient
-@ stdcall ImpersonateSelf(long) advapi32.ImpersonateSelf
-@ stdcall InitializeAcl(ptr long long) advapi32.InitializeAcl
-@ stdcall InitializeSid(ptr ptr long) advapi32.InitializeSid
-@ stdcall IsTokenRestricted(long) advapi32.IsTokenRestricted
-@ stdcall IsValidAcl(ptr) advapi32.IsValidAcl
-@ stdcall InitializeSecurityDescriptor(ptr long) advapi32.InitializeSecurityDescriptor
-@ stdcall IsWellKnownSid(ptr long) advapi32.IsWellKnownSid
-@ stdcall IsValidSecurityDescriptor(ptr) advapi32.IsValidSecurityDescriptor
-@ stdcall IsValidSid(ptr) advapi32.IsValidSid
-@ stdcall MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr) advapi32.MakeAbsoluteSD
-@ stdcall MakeSelfRelativeSD(ptr ptr ptr) advapi32.MakeSelfRelativeSD
-@ stdcall MapGenericMask(ptr ptr) advapi32.MapGenericMask
-@ stdcall ObjectCloseAuditAlarmW(wstr ptr long) advapi32.ObjectCloseAuditAlarmW
-@ stdcall ObjectDeleteAuditAlarmW(wstr ptr long) advapi32.ObjectDeleteAuditAlarmW
-@ stdcall ObjectOpenAuditAlarmW(wstr ptr wstr wstr ptr long long long ptr long long ptr) advapi32.ObjectOpenAuditAlarmW
-@ stdcall ObjectPrivilegeAuditAlarmW(wstr ptr long long ptr long) advapi32.ObjectPrivilegeAuditAlarmW
-@ stdcall PrivilegeCheck(ptr ptr ptr) advapi32.PrivilegeCheck
-@ stdcall PrivilegedServiceAuditAlarmW(wstr wstr long ptr long) advapi32.PrivilegedServiceAuditAlarmW
-@ stdcall OpenProcessToken(ptr long ptr) advapi32.OpenProcessToken
-@ stdcall OpenThreadToken(ptr long long ptr) advapi32.OpenThreadToken
-@ stdcall RegCloseKey(ptr) advapi32.RegCloseKey 
+@ stdcall GetSecurityDescriptorOwner(ptr ptr ptr) ;advapi32.GetSecurityDescriptorOwner
+@ stdcall GetSecurityDescriptorSacl(ptr ptr ptr ptr) ;advapi32.GetSecurityDescriptorSacl
+@ stdcall GetSidIdentifierAuthority(ptr) ;advapi32.GetSidIdentifierAuthority
+@ stdcall GetSidLengthRequired(long) ;advapi32.GetSidLengthRequired
+@ stdcall GetSidSubAuthority(ptr long) ;advapi32.GetSidSubAuthority
+@ stdcall GetSidSubAuthorityCount(ptr) ;advapi32.GetSidSubAuthorityCount
+@ stdcall GetTokenInformation(long long ptr long ptr) ;advapi32.GetTokenInformation
+@ stdcall GetTraceEnableFlags(int64) ;advapi32.GetTraceEnableFlags
+@ stdcall GetTraceEnableLevel(int64) ;advapi32.GetTraceEnableLevel
+@ stdcall -ret64 GetTraceLoggerHandle(ptr) ;advapi32.GetTraceLoggerHandle
+@ stdcall GetWindowsAccountDomainSid(ptr ptr ptr) ;advapi32.GetWindowsAccountDomainSid
+@ stdcall ImpersonateAnonymousToken(long) ;advapi32.ImpersonateAnonymousToken
+@ stdcall ImpersonateLoggedOnUser(long) ;advapi32.ImpersonateLoggedOnUser
+@ stdcall ImpersonateNamedPipeClient(long) ;advapi32.ImpersonateNamedPipeClient
+@ stdcall ImpersonateSelf(long) ;advapi32.ImpersonateSelf
+@ stdcall InitializeAcl(ptr long long) ;advapi32.InitializeAcl
+@ stdcall InitializeSid(ptr ptr long) ;advapi32.InitializeSid
+@ stdcall IsTokenRestricted(long) ;advapi32.IsTokenRestricted
+@ stdcall IsValidAcl(ptr) ;advapi32.IsValidAcl
+@ stdcall InitializeSecurityDescriptor(ptr long) ;advapi32.InitializeSecurityDescriptor
+@ stdcall IsWellKnownSid(ptr long) ;advapi32.IsWellKnownSid
+@ stdcall IsValidSecurityDescriptor(ptr) ;advapi32.IsValidSecurityDescriptor
+@ stdcall IsValidSid(ptr) ;advapi32.IsValidSid
+@ stdcall MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr) ;advapi32.MakeAbsoluteSD
+@ stdcall MakeSelfRelativeSD(ptr ptr ptr) ;advapi32.MakeSelfRelativeSD
+@ stdcall MapGenericMask(ptr ptr) ;advapi32.MapGenericMask
+@ stdcall ObjectCloseAuditAlarmW(wstr ptr long) ;advapi32.ObjectCloseAuditAlarmW
+@ stdcall ObjectDeleteAuditAlarmW(wstr ptr long) ;advapi32.ObjectDeleteAuditAlarmW
+@ stdcall ObjectOpenAuditAlarmW(wstr ptr wstr wstr ptr long long long ptr long long ptr) ;advapi32.ObjectOpenAuditAlarmW
+@ stdcall ObjectPrivilegeAuditAlarmW(wstr ptr long long ptr long) ;advapi32.ObjectPrivilegeAuditAlarmW
+@ stdcall PrivilegeCheck(ptr ptr ptr) ;advapi32.PrivilegeCheck
+@ stdcall PrivilegedServiceAuditAlarmW(wstr wstr long ptr long) ;advapi32.PrivilegedServiceAuditAlarmW
+@ stdcall OpenProcessToken(ptr long ptr) ;advapi32.OpenProcessToken
+@ stdcall OpenThreadToken(ptr long long ptr) ;advapi32.OpenThreadToken
+@ stdcall RegCloseKey(ptr) ;advapi32.RegCloseKey 
 @ stdcall RegCopyTreeW(ptr str ptr)
 @ stdcall RegCreateKeyExA(long str long ptr long long ptr ptr ptr)
 @ stdcall RegCreateKeyExW(long wstr long ptr long long ptr ptr ptr)
 @ stdcall RegDeleteKeyValueA(long str str)
-@ stdcall RegDeleteKeyValueW(long wstr wstr) advapi32.RegDeleteKeyValueW
+; @ stdcall RegDeleteKeyValueW(long wstr wstr) ;advapi32.RegDeleteKeyValueW
 @ stdcall RegDeleteKeyExA(long str long long) 
 @ stdcall RegDeleteKeyExW(long wstr long long) 
 @ stdcall RegDeleteTreeA(long str)
@@ -1611,57 +1616,57 @@
 @ stdcall RegEnumKeyExW(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumValueA(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumValueW(long long ptr ptr ptr ptr ptr ptr)
-@ stdcall RegFlushKey(long) advapi32.RegFlushKey 
-@ stdcall RegGetKeySecurity(long long ptr ptr) advapi32.RegGetKeySecurity 
+@ stdcall RegFlushKey(long) ;advapi32.RegFlushKey 
+@ stdcall RegGetKeySecurity(long long ptr ptr) ;advapi32.RegGetKeySecurity 
 @ stdcall RegGetValueA(long str str long ptr ptr ptr)
 @ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr)
 @ stdcall RegLoadAppKeyA(str ptr long long long)
 @ stdcall RegLoadAppKeyW(wstr ptr long long long)
-@ stdcall RegLoadKeyA(long str str) advapi32.RegLoadKeyA 
-@ stdcall RegLoadKeyW(long wstr wstr) advapi32.RegLoadKeyW 
+@ stdcall RegLoadKeyA(long str str) ;advapi32.RegLoadKeyA 
+@ stdcall RegLoadKeyW(long wstr wstr) ;advapi32.RegLoadKeyW 
 @ stdcall RegLoadMUIStringA(long str str long ptr long str)
 @ stdcall RegLoadMUIStringW(long wstr wstr long ptr long wstr)
-@ stdcall RegNotifyChangeKeyValue(long long long long long) advapi32.RegNotifyChangeKeyValue 
-@ stdcall RegOpenCurrentUser(long ptr) advapi32.RegOpenCurrentUser 
+@ stdcall RegNotifyChangeKeyValue(long long long long long) ;advapi32.RegNotifyChangeKeyValue 
+@ stdcall RegOpenCurrentUser(long ptr) ;advapi32.RegOpenCurrentUser 
 @ stdcall RegOpenKeyExA(long str long long ptr)
 @ stdcall RegOpenKeyExW(long wstr long long ptr)
-@ stdcall RegOpenUserClassesRoot(ptr long long ptr) advapi32.RegOpenUserClassesRoot 
+@ stdcall RegOpenUserClassesRoot(ptr long long ptr) ;advapi32.RegOpenUserClassesRoot 
 @ stdcall RegQueryInfoKeyA(long ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RegQueryInfoKeyW(long ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RegQueryValueExA(long str ptr ptr ptr ptr)
 @ stdcall RegQueryValueExW(long wstr ptr ptr ptr ptr)
-@ stdcall RegRestoreKeyA(long str long) advapi32.RegRestoreKeyA 
-@ stdcall RegRestoreKeyW(long wstr long) advapi32.RegRestoreKeyW 
-@ stdcall RegSaveKeyExA(ptr str ptr long) advapi32.RegSaveKeyExA 
-@ stdcall RegSaveKeyExW(ptr str ptr long) advapi32.RegSaveKeyExW 
-@ stdcall RegSetKeySecurity(long long ptr) advapi32.RegSetKeySecurity 
+@ stdcall RegRestoreKeyA(long str long) ;advapi32.RegRestoreKeyA 
+@ stdcall RegRestoreKeyW(long wstr long) ;advapi32.RegRestoreKeyW 
+@ stdcall RegSaveKeyExA(ptr str ptr long) ;advapi32.RegSaveKeyExA 
+@ stdcall RegSaveKeyExW(ptr str ptr long) ;advapi32.RegSaveKeyExW 
+@ stdcall RegSetKeySecurity(long long ptr) ;advapi32.RegSetKeySecurity 
 @ stdcall RegSetKeyValueA(long str str long ptr long)
 @ stdcall RegSetKeyValueW(long wstr wstr long ptr long)
-@ stdcall RegSetValueExA(long str long long ptr long) advapi32.RegSetValueExA ;Need use native Windows RegSetValueExA from advapi32. Reactos and wine's version may corrupt and cause error on .Net Framework 4.5.1+. Error on .Net Framework: Unhandled Exception: System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.at System.AddIn.Hosting.Program.Main(String[] args)
-@ stdcall RegSetValueExW(long wstr long long ptr long) advapi32.RegSetValueExW
-@ stdcall RegUnLoadKeyA(long str) advapi32.RegUnLoadKeyA 
-@ stdcall RegUnLoadKeyW(long wstr) advapi32.RegUnLoadKeyW
-@ stdcall RevertToSelf() advapi32.RevertToSelf
-@ stdcall RegisterTraceGuidsW(ptr ptr ptr long ptr wstr wstr ptr) advapi32.RegisterTraceGuidsW
-@ stdcall SetAclInformation(ptr ptr long long) advapi32.SetAclInformation
-@ stdcall SetFileSecurityA(str long ptr) advapi32.SetFileSecurityA
-@ stdcall SetFileSecurityW(wstr long ptr) advapi32.SetFileSecurityW
-@ stdcall SetKernelObjectSecurity(long long ptr) advapi32.SetKernelObjectSecurity
-@ stdcall SetPrivateObjectSecurity(long ptr ptr ptr long) advapi32.SetPrivateObjectSecurity
-@ stdcall SetSecurityDescriptorControl(ptr long long) advapi32.SetSecurityDescriptorControl
-@ stdcall SetSecurityDescriptorDacl(ptr long ptr long) advapi32.SetSecurityDescriptorDacl
-@ stdcall SetSecurityDescriptorGroup(ptr ptr long) advapi32.SetSecurityDescriptorGroup
-@ stdcall SetSecurityDescriptorOwner(ptr ptr long) advapi32.SetSecurityDescriptorOwner
-@ stdcall SetSecurityDescriptorSacl(ptr long ptr long) advapi32.SetSecurityDescriptorSacl
-@ stdcall SetThreadToken(ptr ptr) advapi32.SetThreadToken
-@ stdcall SetTokenInformation(long long ptr long) advapi32.SetTokenInformation
+@ stdcall RegSetValueExA(long str long long ptr long) ;advapi32.RegSetValueExA ;Need use native Windows RegSetValueExA from ;advapi32. Reactos and wine's version may corrupt and cause error on .Net Framework 4.5.1+. Error on .Net Framework: Unhandled Exception: System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.at System.AddIn.Hosting.Program.Main(String[] args)
+@ stdcall RegSetValueExW(long wstr long long ptr long) ;advapi32.RegSetValueExW
+@ stdcall RegUnLoadKeyA(long str) ;advapi32.RegUnLoadKeyA 
+@ stdcall RegUnLoadKeyW(long wstr) ;advapi32.RegUnLoadKeyW
+@ stdcall RevertToSelf() ;advapi32.RevertToSelf
+@ stdcall RegisterTraceGuidsW(ptr ptr ptr long ptr wstr wstr ptr) ;advapi32.RegisterTraceGuidsW
+@ stdcall SetAclInformation(ptr ptr long long) ;advapi32.SetAclInformation
+@ stdcall SetFileSecurityA(str long ptr) ;advapi32.SetFileSecurityA
+@ stdcall SetFileSecurityW(wstr long ptr) ;advapi32.SetFileSecurityW
+@ stdcall SetKernelObjectSecurity(long long ptr) ;advapi32.SetKernelObjectSecurity
+@ stdcall SetPrivateObjectSecurity(long ptr ptr ptr long) ;advapi32.SetPrivateObjectSecurity
+@ stdcall SetSecurityDescriptorControl(ptr long long) ;advapi32.SetSecurityDescriptorControl
+@ stdcall SetSecurityDescriptorDacl(ptr long ptr long) ;advapi32.SetSecurityDescriptorDacl
+@ stdcall SetSecurityDescriptorGroup(ptr ptr long) ;advapi32.SetSecurityDescriptorGroup
+@ stdcall SetSecurityDescriptorOwner(ptr ptr long) ;advapi32.SetSecurityDescriptorOwner
+@ stdcall SetSecurityDescriptorSacl(ptr long ptr long) ;advapi32.SetSecurityDescriptorSacl
+@ stdcall SetThreadToken(ptr ptr) ;advapi32.SetThreadToken
+@ stdcall SetTokenInformation(long long ptr long) ;advapi32.SetTokenInformation
 @ stdcall SystemFunction036(ptr long) 
-@ stdcall TraceEvent(int64 ptr) advapi32.TraceEvent
-@ varargs TraceMessage(int64 long ptr long) advapi32.TraceMessage
-@ stdcall TraceMessageVa(int64 long ptr long ptr) advapi32.TraceMessageVa
-@ stdcall UnregisterTraceGuids(int64) advapi32.UnregisterTraceGuids
+@ stdcall TraceEvent(int64 ptr) ;advapi32.TraceEvent
+@ varargs TraceMessage(int64 long ptr long) ;advapi32.TraceMessage
+@ stdcall TraceMessageVa(int64 long ptr long ptr) ;advapi32.TraceMessageVa
+@ stdcall UnregisterTraceGuids(int64) ;advapi32.UnregisterTraceGuids
 
-#Import from Version
+; #Import from Version
 @ stdcall VerQueryValueA(ptr str ptr ptr)
 @ stdcall VerQueryValueW(ptr wstr ptr ptr)
 @ stdcall GetFileVersionInfoA(str long long ptr)
@@ -1675,240 +1680,234 @@
 @ stdcall GetFileVersionInfoW(wstr long long ptr)
 
 #Import from user32
-@ stdcall CharLowerA(str) user32.CharLowerA
-@ stdcall CharLowerBuffA(str long) user32.CharLowerBuffA
-@ stdcall CharLowerBuffW(wstr long) user32.CharLowerBuffW
-@ stdcall CharLowerW(wstr) user32.CharLowerW
-@ stdcall CharNextA(str) user32.CharNextA
-@ stdcall CharNextExA(long str long) user32.CharNextExA
-@ stdcall CharNextW(wstr) user32.CharNextW
-@ stdcall CharPrevA(str str) user32.CharPrevA
-@ stdcall CharPrevExA(long str str long) user32.CharPrevExA
-@ stdcall CharPrevW(wstr wstr) user32.CharPrevW
-@ stdcall CharUpperA(str) user32.CharUpperA
-@ stdcall CharUpperBuffA(str long) user32.CharUpperBuffA
-@ stdcall CharUpperBuffW(wstr long) user32.CharUpperBuffW
-@ stdcall CharUpperW(wstr) user32.CharUpperW
-@ stdcall IsCharAlphaA(long) user32.IsCharAlphaA
-@ stdcall IsCharAlphaNumericA(long) user32.IsCharAlphaNumericA
-@ stdcall IsCharAlphaNumericW(long) user32.IsCharAlphaNumericW
-@ stdcall IsCharAlphaW(long) user32.IsCharAlphaW
-@ stdcall IsCharLowerA(long) user32.IsCharLowerA
-@ stdcall IsCharLowerW(long) user32.IsCharLowerW
-@ stdcall IsCharUpperA(long) user32.IsCharUpperA
-@ stdcall IsCharUpperW(long) user32.IsCharUpperW
+@ stdcall CharLowerA(str) ;user32.CharLowerA
+@ stdcall CharLowerBuffA(str long) ;user32.CharLowerBuffA
+@ stdcall CharLowerBuffW(wstr long) ;user32.CharLowerBuffW
+@ stdcall CharLowerW(wstr) ;user32.CharLowerW
+@ stdcall CharNextA(str) ;user32.CharNextA
+@ stdcall CharNextExA(long str long) ;user32.CharNextExA
+@ stdcall CharNextW(wstr) ;user32.CharNextW
+@ stdcall CharPrevA(str str) ;user32.CharPrevA
+@ stdcall CharPrevExA(long str str long) ;user32.CharPrevExA
+@ stdcall CharPrevW(wstr wstr) ;user32.CharPrevW
+@ stdcall CharUpperA(str) ;user32.CharUpperA
+@ stdcall CharUpperBuffA(str long) ;user32.CharUpperBuffA
+@ stdcall CharUpperBuffW(wstr long) ;user32.CharUpperBuffW
+@ stdcall CharUpperW(wstr) ;user32.CharUpperW
+@ stdcall IsCharAlphaA(long) ;user32.IsCharAlphaA
+@ stdcall IsCharAlphaNumericA(long) ;user32.IsCharAlphaNumericA
+@ stdcall IsCharAlphaNumericW(long) ;user32.IsCharAlphaNumericW
+@ stdcall IsCharAlphaW(long) ;user32.IsCharAlphaW
+@ stdcall IsCharLowerA(long) ;user32.IsCharLowerA
+@ stdcall IsCharLowerW(long) ;user32.IsCharLowerW
+@ stdcall IsCharUpperA(long) ;user32.IsCharUpperA
+@ stdcall IsCharUpperW(long) ;user32.IsCharUpperW
 @ stdcall LoadStringA(ptr long ptr long)
 @ stdcall LoadStringW(ptr long ptr long)
 
-#API-SET functions
-@ stdcall QuirkIsEnabled3(ptr ptr)
-
 #Import from shlwapi
-@ stdcall ChrCmpIA(long long) shlwapi.ChrCmpIA
-@ stdcall ChrCmpIW(long long) shlwapi.ChrCmpIW
-@ stdcall GetAcceptLanguagesA(ptr ptr) shlwapi.GetAcceptLanguagesA
-@ stdcall GetAcceptLanguagesW(ptr ptr) shlwapi.GetAcceptLanguagesW
-@ stdcall HashData(ptr long ptr long) shlwapi.HashData
-@ stdcall IsCharBlankW(long) shlwapi.IsCharBlankW
-@ stdcall IsCharCntrlW(ptr) shlwapi.IsCharCntrlW
-@ stdcall IsCharDigitW(long) shlwapi.IsCharDigitW
-@ stdcall IsCharPunctW(long) shlwapi.IsCharPunctW
-@ stdcall IsCharSpaceA(long) shlwapi.IsCharSpaceA
-@ stdcall IsCharSpaceW(long) shlwapi.IsCharSpaceW
-@ stdcall IsCharXDigitW(long) shlwapi.IsCharXDigitW
-@ stdcall IsInternetESCEnabled() shlwapi.IsInternetESCEnabled
-@ stdcall PathCombineA(ptr str str) shlwapi.PathCombineA
-@ stdcall PathCombineW(ptr wstr wstr) shlwapi.PathCombineW
-@ stdcall PathCommonPrefixA(str str ptr) shlwapi.PathCommonPrefixA
-@ stdcall PathCommonPrefixW(wstr wstr ptr) shlwapi.PathCommonPrefixW
-@ stdcall PathCreateFromUrlA(str ptr ptr long) shlwapi.PathCreateFromUrlA
+@ stdcall ChrCmpIA(long long) ;shlwapi.ChrCmpIA
+@ stdcall ChrCmpIW(long long) ;shlwapi.ChrCmpIW
+@ stdcall GetAcceptLanguagesA(ptr ptr) ;shlwapi.GetAcceptLanguagesA
+@ stdcall GetAcceptLanguagesW(ptr ptr) ;shlwapi.GetAcceptLanguagesW
+@ stdcall HashData(ptr long ptr long) ;shlwapi.HashData
+@ stdcall IsCharBlankW(long) ;shlwapi.IsCharBlankW
+@ stdcall IsCharCntrlW(ptr) ;shlwapi.IsCharCntrlW
+@ stdcall IsCharDigitW(long) ;shlwapi.IsCharDigitW
+@ stdcall IsCharPunctW(long) ;shlwapi.IsCharPunctW
+@ stdcall IsCharSpaceA(long) ;shlwapi.IsCharSpaceA
+@ stdcall IsCharSpaceW(long) ;shlwapi.IsCharSpaceW
+@ stdcall IsCharXDigitW(long) ;shlwapi.IsCharXDigitW
+@ stdcall IsInternetESCEnabled() ;shlwapi.IsInternetESCEnabled
+@ stdcall PathCombineA(ptr str str) ;shlwapi.PathCombineA
+@ stdcall PathCombineW(ptr wstr wstr) ;shlwapi.PathCombineW
+@ stdcall PathCommonPrefixA(str str ptr) ;shlwapi.PathCommonPrefixA
+@ stdcall PathCommonPrefixW(wstr wstr ptr) ;shlwapi.PathCommonPrefixW
+@ stdcall PathCreateFromUrlA(str ptr ptr long) ;shlwapi.PathCreateFromUrlA
 @ stdcall PathCreateFromUrlAlloc(wstr ptr long)
-@ stdcall PathCreateFromUrlW(wstr ptr ptr long) shlwapi.PathCreateFromUrlW
-@ stdcall PathFileExistsA(str) shlwapi.PathFileExistsA
-@ stdcall PathFileExistsW(wstr) shlwapi.PathFileExistsW
-@ stdcall PathFindExtensionA(str) shlwapi.PathFindExtensionA
-@ stdcall PathFindExtensionW(wstr) shlwapi.PathFindExtensionW
-@ stdcall PathFindFileNameA(str) shlwapi.PathFindFileNameA
-@ stdcall PathFindFileNameW(wstr) shlwapi.PathFindFileNameW
-@ stdcall PathFindNextComponentA(str) shlwapi.PathFindNextComponentA
-@ stdcall PathFindNextComponentW(wstr) shlwapi.PathFindNextComponentW
-@ stdcall PathGetArgsA(str) shlwapi.PathGetArgsA
-@ stdcall PathGetArgsW(wstr) shlwapi.PathGetArgsW
-@ stdcall PathGetCharTypeA(long) shlwapi.PathGetCharTypeA
-@ stdcall PathGetCharTypeW(long) shlwapi.PathGetCharTypeW
-@ stdcall PathGetDriveNumberA(str) shlwapi.PathGetDriveNumberA
-@ stdcall PathGetDriveNumberW(wstr) shlwapi.PathGetDriveNumberW
-@ stdcall PathIsFileSpecA(str) shlwapi.PathIsFileSpecA
-@ stdcall PathIsFileSpecW(wstr) shlwapi.PathIsFileSpecW
-@ stdcall PathIsLFNFileSpecA(str) shlwapi.PathIsLFNFileSpecA
-@ stdcall PathIsLFNFileSpecW(wstr) shlwapi.PathIsLFNFileSpecW
-@ stdcall PathIsPrefixA(str str) shlwapi.PathIsPrefixA
-@ stdcall PathIsPrefixW(wstr wstr) shlwapi.PathIsPrefixW
-@ stdcall PathIsRelativeA(str) shlwapi.PathIsRelativeA
-@ stdcall PathIsRelativeW(wstr) shlwapi.PathIsRelativeW
-@ stdcall PathIsRootA(str) shlwapi.PathIsRootA
-@ stdcall PathIsRootW(wstr) shlwapi.PathIsRootW
-@ stdcall PathIsSameRootA(str str) shlwapi.PathIsSameRootA
-@ stdcall PathIsSameRootW(wstr wstr) shlwapi.PathIsSameRootW
-@ stdcall PathIsUNCA(str) shlwapi.PathIsUNCA
-@ stdcall PathIsUNCServerA(str) shlwapi.PathIsUNCServerA
-@ stdcall PathIsUNCServerShareA(str) shlwapi.PathIsUNCServerShareA
-@ stdcall PathIsUNCServerShareW(wstr) shlwapi.PathIsUNCServerShareW
-@ stdcall PathIsUNCServerW(wstr) shlwapi.PathIsUNCServerW
-@ stdcall PathIsUNCW(wstr) shlwapi.PathIsUNCW
-@ stdcall PathIsURLA(str) shlwapi.PathIsURLA
-@ stdcall PathIsURLW(wstr) shlwapi.PathIsURLW
-@ stdcall PathIsValidCharA(long long) shlwapi.PathIsValidCharA
-@ stdcall PathIsValidCharW(long long) shlwapi.PathIsValidCharW
-@ stdcall PathMatchSpecA(str str) shlwapi.PathMatchSpecA
+@ stdcall PathCreateFromUrlW(wstr ptr ptr long) ;shlwapi.PathCreateFromUrlW
+@ stdcall PathFileExistsA(str) ;shlwapi.PathFileExistsA
+@ stdcall PathFileExistsW(wstr) ;shlwapi.PathFileExistsW
+@ stdcall PathFindExtensionA(str) ;shlwapi.PathFindExtensionA
+@ stdcall PathFindExtensionW(wstr) ;shlwapi.PathFindExtensionW
+@ stdcall PathFindFileNameA(str) ;shlwapi.PathFindFileNameA
+@ stdcall PathFindFileNameW(wstr) ;shlwapi.PathFindFileNameW
+@ stdcall PathFindNextComponentA(str) ;shlwapi.PathFindNextComponentA
+@ stdcall PathFindNextComponentW(wstr) ;shlwapi.PathFindNextComponentW
+@ stdcall PathGetArgsA(str) ;shlwapi.PathGetArgsA
+@ stdcall PathGetArgsW(wstr) ;shlwapi.PathGetArgsW
+@ stdcall PathGetCharTypeA(long) ;shlwapi.PathGetCharTypeA
+@ stdcall PathGetCharTypeW(long) ;shlwapi.PathGetCharTypeW
+@ stdcall PathGetDriveNumberA(str) ;shlwapi.PathGetDriveNumberA
+@ stdcall PathGetDriveNumberW(wstr) ;shlwapi.PathGetDriveNumberW
+@ stdcall PathIsFileSpecA(str) ;shlwapi.PathIsFileSpecA
+@ stdcall PathIsFileSpecW(wstr) ;shlwapi.PathIsFileSpecW
+@ stdcall PathIsLFNFileSpecA(str) ;shlwapi.PathIsLFNFileSpecA
+@ stdcall PathIsLFNFileSpecW(wstr) ;shlwapi.PathIsLFNFileSpecW
+@ stdcall PathIsPrefixA(str str) ;shlwapi.PathIsPrefixA
+@ stdcall PathIsPrefixW(wstr wstr) ;shlwapi.PathIsPrefixW
+@ stdcall PathIsRelativeA(str) ;shlwapi.PathIsRelativeA
+@ stdcall PathIsRelativeW(wstr) ;shlwapi.PathIsRelativeW
+@ stdcall PathIsRootA(str) ;shlwapi.PathIsRootA
+@ stdcall PathIsRootW(wstr) ;shlwapi.PathIsRootW
+@ stdcall PathIsSameRootA(str str) ;shlwapi.PathIsSameRootA
+@ stdcall PathIsSameRootW(wstr wstr) ;shlwapi.PathIsSameRootW
+@ stdcall PathIsUNCA(str) ;shlwapi.PathIsUNCA
+@ stdcall PathIsUNCServerA(str) ;shlwapi.PathIsUNCServerA
+@ stdcall PathIsUNCServerShareA(str) ;shlwapi.PathIsUNCServerShareA
+@ stdcall PathIsUNCServerShareW(wstr) ;shlwapi.PathIsUNCServerShareW
+@ stdcall PathIsUNCServerW(wstr) ;shlwapi.PathIsUNCServerW
+@ stdcall PathIsUNCW(wstr) ;shlwapi.PathIsUNCW
+@ stdcall PathIsURLA(str) ;shlwapi.PathIsURLA
+@ stdcall PathIsURLW(wstr) ;shlwapi.PathIsURLW
+@ stdcall PathIsValidCharA(long long) ;shlwapi.PathIsValidCharA
+@ stdcall PathIsValidCharW(long long) ;shlwapi.PathIsValidCharW
+@ stdcall PathMatchSpecA(str str) ;shlwapi.PathMatchSpecA
 @ stdcall PathMatchSpecExA(str str long)
 @ stdcall PathMatchSpecExW(wstr wstr long)
-@ stdcall PathMatchSpecW(wstr wstr) shlwapi.PathMatchSpecW
-@ stdcall PathParseIconLocationA(str) shlwapi.PathParseIconLocationA
-@ stdcall PathParseIconLocationW(wstr) shlwapi.PathParseIconLocationW
-@ stdcall PathQuoteSpacesA(str) shlwapi.PathQuoteSpacesA
-@ stdcall PathQuoteSpacesW(wstr) shlwapi.PathQuoteSpacesW
-@ stdcall PathRelativePathToA(ptr str long str long) shlwapi.PathRelativePathToA
-@ stdcall PathRelativePathToW(ptr wstr long wstr long) shlwapi.PathRelativePathToW
-@ stdcall PathRemoveBackslashA(str) shlwapi.PathRemoveBackslashA
-@ stdcall PathRemoveBackslashW(wstr) shlwapi.PathRemoveBackslashW
-@ stdcall PathRemoveBlanksA(str) shlwapi.PathRemoveBlanksA
-@ stdcall PathRemoveBlanksW(wstr) shlwapi.PathRemoveBlanksW
-@ stdcall PathRemoveExtensionA(str) shlwapi.PathRemoveExtensionA
-@ stdcall PathRemoveExtensionW(wstr) shlwapi.PathRemoveExtensionW
-@ stdcall PathRemoveFileSpecA(str) shlwapi.PathRemoveFileSpecA
-@ stdcall PathRemoveFileSpecW(wstr) shlwapi.PathRemoveFileSpecW
-@ stdcall PathRenameExtensionA(str str) shlwapi.PathRenameExtensionA
-@ stdcall PathRenameExtensionW(wstr wstr) shlwapi.PathRenameExtensionW
-@ stdcall PathSearchAndQualifyA(str ptr long) shlwapi.PathSearchAndQualifyA
-@ stdcall PathSearchAndQualifyW(wstr ptr long) shlwapi.PathSearchAndQualifyW
-@ stdcall PathSkipRootA(str) shlwapi.PathSkipRootA
-@ stdcall PathSkipRootW(wstr) shlwapi.PathSkipRootW
-@ stdcall PathStripPathA(str) shlwapi.PathStripPathA
-@ stdcall PathStripPathW(wstr) shlwapi.PathStripPathW
-@ stdcall PathStripToRootA(str) shlwapi.PathStripToRootA
-@ stdcall PathStripToRootW(wstr) shlwapi.PathStripToRootW
-@ stdcall PathUnExpandEnvStringsA(str ptr long) shlwapi.PathUnExpandEnvStringsA
-@ stdcall PathUnExpandEnvStringsW(wstr ptr long) shlwapi.PathUnExpandEnvStringsW
-@ stdcall PathUnquoteSpacesA(str) shlwapi.PathUnquoteSpacesA
-@ stdcall PathUnquoteSpacesW(wstr) shlwapi.PathUnquoteSpacesW
-@ stdcall QISearch(long long long long) shlwapi.QISearch
-@ stdcall SHLoadIndirectString(wstr ptr long ptr) shlwapi.SHLoadIndirectString
-@ stdcall SHRegCloseUSKey(ptr) shlwapi.SHRegCloseUSKey
-@ stdcall SHRegCreateUSKeyA(str long long ptr long) shlwapi.SHRegCreateUSKeyA
-@ stdcall SHRegCreateUSKeyW(wstr long long ptr long) shlwapi.SHRegCreateUSKeyW
-@ stdcall SHRegDeleteEmptyUSKeyA(long str long) shlwapi.SHRegDeleteEmptyUSKeyA
-@ stdcall SHRegDeleteEmptyUSKeyW(long wstr long) shlwapi.SHRegDeleteEmptyUSKeyW
-@ stdcall SHRegDeleteUSValueA(long str long) shlwapi.SHRegDeleteUSValueA
-@ stdcall SHRegDeleteUSValueW(long wstr long) shlwapi.SHRegDeleteUSValueW
-@ stdcall SHRegEnumUSKeyA(long long str ptr long) shlwapi.SHRegEnumUSKeyA
-@ stdcall SHRegEnumUSKeyW(long long wstr ptr long) shlwapi.SHRegEnumUSKeyW
-@ stdcall SHRegEnumUSValueA(long long ptr ptr ptr ptr ptr long) shlwapi.SHRegEnumUSValueA
-@ stdcall SHRegEnumUSValueW(long long ptr ptr ptr ptr ptr long) shlwapi.SHRegEnumUSValueW
-@ stdcall SHRegGetBoolUSValueA(str str long long) shlwapi.SHRegGetBoolUSValueA
-@ stdcall SHRegGetBoolUSValueW(wstr wstr long long) shlwapi.SHRegGetBoolUSValueW
-@ stdcall SHRegGetUSValueA( str str ptr ptr ptr long ptr long ) shlwapi.SHRegGetUSValueA
-@ stdcall SHRegGetUSValueW( wstr wstr ptr ptr ptr long ptr long ) shlwapi.SHRegGetUSValueW
-@ stdcall SHRegOpenUSKeyA( str long long long long ) shlwapi.SHRegOpenUSKeyA
-@ stdcall SHRegOpenUSKeyW( wstr long long long long ) shlwapi.SHRegOpenUSKeyW
-@ stdcall SHRegQueryInfoUSKeyA( long ptr ptr ptr ptr long ) shlwapi.SHRegQueryInfoUSKeyA
-@ stdcall SHRegQueryInfoUSKeyW( long ptr ptr ptr ptr long ) shlwapi.SHRegQueryInfoUSKeyW
-@ stdcall SHRegQueryUSValueA( long str ptr ptr ptr long ptr long ) shlwapi.SHRegQueryUSValueA
-@ stdcall SHRegQueryUSValueW( long wstr ptr ptr ptr long ptr long ) shlwapi.SHRegQueryUSValueW
-@ stdcall SHRegSetUSValueA( str str long ptr long long) shlwapi.SHRegSetUSValueA
-@ stdcall SHRegSetUSValueW( wstr wstr long ptr long long) shlwapi.SHRegSetUSValueW
-@ stdcall SHRegWriteUSValueA(long str long ptr long long) shlwapi.SHRegWriteUSValueA
-@ stdcall SHRegWriteUSValueW(long wstr long ptr long long) shlwapi.SHRegWriteUSValueW
-@ stdcall SHTruncateString(str long) shlwapi.SHTruncateString
-@ stdcall StrCSpnA(str str) shlwapi.StrCSpnA
-@ stdcall StrCSpnIA(str str) shlwapi.StrCSpnIA
-@ stdcall StrCSpnIW(wstr wstr) shlwapi.StrCSpnIW
-@ stdcall StrCSpnW(wstr wstr) shlwapi.StrCSpnW
-@ stdcall StrCatBuffA(str str long) shlwapi.StrCatBuffA
-@ stdcall StrCatBuffW(wstr wstr long) shlwapi.StrCatBuffW
-@ stdcall StrCatChainW(ptr long long wstr) shlwapi.StrCatChainW
-@ stdcall StrChrA(str long) shlwapi.StrChrA
+@ stdcall PathMatchSpecW(wstr wstr) ;shlwapi.PathMatchSpecW
+@ stdcall PathParseIconLocationA(str) ;shlwapi.PathParseIconLocationA
+@ stdcall PathParseIconLocationW(wstr) ;shlwapi.PathParseIconLocationW
+@ stdcall PathQuoteSpacesA(str) ;shlwapi.PathQuoteSpacesA
+@ stdcall PathQuoteSpacesW(wstr) ;shlwapi.PathQuoteSpacesW
+@ stdcall PathRelativePathToA(ptr str long str long) ;shlwapi.PathRelativePathToA
+@ stdcall PathRelativePathToW(ptr wstr long wstr long) ;shlwapi.PathRelativePathToW
+@ stdcall PathRemoveBackslashA(str) ;shlwapi.PathRemoveBackslashA
+@ stdcall PathRemoveBackslashW(wstr) ;shlwapi.PathRemoveBackslashW
+@ stdcall PathRemoveBlanksA(str) ;shlwapi.PathRemoveBlanksA
+@ stdcall PathRemoveBlanksW(wstr) ;shlwapi.PathRemoveBlanksW
+@ stdcall PathRemoveExtensionA(str) ;shlwapi.PathRemoveExtensionA
+@ stdcall PathRemoveExtensionW(wstr) ;shlwapi.PathRemoveExtensionW
+@ stdcall PathRemoveFileSpecA(str) ;shlwapi.PathRemoveFileSpecA
+@ stdcall PathRemoveFileSpecW(wstr) ;shlwapi.PathRemoveFileSpecW
+@ stdcall PathRenameExtensionA(str str) ;shlwapi.PathRenameExtensionA
+@ stdcall PathRenameExtensionW(wstr wstr) ;shlwapi.PathRenameExtensionW
+@ stdcall PathSearchAndQualifyA(str ptr long) ;shlwapi.PathSearchAndQualifyA
+@ stdcall PathSearchAndQualifyW(wstr ptr long) ;shlwapi.PathSearchAndQualifyW
+@ stdcall PathSkipRootA(str) ;shlwapi.PathSkipRootA
+@ stdcall PathSkipRootW(wstr) ;shlwapi.PathSkipRootW
+@ stdcall PathStripPathA(str) ;shlwapi.PathStripPathA
+@ stdcall PathStripPathW(wstr) ;shlwapi.PathStripPathW
+@ stdcall PathStripToRootA(str) ;shlwapi.PathStripToRootA
+@ stdcall PathStripToRootW(wstr) ;shlwapi.PathStripToRootW
+@ stdcall PathUnExpandEnvStringsA(str ptr long) ;shlwapi.PathUnExpandEnvStringsA
+@ stdcall PathUnExpandEnvStringsW(wstr ptr long) ;shlwapi.PathUnExpandEnvStringsW
+@ stdcall PathUnquoteSpacesA(str) ;shlwapi.PathUnquoteSpacesA
+@ stdcall PathUnquoteSpacesW(wstr) ;shlwapi.PathUnquoteSpacesW
+@ stdcall QISearch(long long long long) ;shlwapi.QISearch
+@ stdcall SHLoadIndirectString(wstr ptr long ptr) ;shlwapi.SHLoadIndirectString
+@ stdcall SHRegCloseUSKey(ptr) ;shlwapi.SHRegCloseUSKey
+@ stdcall SHRegCreateUSKeyA(str long long ptr long) ;shlwapi.SHRegCreateUSKeyA
+@ stdcall SHRegCreateUSKeyW(wstr long long ptr long) ;shlwapi.SHRegCreateUSKeyW
+@ stdcall SHRegDeleteEmptyUSKeyA(long str long) ;shlwapi.SHRegDeleteEmptyUSKeyA
+@ stdcall SHRegDeleteEmptyUSKeyW(long wstr long) ;shlwapi.SHRegDeleteEmptyUSKeyW
+@ stdcall SHRegDeleteUSValueA(long str long) ;shlwapi.SHRegDeleteUSValueA
+@ stdcall SHRegDeleteUSValueW(long wstr long) ;shlwapi.SHRegDeleteUSValueW
+@ stdcall SHRegEnumUSKeyA(long long str ptr long) ;shlwapi.SHRegEnumUSKeyA
+@ stdcall SHRegEnumUSKeyW(long long wstr ptr long) ;shlwapi.SHRegEnumUSKeyW
+@ stdcall SHRegEnumUSValueA(long long ptr ptr ptr ptr ptr long) ;shlwapi.SHRegEnumUSValueA
+@ stdcall SHRegEnumUSValueW(long long ptr ptr ptr ptr ptr long) ;shlwapi.SHRegEnumUSValueW
+@ stdcall SHRegGetBoolUSValueA(str str long long) ;shlwapi.SHRegGetBoolUSValueA
+@ stdcall SHRegGetBoolUSValueW(wstr wstr long long) ;shlwapi.SHRegGetBoolUSValueW
+@ stdcall SHRegGetUSValueA( str str ptr ptr ptr long ptr long ) ;shlwapi.SHRegGetUSValueA
+@ stdcall SHRegGetUSValueW( wstr wstr ptr ptr ptr long ptr long ) ;shlwapi.SHRegGetUSValueW
+@ stdcall SHRegOpenUSKeyA( str long long long long ) ;shlwapi.SHRegOpenUSKeyA
+@ stdcall SHRegOpenUSKeyW( wstr long long long long ) ;shlwapi.SHRegOpenUSKeyW
+@ stdcall SHRegQueryInfoUSKeyA( long ptr ptr ptr ptr long ) ;shlwapi.SHRegQueryInfoUSKeyA
+@ stdcall SHRegQueryInfoUSKeyW( long ptr ptr ptr ptr long ) ;shlwapi.SHRegQueryInfoUSKeyW
+@ stdcall SHRegQueryUSValueA( long str ptr ptr ptr long ptr long ) ;shlwapi.SHRegQueryUSValueA
+@ stdcall SHRegQueryUSValueW( long wstr ptr ptr ptr long ptr long ) ;shlwapi.SHRegQueryUSValueW
+@ stdcall SHRegSetUSValueA( str str long ptr long long) ;shlwapi.SHRegSetUSValueA
+@ stdcall SHRegSetUSValueW( wstr wstr long ptr long long) ;shlwapi.SHRegSetUSValueW
+@ stdcall SHRegWriteUSValueA(long str long ptr long long) ;shlwapi.SHRegWriteUSValueA
+@ stdcall SHRegWriteUSValueW(long wstr long ptr long long) ;shlwapi.SHRegWriteUSValueW
+@ stdcall SHTruncateString(str long) ;shlwapi.SHTruncateString
+@ stdcall StrCSpnA(str str) ;shlwapi.StrCSpnA
+@ stdcall StrCSpnIA(str str) ;shlwapi.StrCSpnIA
+@ stdcall StrCSpnIW(wstr wstr) ;shlwapi.StrCSpnIW
+@ stdcall StrCSpnW(wstr wstr) ;shlwapi.StrCSpnW
+@ stdcall StrCatBuffA(str str long) ;shlwapi.StrCatBuffA
+@ stdcall StrCatBuffW(wstr wstr long) ;shlwapi.StrCatBuffW
+@ stdcall StrCatChainW(ptr long long wstr) ;shlwapi.StrCatChainW
+@ stdcall StrChrA(str long) ;shlwapi.StrChrA
 # @ stub StrChrA_MB
-@ stdcall StrChrIA(str long) shlwapi.StrChrIA
-@ stdcall StrChrIW(wstr long) shlwapi.StrChrIW
+@ stdcall StrChrIA(str long) ;shlwapi.StrChrIA
+@ stdcall StrChrIW(wstr long) ;shlwapi.StrChrIW
 # @ stub StrChrNIW
-@ stdcall StrChrNW(wstr long long) shlwapi.StrChrNW
-@ stdcall StrChrW(wstr long) shlwapi.StrChrW
-@ stdcall StrCmpCA(str str) shlwapi.StrCmpCA
-@ stdcall StrCmpCW(wstr wstr) shlwapi.StrCmpCW
-@ stdcall StrCmpICA(str str) shlwapi.StrCmpICA
-@ stdcall StrCmpICW(wstr wstr) shlwapi.StrCmpICW
-@ stdcall StrCmpIW(wstr wstr) shlwapi.StrCmpIW
-@ stdcall StrCmpLogicalW(wstr wstr) shlwapi.StrCmpLogicalW
-@ stdcall StrCmpNA(str str long) shlwapi.StrCmpNA
-@ stdcall StrCmpNCA(str ptr long) shlwapi.StrCmpNCA
-@ stdcall StrCmpNCW(wstr wstr long) shlwapi.StrCmpNCW
-@ stdcall StrCmpNIA(str str long) shlwapi.StrCmpNIA
-@ stdcall StrCmpNICA(long long long) shlwapi.StrCmpNICA
-@ stdcall StrCmpNICW(wstr wstr long) shlwapi.StrCmpNICW
-@ stdcall StrCmpNIW(wstr wstr long) shlwapi.StrCmpNIW
-@ stdcall StrCmpNW(wstr wstr long) shlwapi.StrCmpNW
-@ stdcall StrCmpW(wstr wstr) shlwapi.StrCmpW
-@ stdcall StrCpyNW(ptr wstr long) shlwapi.StrCpyNW
-@ stdcall StrCpyNXA(ptr str long) shlwapi.StrCpyNXA
-@ stdcall StrCpyNXW(ptr wstr long) shlwapi.StrCpyNXW
-@ stdcall StrDupA(str) shlwapi.StrDupA
-@ stdcall StrDupW(wstr) shlwapi.StrDupW
-@ stdcall StrIsIntlEqualA(long str str long) shlwapi.StrIsIntlEqualA
-@ stdcall StrIsIntlEqualW(long wstr wstr long) shlwapi.StrIsIntlEqualW
-@ stdcall StrPBrkA(str str) shlwapi.StrPBrkA
-@ stdcall StrPBrkW(wstr wstr) shlwapi.StrPBrkW
-@ stdcall StrRChrA(str str long) shlwapi.StrRChrA
-@ stdcall StrRChrIA(str str long) shlwapi.StrRChrIA
-@ stdcall StrRChrIW(wstr wstr long) shlwapi.StrRChrIW
-@ stdcall StrRChrW(wstr wstr long) shlwapi.StrRChrW
-@ stdcall StrRStrIA(str str str) shlwapi.StrRStrIA
-@ stdcall StrRStrIW(wstr wstr wstr) shlwapi.StrRStrIW
-@ stdcall StrSpnA(str str) shlwapi.StrSpnA
-@ stdcall StrSpnW(wstr wstr) shlwapi.StrSpnW
-@ stdcall StrStrA(str str) shlwapi.StrStrA
-@ stdcall StrStrIA(str str) shlwapi.StrStrIA
-@ stdcall StrStrIW(wstr wstr) shlwapi.StrStrIW
-@ stdcall StrStrNIW(wstr wstr long) shlwapi.StrStrNIW
-@ stdcall StrStrNW(wstr wstr long) shlwapi.StrStrNW
-@ stdcall StrStrW(wstr wstr) shlwapi.StrStrW
-@ stdcall StrToInt64ExA(str long ptr) shlwapi.StrToInt64ExA
-@ stdcall StrToInt64ExW(wstr long ptr) shlwapi.StrToInt64ExW
-@ stdcall StrToIntA(str) shlwapi.StrToIntA
-@ stdcall StrToIntExA(str long ptr) shlwapi.StrToIntExA
-@ stdcall StrToIntExW(wstr long ptr) shlwapi.StrToIntExW
-@ stdcall StrToIntW(wstr) shlwapi.StrToIntW
-@ stdcall StrTrimA(str str) shlwapi.StrTrimA
-@ stdcall StrTrimW(wstr wstr) shlwapi.StrTrimW
-@ stdcall UrlApplySchemeA(str ptr ptr long) shlwapi.UrlApplySchemeA
-@ stdcall UrlApplySchemeW(wstr ptr ptr long) shlwapi.UrlApplySchemeW
-@ stdcall UrlCanonicalizeA(str ptr ptr long) shlwapi.UrlCanonicalizeA
-@ stdcall UrlCanonicalizeW(wstr ptr ptr long) shlwapi.UrlCanonicalizeW
-@ stdcall UrlCombineA(str str ptr ptr long) shlwapi.UrlCombineA
-@ stdcall UrlCombineW(wstr wstr ptr ptr long) shlwapi.UrlCombineW
-@ stdcall UrlCompareA(str str long) shlwapi.UrlCompareA
-@ stdcall UrlCompareW(wstr wstr long) shlwapi.UrlCompareW
-@ stdcall UrlCreateFromPathA(str ptr ptr long) shlwapi.UrlCreateFromPathA
-@ stdcall UrlCreateFromPathW(wstr ptr ptr long) shlwapi.UrlCreateFromPathW
-@ stdcall UrlEscapeA(str ptr ptr long) shlwapi.UrlEscapeA
-@ stdcall UrlEscapeW(wstr ptr ptr long) shlwapi.UrlEscapeW
-@ stdcall UrlFixupW(wstr wstr long) shlwapi.UrlFixupW
-@ stdcall UrlGetLocationA(str) shlwapi.UrlGetLocationA
-@ stdcall UrlGetLocationW(wstr) shlwapi.UrlGetLocationW
-@ stdcall UrlGetPartA(str ptr ptr long long) shlwapi.UrlGetPartA
-@ stdcall UrlGetPartW(wstr ptr ptr long long) shlwapi.UrlGetPartW
-@ stdcall UrlHashA(str ptr long) shlwapi.UrlHashA
-@ stdcall UrlHashW(wstr ptr long) shlwapi.UrlHashW
-@ stdcall UrlIsA(str long) shlwapi.UrlIsA
-@ stdcall UrlIsNoHistoryA(str) shlwapi.UrlIsNoHistoryA
-@ stdcall UrlIsNoHistoryW(wstr) shlwapi.UrlIsNoHistoryW
-@ stdcall UrlIsOpaqueA(str) shlwapi.UrlIsOpaqueA
-@ stdcall UrlIsOpaqueW(wstr) shlwapi.UrlIsOpaqueW
-@ stdcall UrlIsW(wstr long) shlwapi.UrlIsW
-@ stdcall UrlUnescapeA(str ptr ptr long) shlwapi.UrlUnescapeA
-@ stdcall UrlUnescapeW(wstr ptr ptr long) shlwapi.UrlUnescapeW
+@ stdcall StrChrNW(wstr long long) ;shlwapi.StrChrNW
+@ stdcall StrChrW(wstr long) ;shlwapi.StrChrW
+@ stdcall StrCmpCA(str str) ;shlwapi.StrCmpCA
+@ stdcall StrCmpCW(wstr wstr) ;shlwapi.StrCmpCW
+@ stdcall StrCmpICA(str str) ;shlwapi.StrCmpICA
+@ stdcall StrCmpICW(wstr wstr) ;shlwapi.StrCmpICW
+@ stdcall StrCmpIW(wstr wstr) ;shlwapi.StrCmpIW
+@ stdcall StrCmpLogicalW(wstr wstr) ;shlwapi.StrCmpLogicalW
+@ stdcall StrCmpNA(str str long) ;shlwapi.StrCmpNA
+@ stdcall StrCmpNCA(str ptr long) ;shlwapi.StrCmpNCA
+@ stdcall StrCmpNCW(wstr wstr long) ;shlwapi.StrCmpNCW
+@ stdcall StrCmpNIA(str str long) ;shlwapi.StrCmpNIA
+@ stdcall StrCmpNICA(long long long) ;shlwapi.StrCmpNICA
+@ stdcall StrCmpNICW(wstr wstr long) ;shlwapi.StrCmpNICW
+@ stdcall StrCmpNIW(wstr wstr long) ;shlwapi.StrCmpNIW
+@ stdcall StrCmpNW(wstr wstr long) ;shlwapi.StrCmpNW
+@ stdcall StrCmpW(wstr wstr) ;shlwapi.StrCmpW
+@ stdcall StrCpyNW(ptr wstr long) ;shlwapi.StrCpyNW
+@ stdcall StrCpyNXA(ptr str long) ;shlwapi.StrCpyNXA
+@ stdcall StrCpyNXW(ptr wstr long) ;shlwapi.StrCpyNXW
+@ stdcall StrDupA(str) ;shlwapi.StrDupA
+@ stdcall StrDupW(wstr) ;shlwapi.StrDupW
+@ stdcall StrIsIntlEqualA(long str str long) ;shlwapi.StrIsIntlEqualA
+@ stdcall StrIsIntlEqualW(long wstr wstr long) ;shlwapi.StrIsIntlEqualW
+@ stdcall StrPBrkA(str str) ;shlwapi.StrPBrkA
+@ stdcall StrPBrkW(wstr wstr) ;shlwapi.StrPBrkW
+@ stdcall StrRChrA(str str long) ;shlwapi.StrRChrA
+@ stdcall StrRChrIA(str str long) ;shlwapi.StrRChrIA
+@ stdcall StrRChrIW(wstr wstr long) ;shlwapi.StrRChrIW
+@ stdcall StrRChrW(wstr wstr long) ;shlwapi.StrRChrW
+@ stdcall StrRStrIA(str str str) ;shlwapi.StrRStrIA
+@ stdcall StrRStrIW(wstr wstr wstr) ;shlwapi.StrRStrIW
+@ stdcall StrSpnA(str str) ;shlwapi.StrSpnA
+@ stdcall StrSpnW(wstr wstr) ;shlwapi.StrSpnW
+@ stdcall StrStrA(str str) ;shlwapi.StrStrA
+@ stdcall StrStrIA(str str) ;shlwapi.StrStrIA
+@ stdcall StrStrIW(wstr wstr) ;shlwapi.StrStrIW
+@ stdcall StrStrNIW(wstr wstr long) ;shlwapi.StrStrNIW
+@ stdcall StrStrNW(wstr wstr long) ;shlwapi.StrStrNW
+@ stdcall StrStrW(wstr wstr) ;shlwapi.StrStrW
+@ stdcall StrToInt64ExA(str long ptr) ;shlwapi.StrToInt64ExA
+@ stdcall StrToInt64ExW(wstr long ptr) ;shlwapi.StrToInt64ExW
+@ stdcall StrToIntA(str) ;shlwapi.StrToIntA
+@ stdcall StrToIntExA(str long ptr) ;shlwapi.StrToIntExA
+@ stdcall StrToIntExW(wstr long ptr) ;shlwapi.StrToIntExW
+@ stdcall StrToIntW(wstr) ;shlwapi.StrToIntW
+@ stdcall StrTrimA(str str) ;shlwapi.StrTrimA
+@ stdcall StrTrimW(wstr wstr) ;shlwapi.StrTrimW
+@ stdcall UrlApplySchemeA(str ptr ptr long) ;shlwapi.UrlApplySchemeA
+@ stdcall UrlApplySchemeW(wstr ptr ptr long) ;shlwapi.UrlApplySchemeW
+@ stdcall UrlCanonicalizeA(str ptr ptr long) ;shlwapi.UrlCanonicalizeA
+@ stdcall UrlCanonicalizeW(wstr ptr ptr long) ;shlwapi.UrlCanonicalizeW
+@ stdcall UrlCombineA(str str ptr ptr long) ;shlwapi.UrlCombineA
+@ stdcall UrlCombineW(wstr wstr ptr ptr long) ;shlwapi.UrlCombineW
+@ stdcall UrlCompareA(str str long) ;shlwapi.UrlCompareA
+@ stdcall UrlCompareW(wstr wstr long) ;shlwapi.UrlCompareW
+@ stdcall UrlCreateFromPathA(str ptr ptr long) ;shlwapi.UrlCreateFromPathA
+@ stdcall UrlCreateFromPathW(wstr ptr ptr long) ;shlwapi.UrlCreateFromPathW
+@ stdcall UrlEscapeA(str ptr ptr long) ;shlwapi.UrlEscapeA
+@ stdcall UrlEscapeW(wstr ptr ptr long) ;shlwapi.UrlEscapeW
+@ stdcall UrlFixupW(wstr wstr long) ;shlwapi.UrlFixupW
+@ stdcall UrlGetLocationA(str) ;shlwapi.UrlGetLocationA
+@ stdcall UrlGetLocationW(wstr) ;shlwapi.UrlGetLocationW
+@ stdcall UrlGetPartA(str ptr ptr long long) ;shlwapi.UrlGetPartA
+@ stdcall UrlGetPartW(wstr ptr ptr long long) ;shlwapi.UrlGetPartW
+@ stdcall UrlHashA(str ptr long) ;shlwapi.UrlHashA
+@ stdcall UrlHashW(wstr ptr long) ;shlwapi.UrlHashW
+@ stdcall UrlIsA(str long) ;shlwapi.UrlIsA
+@ stdcall UrlIsNoHistoryA(str) ;shlwapi.UrlIsNoHistoryA
+@ stdcall UrlIsNoHistoryW(wstr) ;shlwapi.UrlIsNoHistoryW
+@ stdcall UrlIsOpaqueA(str) ;shlwapi.UrlIsOpaqueA
+@ stdcall UrlIsOpaqueW(wstr) ;shlwapi.UrlIsOpaqueW
+@ stdcall UrlIsW(wstr long) ;shlwapi.UrlIsW
+@ stdcall UrlUnescapeA(str ptr ptr long) ;shlwapi.UrlUnescapeA
+@ stdcall UrlUnescapeW(wstr ptr ptr long) ;shlwapi.UrlUnescapeW
 
-
-@ stdcall -stub QueryWin31IniFilesMappedToRegistry(long wstr long ptr)
-
-@ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10
+; @ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10
