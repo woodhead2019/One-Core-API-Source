@@ -1715,6 +1715,8 @@
 @ stdcall LdrResolveDelayLoadedAPI(ptr ptr ptr ptr ptr ptr)
 @ stdcall LdrSetDefaultDllDirectories(long)
 @ stdcall LdrSetDllDirectory(ptr)
+@ stdcall NtQueryWnfStateData(ptr ptr ptr ptr ptr ptr)
+@ stdcall NtUpdateWnfStateData(ptr ptr long ptr ptr long long)
 @ stdcall RtlAddIntegrityLabelToBoundaryDescriptor(ptr ptr)
 @ stdcall -arch=x86_64 RtlAddGrowableFunctionTable(ptr ptr long long long long)
 @ stdcall RtlAddResourceAttributeAce(ptr long long long ptr ptr ptr)
@@ -1740,8 +1742,6 @@
 @ stdcall RtlWakeAddressAll(ptr)
 @ stdcall RtlWakeAddressSingle(ptr)
 @ stdcall WinSqmIsOptedInEx(long)
-@ stdcall NtQueryWnfStateData(ptr ptr ptr ptr ptr ptr)
-@ stdcall NtUpdateWnfStateData(ptr ptr long ptr ptr long long)
 
 #Win10
 @ stdcall RtlGetDeviceFamilyInfoEnum(ptr ptr ptr)
