@@ -638,7 +638,7 @@ NTSTATUS WINAPI D3DKMTDestroyDevice( const D3DKMT_DESTROYDEVICE *desc )
 /******************************************************************************
  *		D3DKMTQueryStatistics [GDI32.@]
  */
-NTSTATUS WINAPI D3DKMTQueryStatistics(D3DKMT_QUERYSTATISTICS *stats)
+NTSTATUS WINAPI D3DKMTQueryStatistics(const D3DKMT_QUERYSTATISTICS *stats)
 {
     FIXME("D3DKMTQueryStatistics: (%p): stub\n", stats);
     return STATUS_SUCCESS;
@@ -647,10 +647,10 @@ NTSTATUS WINAPI D3DKMTQueryStatistics(D3DKMT_QUERYSTATISTICS *stats)
 /******************************************************************************
  *		D3DKMTSetQueuedLimit [GDI32.@]
  */
-NTSTATUS WINAPI D3DKMTSetQueuedLimit( D3DKMT_SETQUEUEDLIMIT *desc )
-{
-    FIXME( "D3DKMTSetQueuedLimit: (%p): stub\n", desc );
-    return STATUS_NOT_IMPLEMENTED;
+NTSTATUS WINAPI D3DKMTSetQueuedLimit(const D3DKMT_SETQUEUEDLIMIT *desc) {
+    if (!desc) return STATUS_INVALID_PARAMETER;
+    *(&(((D3DKMT_SETQUEUEDLIMIT*)desc)->QueuedPresentLimit)) = 1;
+    return STATUS_SUCCESS;    
 }
 
 /******************************************************************************
@@ -666,7 +666,7 @@ const WCHAR displayName[32] = L"\\\\.\\DISPLAY1\0";
 /******************************************************************************
  *           NtGdiDdDDIOpenAdapterFromLuid    (win32u.@)
  */
-NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( D3DKMT_OPENADAPTERFROMLUID *desc )
+NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( const D3DKMT_OPENADAPTERFROMLUID *desc )
 {
 	// DEVMODEW devMode;
 	// WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH] = {0};
@@ -712,7 +712,7 @@ NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( D3DKMT_OPENADAPTERFROMLUID *desc )
     Status = D3DKMTOpenAdapterFromGdiDisplayName(&adapter);
     if (FAILED(Status))
         return Status;
-    desc->hAdapter = adapter.hAdapter;
+    ((D3DKMT_OPENADAPTERFROMLUID*)desc)->hAdapter = adapter.hAdapter;
     return Status;
 }
 
@@ -724,9 +724,10 @@ D3DKMTQueryVideoMemoryInfo(
 {
     DWORD Ret = FALSE;
     DD_GETAVAILDRIVERMEMORYDATA Data;
+    HDC hdc;
     ZeroMemory(&Data, sizeof(Data));
 
-	//We always want know total memory avaliable.
+    //We always want know total memory avaliable.
     Data.DDSCaps.dwCaps = DDSCAPS_VIDEOMEMORY;
 
     if (D3DKMT_MEMORY_SEGMENT_GROUP_LOCAL == desc->MemorySegmentGroup)
@@ -740,14 +741,16 @@ D3DKMTQueryVideoMemoryInfo(
 
     if (Data.DDSCaps.dwCaps != 0)
     {
-        Ret = DdEntry28(DdEntry15(CreateCompatibleDC(NULL)), (DD_GETAVAILDRIVERMEMORYDATA*)&Data);
+        hdc = CreateCompatibleDC(NULL);
+        Ret = DdEntry28(DdEntry15(hdc), (DD_GETAVAILDRIVERMEMORYDATA*)&Data);
+        DeleteDC(hdc);
         desc->Budget = Data.dwTotal;
         desc->CurrentUsage = Data.dwTotal - Data.dwFree;
         desc->CurrentReservation = 0;
         desc->AvailableForReservation = 100;
     }
 
-    return Ret;	
+    return Ret;    
 }
 
 NTSTATUS
@@ -769,14 +772,24 @@ D3DKMTSetProcessSchedulingPriorityClass(
     D3DKMT_SCHEDULINGPRIORITYCLASS unnamedParam2
 )
 {
-	return STATUS_NOT_IMPLEMENTED;
+    return STATUS_SUCCESS;
+}
+NTSTATUS 
+WINAPI 
+D3DKMTGetProcessSchedulingPriorityClass(
+    HANDLE                         unnamedParam1,
+    D3DKMT_SCHEDULINGPRIORITYCLASS *unnamedParam2
+)
+{
+    if (!unnamedParam2) return STATUS_INVALID_PARAMETER;
+    *unnamedParam2 = D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL;
+    return STATUS_SUCCESS;
 }
 
 // Implementação de D3DKMTCheckExclusiveOwnership
-HRESULT 
+BOOLEAN 
 WINAPI
 D3DKMTCheckExclusiveOwnership() {
-    // Carrega a biblioteca GDI32.dll
 	DD_GETDRIVERSTATEDATA stateData = { 0 };
 	DWORD result;
 
@@ -801,24 +814,24 @@ D3DKMTCheckExclusiveOwnership() {
 HRESULT 
 WINAPI 
 D3DKMTCheckOcclusion(
-	D3DKMT_CHECKOCCLUSION* pCheckOcclusion
+	const D3DKMT_CHECKOCCLUSION* pCheckOcclusion
 	) 
 {
 	RECT windowRect;
 	RECT monitorRect;
 	RECT intersectionRect;
 	
-    if (!pCheckOcclusion || !pCheckOcclusion->hWnd) {
+    if (!pCheckOcclusion || !pCheckOcclusion->hWindow) {
         return E_INVALIDARG;
     }
 
     // Verifica se a janela está visível
-    if (!IsWindowVisible(pCheckOcclusion->hWnd)) {
+    if (!IsWindowVisible(pCheckOcclusion->hWindow)) {
         return S_FALSE; // Janela não está visível
     }
 
     // Obtém o retângulo da janela em coordenadas de tela
-    if (!GetWindowRect(pCheckOcclusion->hWnd, &windowRect)) {
+    if (!GetWindowRect(pCheckOcclusion->hWindow, &windowRect)) {
         return E_FAIL;
     }
 
@@ -853,7 +866,7 @@ D3DKMTCheckOcclusion(
     // return 0x80070000 + GetLastError(); // uhh k then
 // }
 
-HRESULT D3DKMTCreateContext(D3DKMT_CREATECONTEXT* pCreateContext) {
+NTSTATUS WINAPI D3DKMTCreateContext(D3DKMT_CREATECONTEXT* pCreateContext) {
     D3DNTHAL_CONTEXTCREATEDATA dcci = { 0 };
 	BOOL result;
 	
@@ -947,4 +960,114 @@ NTSTATUS WINAPI D3DKMTReleaseProcessVidPnSourceOwners(
 )
 {
 	return STATUS_SUCCESS;
+}
+
+NTSTATUS APIENTRY D3DKMTGetDisplayModeList(
+    D3DKMT_GETDISPLAYMODELIST *pData
+)
+{
+    DEVMODEA devMode;
+    DWORD modeIndex;
+    DWORD modeCount;
+    DWORD maxModes;
+
+    if (!pData)
+        return STATUS_INVALID_PARAMETER;
+
+    ZeroMemory(&devMode, sizeof(DEVMODEA));
+    devMode.dmSize = sizeof(DEVMODEA);
+
+    modeIndex = 0;
+    modeCount = 0;
+
+    /* Primeiro passo: contar modos */
+    while (EnumDisplaySettingsA(NULL, modeIndex, &devMode))
+    {
+        modeCount++;
+        modeIndex++;
+    }
+
+    /* Se o chamador quer apenas o número */
+    if (!pData->pModeList)
+    {
+        pData->ModeCount = modeCount;
+        return STATUS_SUCCESS;
+    }
+
+    maxModes = pData->ModeCount;
+    modeIndex = 0;
+    modeCount = 0;
+
+    ZeroMemory(&devMode, sizeof(DEVMODEA));
+    devMode.dmSize = sizeof(DEVMODEA);
+
+    /* Segundo passo: preencher lista */
+    while (EnumDisplaySettingsA(NULL, modeIndex, &devMode))
+    {
+        if (modeCount >= maxModes)
+            break;
+
+        pData->pModeList[modeCount].Width  = devMode.dmPelsWidth;
+        pData->pModeList[modeCount].Height = devMode.dmPelsHeight;
+		pData->pModeList[modeCount].RefreshRate.Numerator   = devMode.dmDisplayFrequency;
+		pData->pModeList[modeCount].RefreshRate.Denominator = 1;
+
+
+        /* Emulação: mapear bits-per-pixel para formato */
+        switch (devMode.dmBitsPerPel)
+        {
+            case 32:
+                pData->pModeList[modeCount].Format = D3DDDIFMT_A8R8G8B8;
+                break;
+
+            case 24:
+                pData->pModeList[modeCount].Format = D3DDDIFMT_R8G8B8;
+                break;
+
+            case 16:
+                pData->pModeList[modeCount].Format = D3DDDIFMT_R5G6B5;
+                break;
+
+            default:
+                pData->pModeList[modeCount].Format = D3DDDIFMT_UNKNOWN;
+                break;
+        }
+
+        modeCount++;
+        modeIndex++;
+    }
+
+    pData->ModeCount = modeCount;
+
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS WINAPI D3DKMTAcquireKeyedMutex(D3DKMT_ACQUIREKEYEDMUTEX *mtx) {
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS WINAPI D3DKMTCreateKeyedMutex(D3DKMT_CREATEKEYEDMUTEX *mtx) {
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS WINAPI D3DKMTDestroyKeyedMutex(const D3DKMT_DESTROYKEYEDMUTEX *mtx) {
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS WINAPI D3DKMTOpenKeyedMutex(D3DKMT_OPENKEYEDMUTEX *mtx) {
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS WINAPI D3DKMTReleaseKeyedMutex(D3DKMT_RELEASEKEYEDMUTEX *mtx) {
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS WINAPI D3DKMTConfigureSharedResource(
+  const D3DKMT_CONFIGURESHAREDRESOURCE *unnamedParam1
+){
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS WINAPI D3DKMTOpenSynchronizationObject(D3DKMT_OPENSYNCHRONIZATIONOBJECT *desc) {
+	return STATUS_ACCESS_DENIED;
 }

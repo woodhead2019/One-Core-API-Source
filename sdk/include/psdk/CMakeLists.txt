@@ -84,6 +84,7 @@ list(APPEND SOURCE
     netfw.idl
     oaidl.idl
     objectarray.idl
+    objidlbase.idl
     objidl.idl
     objsafe.idl
     ocidl.idl

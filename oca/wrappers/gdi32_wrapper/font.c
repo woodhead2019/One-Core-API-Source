@@ -299,9 +299,7 @@ BOOL WINAPI GetFontFileData( DWORD instance_id, DWORD unknown, UINT64 offset, vo
     // }
     // /* For now this only works for SFNT case. */
     // return get_font_data( font, tag, offset, buff, buff_size ) != 0;
-	if(currentHdcFont){
-		return GetFontData(currentHdcFont, unknown, offset, buff, buff_size);
-	}
-	
-	return FALSE;
+	HDC hdc = CreateCompatibleDC(0);
+
+	return GetFontData(hdc, unknown, offset, buff, buff_size);
 }
