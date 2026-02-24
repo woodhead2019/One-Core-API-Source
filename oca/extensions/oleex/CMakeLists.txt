@@ -25,6 +25,7 @@ list(APPEND SOURCE
 	mta.c
     #marshal.c
     #rpc.c
+    roapi.c
 	version.rc
 	${CMAKE_CURRENT_BINARY_DIR}/dcom_i.c
     ${CMAKE_CURRENT_BINARY_DIR}/oleex_stubs.c
@@ -33,6 +34,6 @@ list(APPEND SOURCE
 
 add_library(oleex SHARED  ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/dcom_p.c)
 set_module_type(oleex win32dll ENTRYPOINT 0)
-target_link_libraries(oleex wine)
-add_importlibs(oleex ole32 rpcrt4 msvcrt kernel32 ntdll)
+target_link_libraries(oleex wine uuid)
+add_importlibs(oleex ole32 rpcrt4 msvcrt kernel32 user32 ntdll)
 add_cd_file(TARGET oleex DESTINATION reactos/system32 FOR all)

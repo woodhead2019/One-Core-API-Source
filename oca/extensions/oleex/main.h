@@ -38,6 +38,8 @@
 #define IRPCSS_PROTSEQ {'n','c','a','l','r','p','c',0}
 #define IRPCSS_ENDPOINT {'i','r','p','c','s','s',0}
 
+#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+
 #define RPCSS_CALL_START \
     HRESULT hr; \
     for (;;) { \
@@ -300,6 +302,11 @@ static HRESULT unmarshal_object(const STDOBJREF *stdobjref, struct apartment *ap
                                 void **object);
 								
 void apartment_release(struct apartment *apt);
+
+ULONG DbgPrint(
+  PCSTR Format,
+  ...   
+);
 
 static FORCEINLINE LONG ReadNoFence( LONG const volatile *src )
 {

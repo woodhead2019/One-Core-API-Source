@@ -24,7 +24,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(ole32);
 
 BOOLEAN g_cMTAInits;  // Global variables within ole32 itself
 DWORD gdwMainThreadId;
-		
+
 HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQualifier)
 /* 
     win32 - March 7 2021
@@ -40,6 +40,8 @@ HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQuali
   APTTYPE AptTypeTemp; 
   APTTYPEQUALIFIER AptQualifierTemp; 
   TEB *CurrentThreadInfo;
+  
+  DbgPrint("CoGetApartmentType called\n");
   
   Status = S_OK;
   if ( !pAptType || !pAptQualifier )
@@ -109,4 +111,3 @@ ImplicitMTA:
   }
   return E_FAIL;
 }
-		
