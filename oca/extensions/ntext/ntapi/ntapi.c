@@ -266,6 +266,261 @@ NtSetSystemPowerState(
 	return STATUS_SUCCESS;
 } 	
 
+// NTSTATUS 
+// WINAPI 
+// NtCreateThreadEx(PHANDLE hThread,
+    // ACCESS_MASK DesiredAccess,
+    // POBJECT_ATTRIBUTES ObjectAttributes,
+    // HANDLE ProcessHandle,
+    // LPTHREAD_START_ROUTINE lpStartAddress,
+    // LPVOID lpParameter,
+    // ULONG CreateFlags,
+    // ULONG StackZeroBits,
+    // ULONG SizeOfStackCommit,
+    // ULONG SizeOfStackReserve,
+    // LPVOID lpBytesBuffer)
+// {
+    // CLIENT_ID clientId;
+    
+    // NTSTATUS status = RtlCreateUserThread(ProcessHandle, 
+                                          // ObjectAttributes ? ObjectAttributes->SecurityDescriptor : NULL,
+                                          // CreateFlags & THREAD_CREATE_FLAGS_CREATE_SUSPENDED,
+                                          // StackZeroBits,
+                                          // SizeOfStackReserve,
+                                          // SizeOfStackCommit,
+                                          // lpStartAddress, 
+                                          // lpParameter, 
+                                          // hThread, 
+                                          // &clientId);
+    
+    
+    // return status;
+// }
+
+NTSTATUS
+NTAPI
+RtlpCreateUserStack(IN HANDLE ProcessHandle,
+                    IN SIZE_T StackReserve OPTIONAL,
+                    IN SIZE_T StackCommit OPTIONAL,
+                    IN ULONG StackZeroBits OPTIONAL,
+                    OUT PINITIAL_TEB InitialTeb)
+{
+    NTSTATUS Status;
+    SYSTEM_BASIC_INFORMATION SystemBasicInfo;
+    PIMAGE_NT_HEADERS Headers;
+    ULONG_PTR Stack;
+    BOOLEAN UseGuard;
+    ULONG Dummy;
+    SIZE_T MinimumStackCommit, GuardPageSize;
+
+    /* Get some memory information */
+    Status = ZwQuerySystemInformation(SystemBasicInformation,
+                                      &SystemBasicInfo,
+                                      sizeof(SYSTEM_BASIC_INFORMATION),
+                                      NULL);
+    if (!NT_SUCCESS(Status)) return Status;
+
+    /* Use the Image Settings if we are dealing with the current Process */
+    if (ProcessHandle == NtCurrentProcess())
+    {
+        /* Get the Image Headers */
+        Headers = RtlImageNtHeader(NtCurrentPeb()->ImageBaseAddress);
+        if (!Headers) return STATUS_INVALID_IMAGE_FORMAT;
+
+        /* If we didn't get the parameters, find them ourselves */
+        if (StackReserve == 0)
+            StackReserve = Headers->OptionalHeader.SizeOfStackReserve;
+        if (StackCommit == 0)
+            StackCommit = Headers->OptionalHeader.SizeOfStackCommit;
+
+        MinimumStackCommit = NtCurrentPeb()->MinimumStackCommit;
+        if ((MinimumStackCommit != 0) && (StackCommit < MinimumStackCommit))
+        {
+            StackCommit = MinimumStackCommit;
+        }
+    }
+    else
+    {
+        /* Use the System Settings if needed */
+        if (StackReserve == 0)
+            StackReserve = SystemBasicInfo.AllocationGranularity;
+        if (StackCommit == 0)
+            StackCommit = SystemBasicInfo.PageSize;
+    }
+
+    /* Check if the commit is higher than the reserve */
+    if (StackCommit >= StackReserve)
+    {
+        /* Grow the reserve beyond the commit, up to 1MB alignment */
+        StackReserve = ROUND_UP(StackCommit, 1024 * 1024);
+    }
+
+    /* Align everything to Page Size */
+    StackCommit = ROUND_UP(StackCommit, SystemBasicInfo.PageSize);
+    StackReserve = ROUND_UP(StackReserve, SystemBasicInfo.AllocationGranularity);
+
+    /* Reserve memory for the stack */
+    Stack = 0;
+    Status = ZwAllocateVirtualMemory(ProcessHandle,
+                                     (PVOID*)&Stack,
+                                     StackZeroBits,
+                                     &StackReserve,
+                                     MEM_RESERVE,
+                                     PAGE_READWRITE);
+    if (!NT_SUCCESS(Status)) return Status;
+
+    /* Now set up some basic Initial TEB Parameters */
+    InitialTeb->AllocatedStackBase = (PVOID)Stack;
+    InitialTeb->StackBase = (PVOID)(Stack + StackReserve);
+    InitialTeb->PreviousStackBase = NULL;
+    InitialTeb->PreviousStackLimit = NULL;
+
+    /* Update the stack position */
+    Stack += StackReserve - StackCommit;
+
+    /* Check if we can add a guard page */
+    if (StackReserve >= StackCommit + SystemBasicInfo.PageSize)
+    {
+        Stack -= SystemBasicInfo.PageSize;
+        StackCommit += SystemBasicInfo.PageSize;
+        UseGuard = TRUE;
+    }
+    else
+    {
+        UseGuard = FALSE;
+    }
+
+    /* Allocate memory for the stack */
+    Status = ZwAllocateVirtualMemory(ProcessHandle,
+                                     (PVOID*)&Stack,
+                                     0,
+                                     &StackCommit,
+                                     MEM_COMMIT,
+                                     PAGE_READWRITE);
+    if (!NT_SUCCESS(Status))
+    {
+        GuardPageSize = 0;
+        ZwFreeVirtualMemory(ProcessHandle, (PVOID*)&Stack, &GuardPageSize, MEM_RELEASE);
+        return Status;
+    }
+
+    /* Now set the current Stack Limit */
+    InitialTeb->StackLimit = (PVOID)Stack;
+
+    /* Create a guard page if needed */
+    if (UseGuard)
+    {
+        GuardPageSize = SystemBasicInfo.PageSize;
+        Status = ZwProtectVirtualMemory(ProcessHandle,
+                                        (PVOID*)&Stack,
+                                        &GuardPageSize,
+                                        PAGE_GUARD | PAGE_READWRITE,
+                                        &Dummy);
+        if (!NT_SUCCESS(Status)) return Status;
+
+        /* Update the Stack Limit keeping in mind the Guard Page */
+        InitialTeb->StackLimit = (PVOID)((ULONG_PTR)InitialTeb->StackLimit +
+                                         GuardPageSize);
+    }
+
+    /* We are done! */
+    return STATUS_SUCCESS;
+}
+
+VOID
+NTAPI
+RtlpFreeUserStack(IN HANDLE ProcessHandle,
+                  IN PINITIAL_TEB InitialTeb)
+{
+    SIZE_T Dummy = 0;
+
+    /* Free the Stack */
+    ZwFreeVirtualMemory(ProcessHandle,
+                        &InitialTeb->AllocatedStackBase,
+                        &Dummy,
+                        MEM_RELEASE);
+
+    /* Clear the initial TEB */
+    RtlZeroMemory(InitialTeb, sizeof(*InitialTeb));
+}
+
+NTSTATUS
+NTAPI
+RtlCreateUserThreadInternal(IN HANDLE ProcessHandle,
+					IN DWORD DesiredAccess,
+                    IN POBJECT_ATTRIBUTES ThreadObjectAttributes OPTIONAL,
+                    IN BOOLEAN CreateSuspended,
+                    IN ULONG StackZeroBits OPTIONAL,
+                    IN SIZE_T StackReserve OPTIONAL,
+                    IN SIZE_T StackCommit OPTIONAL,
+                    IN PTHREAD_START_ROUTINE StartAddress,
+                    IN PVOID Parameter OPTIONAL,
+                    OUT PHANDLE ThreadHandle OPTIONAL,
+                    OUT PCLIENT_ID ClientId OPTIONAL)
+{
+    NTSTATUS Status;
+    HANDLE Handle;
+    CLIENT_ID ThreadCid;
+    INITIAL_TEB InitialTeb;
+    OBJECT_ATTRIBUTES ObjectAttributes;
+    CONTEXT Context;
+
+    /* First, we'll create the Stack */
+    Status = RtlpCreateUserStack(ProcessHandle,
+                                 StackReserve,
+                                 StackCommit,
+                                 StackZeroBits,
+                                 &InitialTeb);
+    if (!NT_SUCCESS(Status)) return Status;
+
+    /* Next, we'll set up the Initial Context */
+    RtlInitializeContext(ProcessHandle,
+                         &Context,
+                         Parameter,
+                         StartAddress,
+                         InitialTeb.StackBase);
+	
+    /* We are now ready to create the Kernel Thread Object */
+	if (ThreadObjectAttributes) {
+		memmove(&ObjectAttributes, ThreadObjectAttributes, sizeof(OBJECT_ATTRIBUTES));
+	} else {
+		// matches NT5 ntdll.dll
+		InitializeObjectAttributes(&ObjectAttributes,
+                               NULL,
+                               OBJ_KERNEL_HANDLE,
+                               NULL,
+                               NULL);
+	}
+	
+    Status = ZwCreateThread(&Handle,
+                            DesiredAccess,
+                            &ObjectAttributes,
+                            ProcessHandle,
+                            &ThreadCid,
+                            &Context,
+                            &InitialTeb,
+                            CreateSuspended);
+    if (!NT_SUCCESS(Status))
+    {
+        /* Free the stack */
+        RtlpFreeUserStack(ProcessHandle, &InitialTeb);
+    }
+    else
+    {
+        /* Return thread data */
+        if (ThreadHandle)
+            *ThreadHandle = Handle;
+        else
+            NtClose(Handle);
+        if (ClientId) *ClientId = ThreadCid;
+    }
+
+    /* Return success or the previous failure */
+    return Status;
+}
+
+//Implements the AttributeList required by api monitor's usages
+
 NTSTATUS 
 WINAPI 
 NtCreateThreadEx(PHANDLE hThread,
@@ -278,18 +533,54 @@ NtCreateThreadEx(PHANDLE hThread,
     ULONG StackZeroBits,
     ULONG SizeOfStackCommit,
     ULONG SizeOfStackReserve,
-    LPVOID lpBytesBuffer)
+    PPS_ATTRIBUTE_LIST AttributeList)
 {
-    NTSTATUS status = RtlCreateUserThread(ProcessHandle, 
-										  NULL, 
-										  CreateFlags & 1, 
-										  0, 
-										  0, 
-										  0, 
-										  lpStartAddress, 
-										  lpParameter, 
-										  hThread, 
-										  NULL);
+	CLIENT_ID clientId;
+	PPS_ATTRIBUTE attr;
+	THREAD_BASIC_INFORMATION BaseInformation;
+	ULONG ReturnLength;
+	NTSTATUS status2;
+	int i;
+	NTSTATUS status;
+	
+    status = RtlCreateUserThreadInternal(
+										ProcessHandle, 
+										DesiredAccess,
+                                        ObjectAttributes,
+                                        CreateFlags & THREAD_CREATE_FLAGS_CREATE_SUSPENDED,
+                                        StackZeroBits,
+										SizeOfStackReserve,
+                                        SizeOfStackCommit,
+                                        lpStartAddress, 
+                                        lpParameter, 
+                                        hThread, 
+                                        &clientId);
+	
+	DbgPrint("NtCreateThreadEx status: %p\n", status);
+	
+	if (NT_SUCCESS(status) && AttributeList) {
+		for (i = 0; i < (AttributeList->TotalLength - sizeof(SIZE_T)) / sizeof(PS_ATTRIBUTE); i++) {
+			attr = &AttributeList->Attributes[i];
+			DbgPrint("NtCreateThreadEx: attempting to handle attribute %i!\n", attr->Attribute);
+			switch (attr->Attribute) {
+				case PS_ATTRIBUTE_CLIENT_ID: // 65539
+					DbgPrint("CLIENT_ID Size: %i Copying To %p\n", attr->Size, attr->ValuePtr);
+					if (attr->Size >= sizeof(CLIENT_ID)) 
+						memmove(attr->ValuePtr, &clientId, sizeof(CLIENT_ID));
+					attr->ReturnLength = (SIZE_T*)sizeof(CLIENT_ID);
+				case PS_ATTRIBUTE_TEB_ADDRESS: // 65540
+					status2 = NtQueryInformationThread(*hThread, ThreadBasicInformation, &BaseInformation, sizeof(BaseInformation), &ReturnLength);
+					DbgPrint("PS_ATTRIBUTE_TEB_ADDRESS At %p, Status %p\n", BaseInformation.TebBaseAddress, status2);
+					if (NT_SUCCESS(status2)) {
+						((PVOID*)attr->ValuePtr) = BaseInformation.TebBaseAddress;
+						attr->ReturnLength = (SIZE_T*)sizeof(PVOID);
+					}
+			}
+		}
+	}
+	
+	DbgPrint("Good to go!\n");
+	
     return status;
 }
 

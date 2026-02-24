@@ -1289,7 +1289,7 @@
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
-@ stdcall RtlGetVersionAppCompat(ptr)
+;@ stdcall RtlGetVersionAppCompat(ptr)
 @ stdcall RtlVerifyVersionInfoAppCompat(ptr long double)
 
 #Missing on XP and Server 2003 RTM
@@ -1553,14 +1553,14 @@
 @ stdcall NtCancelIoFileEx(long ptr ptr);
 @ stdcall NtCreateMutantEx(ptr long ptr long long)
 @ stdcall NtCreateSemaphoreEx(ptr long long str long long)
-@ stdcall NtCreateThreadEx(ptr long ptr ptr ptr ptr long ptr long long ptr)
+; @ stdcall NtCreateThreadEx(ptr long ptr ptr ptr ptr long ptr long long ptr) ; Cause BSOD with ApiMonitor
 @ stdcall NtCreateIoCompletionEx(ptr long ptr long)
 @ stdcall NtQueryLicenseValue(ptr ptr ptr long ptr)
 @ stdcall NtRemoveIoCompletionEx(ptr ptr long ptr ptr long)
 @ stdcall NtCreateKeyTransacted(ptr long ptr long ptr long ptr ptr)
 @ stdcall NtGetNlsSectionPtr(long long long ptr ptr)
 @ stdcall NtOpenKeyTransacted(ptr long ptr ptr)
-@ stdcall NtTraceControl(long ptr long ptr long ptr) 
+; @ stdcall NtTraceControl(long ptr long ptr long ptr) 
 @ stdcall NtUnmapViewOfSectionEx(ptr ptr long)
 @ stdcall RtlGetOSProductName(ptr long) ;maybe need redirect to ntdll from longhorn (pre-reset) dll
 @ stdcall RtlGetProductInfo(long long long long ptr) 

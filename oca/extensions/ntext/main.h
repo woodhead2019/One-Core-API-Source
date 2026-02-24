@@ -128,6 +128,13 @@ static RTL_CRITICAL_SECTION loader_section;
 //Because we want don't touch in THREADINFOCLASS on Reactos 
 #define ThreadGroupInformation 30
 
+#define THREAD_CREATE_FLAGS_CREATE_SUSPENDED        0x00000001
+#define THREAD_CREATE_FLAGS_SKIP_THREAD_ATTACH      0x00000002
+#define THREAD_CREATE_FLAGS_HIDE_FROM_DEBUGGER      0x00000004
+#define THREAD_CREATE_FLAGS_HAS_SECURITY_DESCRIPTOR 0x00000010
+#define THREAD_CREATE_FLAGS_ACCESS_CHECK_IN_TARGET  0x00000020
+#define THREAD_CREATE_FLAGS_INITIAL_THREAD          0x00000080
+
 /* Enumarations ****************************************/
 
 /* Structs *********************************************/
@@ -1489,3 +1496,92 @@ typedef struct _PEB32
     ULONG                        NtGlobalFlag2;                     /* 0478 */
 } PEB32;
 #endif
+
+#define PS_ATTRIBUTE_THREAD   0x00010000
+#define PS_ATTRIBUTE_INPUT    0x00020000
+#define PS_ATTRIBUTE_ADDITIVE 0x00040000
+
+typedef enum _PS_ATTRIBUTE_NUM
+{
+    PsAttributeParentProcess,
+    PsAttributeDebugPort,
+    PsAttributeToken,
+    PsAttributeClientId,
+    PsAttributeTebAddress,
+    PsAttributeImageName,
+    PsAttributeImageInfo,
+    PsAttributeMemoryReserve,
+    PsAttributePriorityClass,
+    PsAttributeErrorMode,
+    PsAttributeStdHandleInfo,
+    PsAttributeHandleList,
+    PsAttributeGroupAffinity,
+    PsAttributePreferredNode,
+    PsAttributeIdealProcessor,
+    PsAttributeUmsThread,
+    PsAttributeMitigationOptions,
+    PsAttributeProtectionLevel,
+    PsAttributeSecureProcess,
+    PsAttributeJobList,
+    PsAttributeChildProcessPolicy,
+    PsAttributeAllApplicationPackagesPolicy,
+    PsAttributeWin32kFilter,
+    PsAttributeSafeOpenPromptOriginClaim,
+    PsAttributeBnoIsolation,
+    PsAttributeDesktopAppPolicy,
+    PsAttributeChpe,
+    PsAttributeMitigationAuditOptions,
+    PsAttributeMachineType,
+    PsAttributeComponentFilter,
+    PsAttributeEnableOptionalXStateFeatures,
+    PsAttributeMax
+} PS_ATTRIBUTE_NUM;
+
+#define PS_ATTRIBUTE_PARENT_PROCESS     (PsAttributeParentProcess | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_DEBUG_PORT         (PsAttributeDebugPort | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_TOKEN              (PsAttributeToken | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_CLIENT_ID          (PsAttributeClientId | PS_ATTRIBUTE_THREAD)
+#define PS_ATTRIBUTE_TEB_ADDRESS        (PsAttributeTebAddress | PS_ATTRIBUTE_THREAD)
+#define PS_ATTRIBUTE_IMAGE_NAME         (PsAttributeImageName | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_IMAGE_INFO         (PsAttributeImageInfo)
+#define PS_ATTRIBUTE_MEMORY_RESERVE     (PsAttributeMemoryReserve | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_PRIORITY_CLASS     (PsAttributePriorityClass | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_ERROR_MODE         (PsAttributeErrorMode | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_STD_HANDLE_INFO    (PsAttributeStdHandleInfo | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_HANDLE_LIST        (PsAttributeHandleList | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_GROUP_AFFINITY     (PsAttributeGroupAffinity | PS_ATTRIBUTE_THREAD | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_PREFERRED_NODE     (PsAttributePreferredNode | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_IDEAL_PROCESSOR    (PsAttributeIdealProcessor | PS_ATTRIBUTE_THREAD | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_MITIGATION_OPTIONS (PsAttributeMitigationOptions | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_PROTECTION_LEVEL   (PsAttributeProtectionLevel | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_SECURE_PROCESS     (PsAttributeSecureProcess | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_JOB_LIST           (PsAttributeJobList | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_CHILD_PROCESS_POLICY (PsAttributeChildProcessPolicy | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY (PsAttributeAllApplicationPackagesPolicy | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_WIN32K_FILTER      (PsAttributeWin32kFilter | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_SAFE_OPEN_PROMPT_ORIGIN_CLAIM (PsAttributeSafeOpenPromptOriginClaim | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_BNO_ISOLATION      (PsAttributeBnoIsolation | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_DESKTOP_APP_POLICY (PsAttributeDesktopAppPolicy | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_CHPE               (PsAttributeChpe | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_MITIGATION_AUDIT_OPTIONS (PsAttributeMitigationAuditOptions | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_MACHINE_TYPE       (PsAttributeMachineType | PS_ATTRIBUTE_INPUT | PS_ATTRIBUTE_ADDITIVE)
+#define PS_ATTRIBUTE_COMPONENT_FILTER   (PsAttributeComponentFilter | PS_ATTRIBUTE_INPUT)
+#define PS_ATTRIBUTE_ENABLE_OPTIONAL_XSTATE_FEATURES (PsAttributeEnableOptionalXStateFeatures | PS_ATTRIBUTE_THREAD | PS_ATTRIBUTE_INPUT)
+
+typedef struct _PS_ATTRIBUTE
+{
+    ULONG_PTR Attribute;
+    SIZE_T    Size;
+    union
+    {
+        ULONG_PTR Value;
+        void     *ValuePtr;
+    };
+    SIZE_T *ReturnLength;
+} PS_ATTRIBUTE,*PPS_ATTRIBUTE;
+
+typedef struct _PS_ATTRIBUTE_LIST
+{
+    SIZE_T       TotalLength;
+    PS_ATTRIBUTE Attributes[1];
+} PS_ATTRIBUTE_LIST, *PPS_ATTRIBUTE_LIST;
