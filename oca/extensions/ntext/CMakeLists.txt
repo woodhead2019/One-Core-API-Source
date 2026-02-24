@@ -27,7 +27,8 @@ list(APPEND SOURCE
     etw/trace.c	####### this is a only test ########
 	ntapi/alpc.c	
 	ntapi/hooks.c	
-	ntapi/ntapi.c	
+	ntapi/ntapi.c
+	ntapi/wnf.c
 	ldr/ldrapi.c
 	ldr/loader.c
 	#ldr/toolhelp.c
