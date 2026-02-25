@@ -24,22 +24,44 @@ WINE_DEFAULT_DEBUG_CHANNEL(main);
 
 HMODULE userBaseHinst;
  
-BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
+BOOL WINAPI DllMain(
+    HINSTANCE hinstDLL,  // handle to DLL module
+    DWORD fdwReason,     // reason for calling function
+    LPVOID lpvReserved )  // reserved
 {
-    switch(fdwReason)
+    
+    // Perform actions based on the reason for calling.
+    switch( fdwReason ) 
     {
         case DLL_PROCESS_ATTACH:
-			userBaseHinst = GetModuleHandleA("userbase.dll");
-			if(userBaseHinst){
-				PrivateRegisterICSProcAddr = TryGetProcedure("PrivateRegisterICSProc");
-				if(PrivateRegisterICSProcAddr){
-					IsNativePNGConversor = TRUE;					
-				}				
-			}
-			//pUpdateLayeredWindowIndirect = (void *)GetProcAddress(huser32, "UpdateLayeredWindowIndirect");
+            userBaseHinst = GetModuleHandleA("userbase.dll");
+            if(userBaseHinst){
+                PrivateRegisterICSProcAddr = TryGetProcedure("PrivateRegisterICSProc");
+                if(PrivateRegisterICSProcAddr){
+                    IsNativePNGConversor = TRUE;                    
+                }                
+            }
+            
+            g_pointerTlsInfo = TlsAlloc();
+            if (g_pointerTlsInfo == TLS_OUT_OF_INDEXES)
+                return FALSE;
+            TlsSetValue(g_pointerTlsInfo, NULL);
+            // DLL_THREAD_ATTACH Won't be called for every thread... So we have to do our "best effort" case.
+            PointerApiThreadStartup(hinstDLL);
+            break;
+        
+        case DLL_THREAD_ATTACH:
+            PointerApiThreadStartup(hinstDLL);
+            break;
+
+        case DLL_THREAD_DETACH:
+            PointerApiThreadShutdown(hinstDLL);
+            break;
+
+        case DLL_PROCESS_DETACH:
+            TlsFree(g_pointerTlsInfo);
             break;
     }
-
     return TRUE;
 }
 
