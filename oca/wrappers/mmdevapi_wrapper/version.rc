@@ -1,8 +1,8 @@
 #include <windows.h>
 
 1 VERSIONINFO
- FILEVERSION 0,97
- PRODUCTVERSION 0,97
+ FILEVERSION 0,99
+ PRODUCTVERSION 0,99
  FILEOS 0x40004
  FILETYPE 0x2s
 {
@@ -12,12 +12,12 @@
   {
    VALUE "CompanyName", "One-Core-API Project"
    VALUE "FileDescription", "MMDevice API wrapper"
-   VALUE "FileVersion", "0.97"
+   VALUE "FileVersion", "0.99"
    VALUE "InternalName", "MMDeviceAPI"
    VALUE "LegalCopyright", "Copyright 2008-2025 One-Core-API Project."
    VALUE "OriginalFilename", "MMDevAPI.Dll"
    VALUE "ProductName", "One-Core-API Project"
-   VALUE "ProductVersion", "0.97"
+   VALUE "ProductVersion", "0.99"
   }
  }
 

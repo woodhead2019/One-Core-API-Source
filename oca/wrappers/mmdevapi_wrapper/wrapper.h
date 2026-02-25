@@ -1,7 +1,6 @@
 // wrapper.h
 #ifndef WRAPPER_H
 #define WRAPPER_H
-
 #define NOMINMAX
 #include <windows.h>
 #include <objbase.h>
@@ -14,15 +13,14 @@
 #include <devicetopology.h>
 #include <audiopolicy.h>
 #include <endpointvolume.h>
+#include <propsys.h>
+#include <propvarutil.h>
 #include <string>
 #include <vector>
-
 using std::wstring;
 using std::vector;
-
 extern LONG g_objects;
 extern HINSTANCE g_hInstance;
-
 class MyDeviceEnumerator;
 class MyDeviceCollection;
 class MyDevice;
@@ -31,7 +29,32 @@ class MyRenderClient;
 class MyCaptureClient;
 class MyPropertyStore;
 class MyAudioClock;
+class MyAudioClock2;
 class MyDeviceTopology;
+
+
+class MyConnector : public IConnector {
+private:
+    LONG ref;
+    IUnknown* m_pUnkMarshal;
+    std::wstring connectedDeviceId; // device id to return from GetDeviceIdConnectedTo
+public:
+    MyConnector(const std::wstring& deviceId);
+    ~MyConnector();
+    virtual HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    virtual ULONG __stdcall AddRef();
+    virtual ULONG __stdcall Release();
+
+    // IConnector methods
+    virtual HRESULT __stdcall GetType(ConnectorType* pType);
+    virtual HRESULT __stdcall GetDataFlow(DataFlow* pFlow);
+    virtual HRESULT __stdcall ConnectTo(IConnector* pConnectTo);
+    virtual HRESULT __stdcall Disconnect();
+    virtual HRESULT __stdcall IsConnected(BOOL* pbConnected);
+    virtual HRESULT __stdcall GetConnectedTo(IConnector** ppConTo);
+    virtual HRESULT __stdcall GetConnectorIdConnectedTo(LPWSTR* ppwstrConnectorId);
+    virtual HRESULT __stdcall GetDeviceIdConnectedTo(LPWSTR* ppwstrDeviceId);
+};
 class MyAudioClockAdjustment;
 class MyAudioEndpointVolume;
 class MyAudioSessionManager2;
@@ -40,9 +63,7 @@ class MySimpleAudioVolume;
 class MyAudioSessionEnumerator;
 class MyAudioSession;
 class MyAudioStreamVolume;
-
 extern MyDeviceEnumerator* g_enumerator;
-
 #ifndef AUDCLNT_STREAMFLAGS_CROSSPROCESS
 #define AUDCLNT_STREAMFLAGS_CROSSPROCESS 0x00010000
 #endif
@@ -76,7 +97,6 @@ extern MyDeviceEnumerator* g_enumerator;
 #ifndef AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
 #define AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM 0x80000000
 #endif
-
 class MyAudioSession : public IUnknown {
 private:
     LONG ref;
@@ -97,7 +117,6 @@ public:
     void UpdateVolumes();
     void SetState(AudioSessionState newState);
 };
-
 class MyDeviceEnumerator : public IMMDeviceEnumerator {
 private:
     IUnknown* m_pUnkOuter;
@@ -128,10 +147,15 @@ private:
     friend class MyRenderClient;
     friend class MyCaptureClient;
     friend class MyAudioClock;
+    friend class MyAudioClock2;
+    friend class MyDeviceTopology;
+    friend class MyAudioClockAdjustment;
     friend class MyAudioEndpointVolume;
-    friend class MySimpleAudioVolume;
-    friend class MyAudioSessionControl;
     friend class MyAudioSessionManager2;
+    friend class MyAudioSessionControl;
+    friend class MySimpleAudioVolume;
+    friend class MyAudioSession;
+    friend class MyAudioStreamVolume;
 public:
     MyDeviceEnumerator(IUnknown* pUnkOuter = nullptr);
     ~MyDeviceEnumerator();
@@ -152,7 +176,6 @@ public:
     void NotifyVolumeChange(const GUID* context);
     static DWORD WINAPI PumpFromMicToLoop(LPVOID param);
 };
-
 class MyDeviceCollection : public IMMDeviceCollection {
 private:
     LONG ref;
@@ -167,7 +190,6 @@ public:
     virtual HRESULT __stdcall GetCount(UINT* pcDevices);
     virtual HRESULT __stdcall Item(UINT nDevice, IMMDevice** ppDevice);
 };
-
 class MyDevice : public IMMDevice, public IMMEndpoint {
 private:
     LONG ref;
@@ -187,7 +209,6 @@ public:
     virtual HRESULT __stdcall GetState(DWORD* pdwState);
     virtual HRESULT __stdcall GetDataFlow(EDataFlow* pDataFlow);
 };
-
 class MyAudioClient : public IAudioClient3 {
 private:
     IUnknown* m_pUnkOuter;
@@ -223,6 +244,7 @@ private:
     friend class MyRenderClient;
     friend class MyCaptureClient;
     friend class MyAudioClock;
+    friend class MyAudioClock2;
     friend class MyAudioStreamVolume;
     UINT32 currentPaddingFrames;
     DWORD prevPos;
@@ -232,11 +254,16 @@ private:
     UINT32 periodFrames;
     bool isLoopback;
     bool lowLatencyShared;
+    bool autoconvertPCM;
+    WAVEFORMATEX dsWfx; // actual DirectSound buffer format
     HRESULT InternalInitialize(AUDCLNT_SHAREMODE ShareMode, DWORD StreamFlags, REFERENCE_TIME hnsBufferDuration, REFERENCE_TIME hnsPeriodicity, const WAVEFORMATEX* pFormat, const GUID* AudioSessionGuid);
     UINT64 devicePositionFrames;
     GUID sessionGuid;
     MyAudioSession* session;
     vector<float> channelVolumes;
+    UINT32 requestedPeriodFrames;
+    double sampleRateRatio;
+    friend class MyAudioClockAdjustment;
 public:
     MyAudioClient(EDataFlow f, const GUID& g, IUnknown* pUnkOuter = nullptr);
     ~MyAudioClient();
@@ -265,8 +292,8 @@ public:
     virtual HRESULT __stdcall GetCurrentSharedModeEnginePeriod(WAVEFORMATEX** ppFormat, UINT32* pCurrentPeriodInFrames);
     virtual HRESULT __stdcall InitializeSharedAudioStream(DWORD StreamFlags, UINT32 PeriodInFrames, const WAVEFORMATEX* pFormat, const GUID* AudioSessionGuid);
     void UpdateVolume();
+    HRESULT GetPosition(UINT64* pu64Position, UINT64* pu64QPCPosition);
 };
-
 class MyRenderClient : public IAudioRenderClient {
 private:
     LONG ref;
@@ -283,7 +310,6 @@ public:
     virtual HRESULT __stdcall GetBuffer(UINT32 NumFramesRequested, BYTE** ppData);
     virtual HRESULT __stdcall ReleaseBuffer(UINT32 NumFramesWritten, DWORD dwFlags);
 };
-
 class MyCaptureClient : public IAudioCaptureClient {
 private:
     LONG ref;
@@ -301,7 +327,6 @@ public:
     virtual HRESULT __stdcall ReleaseBuffer(UINT32 NumFramesRead);
     virtual HRESULT __stdcall GetNextPacketSize(UINT32* pNumFramesInNextPacket);
 };
-
 class MyPropertyStore : public IPropertyStore {
 private:
     LONG ref;
@@ -310,6 +335,7 @@ private:
     EDataFlow flow;
     WAVEFORMATEXTENSIBLE mixFormat;
     wstring endpointGuid;
+    GUID containerId;
 public:
     MyPropertyStore(const wstring& n, EDataFlow f, const wstring& guidStr);
     ~MyPropertyStore();
@@ -322,7 +348,6 @@ public:
     virtual HRESULT __stdcall SetValue(const PROPERTYKEY& key, const PROPVARIANT& propvar);
     virtual HRESULT __stdcall Commit();
 };
-
 class MyAudioClock : public IAudioClock {
 private:
     LONG ref;
@@ -338,7 +363,19 @@ public:
     virtual HRESULT __stdcall GetPosition(UINT64* pu64Position, UINT64* pu64QPCPosition);
     virtual HRESULT __stdcall GetCharacteristics(DWORD* pdwCharacteristics);
 };
-
+class MyAudioClock2 : public IAudioClock2 {
+private:
+    LONG ref;
+    IUnknown* m_pUnkMarshal;
+    MyAudioClient* parent;
+public:
+    MyAudioClock2(MyAudioClient* p);
+    ~MyAudioClock2();
+    virtual HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    virtual ULONG __stdcall AddRef();
+    virtual ULONG __stdcall Release();
+    virtual HRESULT __stdcall GetDevicePosition(UINT64* pu64DevicePosition, UINT64* pu64QPCPosition);
+};
 class MyAudioClockAdjustment : public IAudioClockAdjustment {
 private:
     LONG ref;
@@ -352,7 +389,6 @@ public:
     virtual ULONG __stdcall Release();
     virtual HRESULT __stdcall SetSampleRate(FLOAT fSampleRate);
 };
-
 class MyDeviceTopology : public IDeviceTopology {
 private:
     LONG ref;
@@ -372,7 +408,6 @@ public:
     virtual HRESULT __stdcall GetDeviceId(LPWSTR* ppwstrDeviceId);
     virtual HRESULT __stdcall GetSignalPath(IPart* pIPartFrom, IPart* pIPartTo, BOOL bRejectPending, IPartsList** ppParts);
 };
-
 class MyAudioEndpointVolume : public IAudioEndpointVolume {
 private:
     LONG ref;
@@ -404,7 +439,6 @@ public:
     virtual HRESULT __stdcall QueryHardwareSupport(DWORD* pdwHardwareSupportMask);
     virtual HRESULT __stdcall GetVolumeRangeChannel(UINT iChannel, FLOAT* pfMin, FLOAT* pfMax, FLOAT* pfInc);
 };
-
 class MyAudioSessionManager2 : public IAudioSessionManager2 {
 private:
     LONG ref;
@@ -425,7 +459,6 @@ public:
     virtual HRESULT __stdcall RegisterDuckNotification(LPCWSTR SessionID, IAudioVolumeDuckNotification* duckNotification);
     virtual HRESULT __stdcall UnregisterDuckNotification(IAudioVolumeDuckNotification* duckNotification);
 };
-
 class MyAudioSessionEnumerator : public IAudioSessionEnumerator {
 private:
     LONG ref;
@@ -440,7 +473,6 @@ public:
     virtual HRESULT __stdcall GetCount(int* SessionCount);
     virtual HRESULT __stdcall GetSession(int SessionNum, IAudioSessionControl** Session);
 };
-
 class MyAudioSessionControl : public IAudioSessionControl2 {
 private:
     LONG ref;
@@ -467,7 +499,6 @@ public:
     virtual HRESULT __stdcall IsSystemSoundsSession();
     virtual HRESULT __stdcall SetDuckingPreference(BOOL optOut);
 };
-
 class MySimpleAudioVolume : public ISimpleAudioVolume {
 private:
     LONG ref;
@@ -484,7 +515,6 @@ public:
     virtual HRESULT __stdcall SetMute(BOOL bMute, const GUID* EventContext);
     virtual HRESULT __stdcall GetMute(BOOL* pbMute);
 };
-
 class MyAudioStreamVolume : public IAudioStreamVolume {
 private:
     LONG ref;
@@ -493,19 +523,13 @@ private:
 public:
     MyAudioStreamVolume(MyAudioClient* p);
     ~MyAudioStreamVolume();
-
-    // IUnknown
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** ppv);
     virtual ULONG STDMETHODCALLTYPE AddRef();
     virtual ULONG STDMETHODCALLTYPE Release();
-
-    // IAudioStreamVolume
     virtual HRESULT STDMETHODCALLTYPE GetChannelCount(UINT32* pdwCount);
     virtual HRESULT STDMETHODCALLTYPE SetChannelVolume(UINT32 dwIndex, const float fLevel);
     virtual HRESULT STDMETHODCALLTYPE GetChannelVolume(UINT32 dwIndex, float* pfLevel);
     virtual HRESULT STDMETHODCALLTYPE SetAllVolumes(UINT32 dwCount, const float* pfVolumes);
     virtual HRESULT STDMETHODCALLTYPE GetAllVolumes(UINT32 dwCount, float* pfVolumes);
 };
-
 #endif
-
