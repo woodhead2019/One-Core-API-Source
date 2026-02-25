@@ -206,3 +206,45 @@ GetUserObjectSecurityInternal(
 
     return TRUE;
 }
+
+UINT WINAPI MapVirtualKeyExW_Wrap(UINT uCode, UINT uMapType, HKL dwhkl) {
+    UINT result;
+    
+    if (uMapType == 3) {
+        result = MapVirtualKeyExW(uCode, uMapType, dwhkl);
+        if (result == 0) // try MAPVK_VSC_TO_VK
+            return MapVirtualKeyExW(uCode, 1, dwhkl);
+        return result;
+    } else if (uMapType == 4) {
+        result = MapVirtualKeyExW(uCode, uMapType, dwhkl);
+        if (result == 0)
+            return MapVirtualKeyExW(uCode, 2, dwhkl);
+        return result;
+    }
+    return MapVirtualKeyExW(uCode, uMapType, dwhkl);
+}
+
+UINT WINAPI MapVirtualKeyExA_Wrap(UINT uCode, UINT uMapType, HKL dwhkl) {
+    UINT result;
+    
+    if (uMapType == 3) {
+        result = MapVirtualKeyExA(uCode, uMapType, dwhkl);
+        if (result == 0) // try MAPVK_VSC_TO_VK
+            return MapVirtualKeyExA(uCode, 1, dwhkl);
+        return result;
+    } else if (uMapType == 4) {
+        result = MapVirtualKeyExA(uCode, uMapType, dwhkl);
+        if (result == 0)
+            return MapVirtualKeyExA(uCode, 2, dwhkl);
+        return result;
+    }
+    return MapVirtualKeyExA(uCode, uMapType, dwhkl);
+}
+
+UINT WINAPI MapVirtualKeyA_Wrap(UINT uCode, UINT uMapType) {
+    return MapVirtualKeyExA_Wrap(uCode, uMapType, NULL);
+}
+
+UINT WINAPI MapVirtualKeyW_Wrap(UINT uCode, UINT uMapType) {
+    return MapVirtualKeyExW_Wrap(uCode, uMapType, NULL);
+}

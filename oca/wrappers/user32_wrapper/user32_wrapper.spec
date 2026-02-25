@@ -463,10 +463,6 @@
 @ stdcall MBToWCSEx(long str long wstr long long)
 @ stdcall MB_GetString(ptr)
 @ stdcall MapDialogRect(long ptr)
-@ stdcall MapVirtualKeyA(long long)
-@ stdcall MapVirtualKeyExA(long long long)
-@ stdcall MapVirtualKeyExW(long long long)
-@ stdcall MapVirtualKeyW(long long)
 @ stdcall MapWindowPoints(long long ptr long)
 @ stdcall MenuItemFromPoint(long long double) ; Direct call NtUserMenuItemFromPoint
 @ stdcall MenuWindowProcA (long ptr long long long)
@@ -748,6 +744,10 @@
 @ stdcall LoadIconW(long wstr) LoadIconWHook
 @ stdcall LoadImageA(long str long long long long) LoadImageAHook
 @ stdcall LoadImageW(long wstr long long long long) LoadImageWHook
+@ stdcall MapVirtualKeyA(long long) MapVirtualKeyA_Wrap
+@ stdcall MapVirtualKeyExA(long long long) MapVirtualKeyExA_Wrap
+@ stdcall MapVirtualKeyExW(long long long) MapVirtualKeyExW_Wrap
+@ stdcall MapVirtualKeyW(long long) MapVirtualKeyW_Wrap
 @ stdcall PrivateExtractIconExA(str long ptr ptr long) PrivateExtractIconExAHook
 @ stdcall PrivateExtractIconExW(wstr long ptr ptr long) PrivateExtractIconExWHook
 @ stdcall PrivateExtractIconsA(str long long long ptr ptr long long) PrivateExtractIconsAHook
@@ -915,7 +915,7 @@
 #Win10 functions
 @ stdcall AdjustWindowRectExForDpi(ptr long long long long)
 @ stdcall AreDpiAwarenessContextsEqual(long long)
-;@ stdcall CreateSyntheticPointerDevice(long long long)
+@ stdcall CreateSyntheticPointerDevice(long long long)
 @ stdcall EnableNonClientDpiScaling(long)
 @ stdcall GetAwarenessFromDpiAwarenessContext(long)
 @ stdcall GetDpiForSystem()
@@ -923,7 +923,7 @@
 @ stdcall GetSystemMetricsForDpi(long long)
 @ stdcall GetThreadDpiAwarenessContext()
 @ stdcall GetWindowDpiAwarenessContext(long)
-;@ stdcall InjectSyntheticPointerInput(ptr ptr long)
+@ stdcall InjectSyntheticPointerInput(ptr ptr long)
 @ stdcall IsValidDpiAwarenessContext(long)
 @ stdcall IsWindowArranged(long)
 @ stdcall SetProcessRestrictionExemption(long)  
