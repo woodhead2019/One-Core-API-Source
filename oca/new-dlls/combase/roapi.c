@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This module implements COM Marshaling functions APIs
+    This module implements COM WinRT functions APIs
 
 Author:
 
@@ -54,13 +54,24 @@ WINE_DEFAULT_DEBUG_CHANNEL(combase);
 #define NT_SUCCESS(status)              (status >= 0)
 
 DEFINE_GUID(IID_IUnknown, 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-
-// {66818B96-DC17-4C12-8CA1-8E1FBAA5BF80}
+DEFINE_GUID(IID_IAgileObject, 0x94ea2b94, 0xe9cc, 0x49e0, 0xc0,0xff, 0xee,0x64,0xca,0x8f,0x5b,0x90);
+DEFINE_GUID(IID_IAgileReference, 0xc03f6a43, 0x65a4, 0x9818, 0x98,0x7e, 0xe0,0xb8,0x10,0xd2,0xa6,0xf2);
+DEFINE_GUID(IID_INoMarshal, 0xecc8691b, 0xc1db, 0x4dc0, 0x85,0x5e, 0x65,0xf6,0xc5,0x51,0xaf,0x49);
 DEFINE_GUID(IID_IInternalErrorInfo, 0x66818B96, 0xDC17, 0x4C12, 0x8C, 0xA1, 0x8E, 0x1F, 0xBA, 0xA5, 0xBF, 0x80);
-
 DEFINE_GUID(IID_IErrorInfo, 0x1cf2b120, 0x547d, 0x101b, 0x8e, 0x65, 0x08, 0x00, 0x2b, 0x2b, 0xd1, 0x19);
 
 const GUID GUID_NULL = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
+
+struct agile_reference
+{
+    IAgileReference IAgileReference_iface;
+    enum AgileReferenceOptions option;
+    IStream *marshal_stream;
+    CRITICAL_SECTION cs;
+    IUnknown *obj;
+    BOOLEAN is_agile;
+    LONG ref;
+};
 
 static const char *debugstr_hstring(HSTRING hstr)
 {
@@ -452,199 +463,177 @@ typedef interface IAgileReferenceW7 IAgileReferenceW7;
 /*****************************************************************************
  * IAgileReference interface
  */
-#ifndef __IAgileReference_INTERFACE_DEFINED__
-#define __IAgileReference_INTERFACE_DEFINED__
-
-DEFINE_GUID(IID_IAgileReference, 0xc03f6a43, 0x65a4, 0x9818, 0x98,0x7e, 0xe0,0xb8,0x10,0xd2,0xa6,0xf2);
-#if defined(__cplusplus) && !defined(CINTERFACE)
-MIDL_INTERFACE("c03f6a43-65a4-9818-987e-e0b810d2a6f2")
-IAgileReferenceW7 : public IUnknown
+static HRESULT marshal_object_in_agile_reference(struct agile_reference *ref, REFIID riid, IUnknown *obj)
 {
-    virtual HRESULT STDMETHODCALLTYPE Resolve(
-        REFIID riid,
-        void **ppv) = 0;
+    HRESULT hr;
 
-};
-#ifdef __CRT_UUID_DECL
-__CRT_UUID_DECL(IAgileReferenceW7, 0xc03f6a43, 0x65a4, 0x9818, 0x98,0x7e, 0xe0,0xb8,0x10,0xd2,0xa6,0xf2)
-#endif
-#else
-typedef struct IAgileReferenceVtblW7 {
-    BEGIN_INTERFACE
+    hr = CreateStreamOnHGlobal(0, TRUE, &ref->marshal_stream);
+    if (FAILED(hr))
+        return hr;
 
-    /*** IUnknown methods ***/
-    HRESULT (STDMETHODCALLTYPE *QueryInterface)(
-        IAgileReferenceW7 *This,
-        REFIID riid,
-        void **ppvObject);
+    hr = CoMarshalInterface(ref->marshal_stream, riid, obj, MSHCTX_INPROC, NULL, MSHLFLAGS_TABLESTRONG);
+    if (FAILED(hr))
+    {
+        IStream_Release(ref->marshal_stream);
+        ref->marshal_stream = NULL;
+    }
+    return hr;
+}
 
-    ULONG (STDMETHODCALLTYPE *AddRef)(
-        IAgileReferenceW7 *This);
-
-    ULONG (STDMETHODCALLTYPE *Release)(
-        IAgileReferenceW7 *This);
-
-    /*** IAgileReference methods ***/
-    HRESULT (STDMETHODCALLTYPE *Resolve)(
-        IAgileReferenceW7 *This,
-        REFIID riid,
-        void **ppv);
-
-    END_INTERFACE
-} IAgileReferenceVtblW7;
-
-interface IAgileReferenceW7 {
-    IAgileReferenceVtblW7 lpVtbl;
-	ULONG cRef;
-	IUnknown *agileObject;	
-};
-
-#endif
-#endif
-
-STDMETHODIMP IAgileReferenceW7_QueryInterface(IAgileReferenceW7 *lpMyObj, REFIID riid,
-                                   LPVOID *lppvObj);
-								   
-STDMETHODIMP IAgileReferenceW7_QueryInterface(IAgileReferenceW7 *lpMyObj, REFIID riid,
-                                   LPVOID *lppvObj)
+static inline struct agile_reference *impl_from_IAgileReference(IAgileReference *iface)
 {
-	if (!lpMyObj) 
-		return HRESULT_FROM_WIN32(E_INVALIDARG);
+    return CONTAINING_RECORD(iface, struct agile_reference, IAgileReference_iface);
+}
+
+static HRESULT WINAPI agile_ref_QueryInterface(IAgileReference *iface, REFIID riid, void **obj)
+{
+    TRACE("(%p, %s, %p)\n", iface, debugstr_guid(riid), obj);
+
+    if (!riid || !obj) return E_INVALIDARG;
+
+    if (IsEqualGUID(riid, &IID_IUnknown)
+        || IsEqualGUID(riid, &IID_IAgileObject)
+        || IsEqualGUID(riid, &IID_IAgileReference))
+    {
+        IUnknown_AddRef(iface);
+        *obj = iface;
+        return S_OK;
+    }
+
+    *obj = NULL;
+    FIXME("interface %s is not implemented\n", debugstr_guid(riid));
+    return E_NOINTERFACE;
+}
+
+static ULONG WINAPI agile_ref_AddRef(IAgileReference *iface)
+{
+    struct agile_reference *impl = impl_from_IAgileReference(iface);
+    return InterlockedIncrement(&impl->ref);
+}
+
+static ULONG WINAPI agile_ref_Release(IAgileReference *iface)
+{
+    struct agile_reference *impl = impl_from_IAgileReference(iface);
+    LONG ref = InterlockedDecrement(&impl->ref);
+
+    if (!ref)
+    {
+        TRACE("destroying %p\n", iface);
+
+        if (impl->obj)
+            IUnknown_Release(impl->obj);
+
+        if (impl->marshal_stream)
+        {
+            LARGE_INTEGER zero = {0};
+
+            IStream_Seek(impl->marshal_stream, zero, STREAM_SEEK_SET, NULL);
+            CoReleaseMarshalData(impl->marshal_stream);
+            IStream_Release(impl->marshal_stream);
+        }
+        DeleteCriticalSection(&impl->cs);
+        free(impl);
+    }
+
+    return ref;
+}
+
+static HRESULT WINAPI agile_ref_Resolve(IAgileReference *iface, REFIID riid, void **obj)
+{
+    struct agile_reference *impl = impl_from_IAgileReference(iface);
+    LARGE_INTEGER zero = {0};
+    HRESULT hr;
+
+    TRACE("(%p, %s, %p)\n", iface, debugstr_guid(riid), obj);
+
+    if (impl->is_agile)
+        return IUnknown_QueryInterface(impl->obj, riid, obj);
+
+    EnterCriticalSection(&impl->cs);
+    if (impl->option == AGILEREFERENCE_DELAYEDMARSHAL && impl->marshal_stream == NULL)
+    {
+        if (FAILED(hr = marshal_object_in_agile_reference(impl, riid, impl->obj)))
+        {
+            LeaveCriticalSection(&impl->cs);
+            return hr;
+        }
+
+        IUnknown_Release(impl->obj);
+        impl->obj = NULL;
+    }
+
+    if (SUCCEEDED(hr = IStream_Seek(impl->marshal_stream, zero, STREAM_SEEK_SET, NULL)))
+        hr = CoUnmarshalInterface(impl->marshal_stream, riid, obj);
+
+    LeaveCriticalSection(&impl->cs);
+    return hr;
+}
+
+static const IAgileReferenceVtbl agile_ref_vtbl =
+{
+    agile_ref_QueryInterface,
+    agile_ref_AddRef,
+    agile_ref_Release,
+    agile_ref_Resolve,
+};
+
+static BOOL object_has_interface(IUnknown *obj, REFIID iid)
+{
+    IUnknown *unk;
+    HRESULT hr;
+
+    hr = IUnknown_QueryInterface(obj, iid, (void **)&unk);
+    if (SUCCEEDED(hr))
+        IUnknown_Release(unk);
+    return SUCCEEDED(hr);
+}
+
+/***********************************************************************
+ *      RoGetAgileReference (combase.@)
+ */
+HRESULT WINAPI RoGetAgileReference(enum AgileReferenceOptions option, REFIID riid, IUnknown *obj,
+                                   IAgileReference **agile_reference)
+{
+    struct agile_reference *impl;
+    HRESULT hr;
+
+    TRACE("(%d, %s, %p, %p).\n", option, debugstr_guid(riid), obj, agile_reference);
+
+    if (option != AGILEREFERENCE_DEFAULT && option != AGILEREFERENCE_DELAYEDMARSHAL)
+        return E_INVALIDARG;
 	
-	if (!riid) 
-		return HRESULT_FROM_WIN32(E_INVALIDARG);
-	
-	if (IsEqualIID(riid, &IID_IAgileReference) ||
-		IsEqualIID(riid, &IID_IUnknown)
-		) {
-		InterlockedIncrement(&(lpMyObj->cRef));
-		*lppvObj = lpMyObj;
-		return 0;
-	}
-    return HRESULT_FROM_WIN32(E_NOINTERFACE);
-}
+    if (!object_has_interface(obj, riid))
+        return E_NOINTERFACE;
+    if (object_has_interface(obj, &IID_INoMarshal))
+        return CO_E_NOT_SUPPORTED;
 
-STDMETHODIMP_(ULONG) IAgileReferenceW7_AddRef(IAgileReferenceW7 *lpMyObj)
-{
-    return InterlockedIncrement(&(lpMyObj->cRef));
-}
+    impl = calloc(1, sizeof(*impl));
+    if (!impl)
+        return E_OUTOFMEMORY;
 
-STDMETHODIMP_(ULONG) IAgileReferenceW7_Release(IAgileReferenceW7 *lpMyObj)
-{
-	ULONG NewRef = InterlockedDecrement(&(lpMyObj->cRef));
-	if (NewRef == 0) {
-		IUnknown_Release(lpMyObj->agileObject);
-		CoTaskMemFree(lpMyObj);
-	}
-    return NewRef;
-}
+    impl->IAgileReference_iface.lpVtbl = &agile_ref_vtbl;
+    impl->option = option;
+    impl->is_agile = object_has_interface(obj, &IID_IAgileObject);
+    impl->ref = 1;
 
-STDMETHODIMP IAgileReferenceW7_Resolve(IAgileReferenceW7 *lpMyObj,
-	REFIID Ref,
-	void **ppvObjectReference)
-{
-	return IUnknown_QueryInterface(lpMyObj->agileObject, Ref, ppvObjectReference);
-}
+    if (option == AGILEREFERENCE_DELAYEDMARSHAL || impl->is_agile)
+    {
+        impl->obj = obj;
+        IUnknown_AddRef(impl->obj);
+    }
+    else if (option == AGILEREFERENCE_DEFAULT)
+    {
+        if (FAILED(hr = marshal_object_in_agile_reference(impl, riid, obj)))
+        {
+            free(impl);
+            return hr;
+        }
+    }
 
-static IAgileReferenceVtblW7 vTable = {
-    IAgileReferenceW7_QueryInterface,
-    IAgileReferenceW7_AddRef,
-    IAgileReferenceW7_Release,
-    IAgileReferenceW7_Resolve
-};
+    InitializeCriticalSection(&impl->cs);
 
-typedef interface INoMarshal INoMarshal;
-
-#ifndef __INoMarshal_INTERFACE_DEFINED__
-#define __INoMarshal_INTERFACE_DEFINED__
-
-DEFINE_GUID(IID_INoMarshal, 0xecc8691b, 0xc1db, 0x4dc0, 0x85,0x5e, 0x65,0xf6,0xc5,0x51,0xaf,0x49);
-#if defined(__cplusplus) && !defined(CINTERFACE)
-MIDL_INTERFACE("ecc8691b-c1db-4dc0-855e-65f6c551af49")
-INoMarshal : public IUnknown
-{
-};
-#ifdef __CRT_UUID_DECL
-__CRT_UUID_DECL(INoMarshal, 0xecc8691b, 0xc1db, 0x4dc0, 0x85,0x5e, 0x65,0xf6,0xc5,0x51,0xaf,0x49)
-#endif
-#else
-typedef struct INoMarshalVtbl {
-    BEGIN_INTERFACE
-
-    /*** IUnknown methods ***/
-    HRESULT (STDMETHODCALLTYPE *QueryInterface)(
-        INoMarshal* This,
-        REFIID riid,
-        void **ppvObject);
-
-    ULONG (STDMETHODCALLTYPE *AddRef)(
-        INoMarshal* This);
-
-    ULONG (STDMETHODCALLTYPE *Release)(
-        INoMarshal* This);
-
-    END_INTERFACE
-} INoMarshalVtbl;
-interface INoMarshal {
-    CONST_VTBL INoMarshalVtbl* lpVtbl;
-	
-};
-
-#endif
-#endif
-
-#ifdef COBJMACROS
-#ifndef WIDL_C_INLINE_WRAPPERS
-/*** IUnknown methods ***/
-#define INoMarshal_QueryInterface(This,riid,ppvObject) (This)->lpVtbl->QueryInterface(This,riid,ppvObject)
-#define INoMarshal_AddRef(This) (This)->lpVtbl->AddRef(This)
-#define INoMarshal_Release(This) (This)->lpVtbl->Release(This)
-#else
-/*** IUnknown methods ***/
-static FORCEINLINE HRESULT INoMarshal_QueryInterface(INoMarshal* This,REFIID riid,void **ppvObject) {
-    return This->lpVtbl->QueryInterface(This,riid,ppvObject);
-}
-static FORCEINLINE ULONG INoMarshal_AddRef(INoMarshal* This) {
-    return This->lpVtbl->AddRef(This);
-}
-static FORCEINLINE ULONG INoMarshal_Release(INoMarshal* This) {
-    return This->lpVtbl->Release(This);
-}
-#endif
-#endif
-
-// The function itself.
-HRESULT 
-WINAPI 
-RoGetAgileReference(
-    int options, // Ignored
-	REFIID riid, // Ignored also
-	IUnknown *pUnk,
-	IAgileReferenceW7 **ppAgileReference
-) 
-{
-	INoMarshal *INo;
-	IAgileReferenceW7 *Reference;
-	if (pUnk == 0)
-		return E_INVALIDARG;
-	if (ppAgileReference == 0)
-		return E_INVALIDARG;
-	
-	if (IUnknown_QueryInterface(pUnk, &IID_INoMarshal, &INo)) {
-		INoMarshal_Release(INo);
-		return CO_E_NOT_SUPPORTED;
-	}
-	// Allocate a memory pointer.
-	Reference = CoTaskMemAlloc(sizeof(IAgileReferenceW7));
-	if (Reference == 0) {
-		return E_OUTOFMEMORY;
-	}
-	Reference->cRef = 1;
-	Reference->lpVtbl = vTable;
-	Reference->agileObject = pUnk;
-	IUnknown_AddRef(pUnk);
-	*ppAgileReference = Reference;
-	return 0;
+    *agile_reference = &impl->IAgileReference_iface;
+    return S_OK;
 }
 
 /***********************************************************************
@@ -666,4 +655,14 @@ HRESULT WINAPI RoGetBufferMarshaler(
 	OUT	IUnknown	**BufferMarshaler)
 {
 	return E_NOTIMPL;
+}
+
+
+/***********************************************************************
+ *      RoFailFastWithErrorContextInternal2 (combase.@)
+ */
+void WINAPI RoFailFastWithErrorContextInternal2(HRESULT error, ULONG exception_count, /* PSTOWED_EXCEPTION_INFORMATION_V2 */void *information)
+{
+    FIXME("%#lx, %lu, %p stub.\n", error, exception_count, information);
+    RaiseFailFastException(NULL, NULL, 0);
 }
