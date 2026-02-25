@@ -43,77 +43,77 @@ typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;
 
 //typedef UINT D3DKMT_HANDLE;
 
-typedef struct _D3DKMT_CHECKMONITORPOWERSTATE {
-  D3DKMT_HANDLE                  hAdapter;
-  D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-} D3DKMT_CHECKMONITORPOWERSTATE;
+// typedef struct _D3DKMT_CHECKMONITORPOWERSTATE {
+  // D3DKMT_HANDLE                  hAdapter;
+  // D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+// } D3DKMT_CHECKMONITORPOWERSTATE;
 
-typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
-  D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE,
-  D3DKMT_SCHEDULINGPRIORITYCLASS_BELOW_NORMAL,
-  D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL,
-  D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL,
-  D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
-  D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
-} D3DKMT_SCHEDULINGPRIORITYCLASS;
+// typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE,
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_BELOW_NORMAL,
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL,
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL,
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
+  // D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
+// } D3DKMT_SCHEDULINGPRIORITYCLASS;
 
-typedef struct _D3DDDI_CREATECONTEXTFLAGS {
-	union {
-		struct {
-			UINT NullRendering : 1;
-			UINT InitialData : 1;
-			UINT Reserved : 30;
-		};
-		UINT   Value;
-	};
-} D3DDDI_CREATECONTEXTFLAGS;
+// typedef struct _D3DDDI_CREATECONTEXTFLAGS {
+	// union {
+		// struct {
+			// UINT NullRendering : 1;
+			// UINT InitialData : 1;
+			// UINT Reserved : 30;
+		// };
+		// UINT   Value;
+	// };
+// } D3DDDI_CREATECONTEXTFLAGS;
 
-typedef enum _D3DKMT_CLIENTHINT
-{
-	D3DKMT_CLIENTHINT_UNKNOWN = 0,
-	D3DKMT_CLIENTHINT_OPENGL = 1,
-	D3DKMT_CLIENTHINT_CDD = 2,       // Internal   ;internal
-	D3DKMT_CLIENTHINT_DX7 = 7,
-	D3DKMT_CLIENTHINT_DX8 = 8,
-	D3DKMT_CLIENTHINT_DX9 = 9,
-	D3DKMT_CLIENTHINT_DX10 = 10,
-} D3DKMT_CLIENTHINT;
+// typedef enum _D3DKMT_CLIENTHINT
+// {
+	// D3DKMT_CLIENTHINT_UNKNOWN = 0,
+	// D3DKMT_CLIENTHINT_OPENGL = 1,
+	// D3DKMT_CLIENTHINT_CDD = 2,       // Internal   ;internal
+	// D3DKMT_CLIENTHINT_DX7 = 7,
+	// D3DKMT_CLIENTHINT_DX8 = 8,
+	// D3DKMT_CLIENTHINT_DX9 = 9,
+	// D3DKMT_CLIENTHINT_DX10 = 10,
+// } D3DKMT_CLIENTHINT;
 
-typedef struct _D3DKMT_CREATECONTEXT {
-  D3DKMT_HANDLE             hDevice;
-  UINT                      NodeOrdinal;
-  UINT                      EngineAffinity;
-  D3DDDI_CREATECONTEXTFLAGS Flags;
-  VOID                      *pPrivateDriverData;
-  UINT                      PrivateDriverDataSize;
-  D3DKMT_CLIENTHINT         ClientHint;
-  D3DKMT_HANDLE             hContext;
-  VOID                      *pCommandBuffer;
-  UINT                      CommandBufferSize;
-  D3DDDI_ALLOCATIONLIST     *pAllocationList;
-  UINT                      AllocationListSize;
-  D3DDDI_PATCHLOCATIONLIST  *pPatchLocationList;
-  UINT                      PatchLocationListSize;
-  VOID                      *CommandBuffer;
-} D3DKMT_CREATECONTEXT;
+// typedef struct _D3DKMT_CREATECONTEXT {
+  // D3DKMT_HANDLE             hDevice;
+  // UINT                      NodeOrdinal;
+  // UINT                      EngineAffinity;
+  // D3DDDI_CREATECONTEXTFLAGS Flags;
+  // VOID                      *pPrivateDriverData;
+  // UINT                      PrivateDriverDataSize;
+  // D3DKMT_CLIENTHINT         ClientHint;
+  // D3DKMT_HANDLE             hContext;
+  // VOID                      *pCommandBuffer;
+  // UINT                      CommandBufferSize;
+  // D3DDDI_ALLOCATIONLIST     *pAllocationList;
+  // UINT                      AllocationListSize;
+  // D3DDDI_PATCHLOCATIONLIST  *pPatchLocationList;
+  // UINT                      PatchLocationListSize;
+  // VOID                      *CommandBuffer;
+// } D3DKMT_CREATECONTEXT;
 
-typedef struct _D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION {
-  LUID                           AdapterLuid;
-  D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-  RECTL                          LockRect;
-} D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION;
+// typedef struct _D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION {
+  // LUID                           AdapterLuid;
+  // D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+  // RECTL                          LockRect;
+// } D3DKMT_SHAREDPRIMARYLOCKNOTIFICATION;
 
-typedef struct _D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION {
-  LUID                           AdapterLuid;
-  D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-} D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION;
+// typedef struct _D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION {
+  // LUID                           AdapterLuid;
+  // D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+// } D3DKMT_SHAREDPRIMARYUNLOCKNOTIFICATION;
 
-typedef struct _D3DKMT_GETSCANLINE {
-    HANDLE hAdapter;       // Handle do adaptador gráfico
-    HANDLE hDevice;        // Handle do dispositivo gráfico
-    BOOL InVerticalBlank;  // Indica se está no intervalo de blanking vertical
-    UINT ScanLine;         // A posição atual do scanline
-} D3DKMT_GETSCANLINE;
+// typedef struct _D3DKMT_GETSCANLINE {
+    // HANDLE hAdapter;       // Handle do adaptador gráfico
+    // HANDLE hDevice;        // Handle do dispositivo gráfico
+    // BOOL InVerticalBlank;  // Indica se está no intervalo de blanking vertical
+    // UINT ScanLine;         // A posição atual do scanline
+// } D3DKMT_GETSCANLINE;
 
 typedef struct _D3DNTHAL_CONTEXTCREATEDATA {
   union {
@@ -410,10 +410,10 @@ typedef struct _REALIZATION_INFO
     DWORD  iFontFileId;
 } REALIZATION_INFO, *PREALIZATION_INFO;
 
-typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
-  D3DKMT_HANDLE hResource;
-  UINT          ClientPid;
-} D3DKMT_CHECKSHAREDRESOURCEACCESS;
+// typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
+  // D3DKMT_HANDLE hResource;
+  // UINT          ClientPid;
+// } D3DKMT_CHECKSHAREDRESOURCEACCESS;
 
 void *get_any_obj_ptr( HGDIOBJ handle, WORD *type );
 
