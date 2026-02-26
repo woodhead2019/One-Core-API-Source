@@ -29,6 +29,7 @@ list(APPEND SOURCE
 	ntapi/hooks.c	
 	ntapi/ntapi.c
 	ntapi/wnf.c
+	ntapi/worker.c
 	ldr/ldrapi.c
 	ldr/loader.c
 	#ldr/toolhelp.c

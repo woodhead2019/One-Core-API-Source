@@ -285,6 +285,27 @@ typedef struct _ALPC_CONTEXT_ATTR
   ULONG CallbackId;
 } ALPC_CONTEXT_ATTR, *PALPC_CONTEXT_ATTR;
 
+typedef enum _WORKERFACTORYINFOCLASS
+{
+	WorkerFactoryTimeout, // LARGE_INTEGER
+	WorkerFactoryRetryTimeout, // LARGE_INTEGER
+	WorkerFactoryIdleTimeout, // s: LARGE_INTEGER
+	WorkerFactoryBindingCount, // s: ULONG
+	WorkerFactoryThreadMinimum, // s: ULONG
+	WorkerFactoryThreadMaximum, // s: ULONG
+	WorkerFactoryPaused, // ULONG or BOOLEAN
+	WorkerFactoryBasicInformation, // q: WORKER_FACTORY_BASIC_INFORMATION
+	WorkerFactoryAdjustThreadGoal,
+	WorkerFactoryCallbackType,
+	WorkerFactoryStackInformation, // 10
+	WorkerFactoryThreadBasePriority, // s: ULONG
+	WorkerFactoryTimeoutWaiters, // s: ULONG, since THRESHOLD
+	WorkerFactoryFlags, // s: ULONG
+	WorkerFactoryThreadSoftMaximum, // s: ULONG
+	WorkerFactoryThreadCpuSets, // since REDSTONE5
+	MaxWorkerFactoryInfoClass
+} WORKERFACTORYINFOCLASS, * PWORKERFACTORYINFOCLASS;
+
 // //
 // // This structure specifies an offset (from the beginning of CONTEXT_EX
 // // structure) and size of a single chunk of an extended context structure.
