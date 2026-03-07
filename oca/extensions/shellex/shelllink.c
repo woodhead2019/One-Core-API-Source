@@ -869,9 +869,9 @@ static HRESULT WINAPI IPersistStream_fnLoad(
 
     pdump (This->pPidl);
 	
-    r = IPersistStream_Load(This->pRealPersistStream, stm);		
+    //r = IPersistStream_Load(This->pRealPersistStream, stm);		
 
-    return r;
+    return S_OK;
 end:
     return r;
 	// IShellLinkImpl *This = impl_from_IPersistStream(iface);
@@ -2969,5 +2969,6 @@ HRESULT WINAPI IShellLink_Constructor(IUnknown *outer, REFIID riid, void **obj)
 
     hr = IShellLinkW_QueryInterface( &sl->IShellLinkW_iface, riid, obj );
     IShellLinkW_Release( &sl->IShellLinkW_iface );
+    IShellLinkW_Release( pShellLinkReal );
     return hr;
 }
