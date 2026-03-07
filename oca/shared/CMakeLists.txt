@@ -1,1 +1,2 @@
+add_subdirectory(ole_shared)
 add_subdirectory(user_shared)

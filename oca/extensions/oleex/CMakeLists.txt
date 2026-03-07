@@ -11,13 +11,13 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
 
 set(baseaddress_oleex 0x6A610000)
 
-spec2def(oleex.dll oleex.spec)
+# spec2def(oleex.dll oleex.spec)
 
-generate_idl_iids(dcom.idl)
-add_idl_headers(dcom.idl)
+# generate_idl_iids(dcom.idl)
+# add_idl_headers(dcom.idl)
 
-add_rpcproxy_files(
-    dcom.idl)
+# add_rpcproxy_files(
+    # dcom.idl)
 
 list(APPEND SOURCE
 	apartment.c
