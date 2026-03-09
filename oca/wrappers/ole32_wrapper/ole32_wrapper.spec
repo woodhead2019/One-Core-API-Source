@@ -325,8 +325,8 @@
 @ stdcall CoGetModuleType(wstr ptr) olebase.CoGetModuleType
 
 #missing on xp RTM and SP1
-@ stdcall CoRegisterInitializeSpy(ptr ptr) olebase.CoRegisterInitializeSpy
-@ stdcall CoRevokeInitializeSpy(int64) olebase.CoRevokeInitializeSpy
+@ stdcall CoRegisterInitializeSpy(ptr ptr) CoRegisterInitializeSpyHook
+@ stdcall CoRevokeInitializeSpy(int64) CoRevokeInitializeSpyHook
 
 #win Vista functions
 @ stdcall CoDisconnectContext(long)

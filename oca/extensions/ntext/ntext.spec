@@ -1289,7 +1289,7 @@
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
-;@ stdcall RtlGetVersionAppCompat(ptr)
+@ stdcall RtlGetVersionAppCompat(ptr)
 @ stdcall RtlVerifyVersionInfoAppCompat(ptr long double)
 
 #Missing on XP and Server 2003 RTM
