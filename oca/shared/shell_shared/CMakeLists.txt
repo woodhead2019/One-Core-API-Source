@@ -1,8 +1,3 @@
-if(NOT MSVC)
-    # HACK: this should be enabled globally!
-    add_compile_flags_language("-std=c++11" "CXX")
-endif()
-
 if(MSVC)
     # error C4311: 'type cast': pointer truncation from 'HANDLE' to 'INT'
     replace_compile_flags("/we4311" " ")
@@ -19,20 +14,13 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/oca/dependencies/propsys)
 include_directories(${REACTOS_SOURCE_DIR}/oca/dependencies/shellbase)
 
-set_cpp(WITH_RUNTIME)
-
-add_definitions(
-    -D_SHELL32_
-    -D_WINE
-    -D_ATL_NO_EXCEPTIONS)
-
 list(APPEND SOURCE
 	assoc.c
 	classes.c
 	debughlp.c
 	ebrowser.c
+	hooks.c
 	iconcache.c
-    hooks.c
     main.c
 	misc.c
 	path.c
@@ -49,23 +37,18 @@ list(APPEND SOURCE
 	unimplemented.c
 	utils.c
 	precomp.h
-	version.rc
 	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_i.c
-	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.h
-    ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper_stubs.c
-    ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper.def)
+	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.h)
 
 generate_idl_iids(shell32_classes.idl)
-add_idl_headers(shell32_classes.idl)
+add_idl_headers(shellsharedidl shell32_classes.idl)
+
 
 add_rpcproxy_files(
     shell32_classes.idl)
 	
-add_library(shell32_wrapper SHARED ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.c)
+add_library(shell_shared ${SOURCE})
 
-set_module_type(shell32_wrapper win32dll ENTRYPOINT DllMain)
-target_link_libraries(shell32_wrapper wine uuid)
-#add_pch(shell32_wrapper precomp.h SOURCE)
-add_delay_importlibs(shell32_wrapper propsys secur32 psapi)
-add_importlibs(shell32_wrapper kernel32 kernelex advapi32 user32 msvcrt ntdll shellbase shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)
-add_cd_file(TARGET shell32_wrapper DESTINATION reactos/system32 FOR all)
+add_dependencies(shell_shared psdk shellsharedidl)
+
+#add_dependencies(ole_shared psdk olesharedidl)

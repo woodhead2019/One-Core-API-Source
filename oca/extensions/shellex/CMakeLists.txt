@@ -30,41 +30,11 @@ add_definitions(
     -D_ATL_NO_EXCEPTIONS)
 
 list(APPEND SOURCE
-	assoc.c
-	classes.c
-	debughlp.c
-	ebrowser.c
-	iconcache.c
-    hooks.c
-    main.c
-	misc.c
-	path.c
-	pidl.c
-	shellitem.c
-	shelllink.c
-	shellole.c
-	shellpath.c
-	shlfsbind.c
-	shlfileop.c
-	shlmenu.c
-	#shlview.c
-	shlview_cmenu.c
-	unimplemented.c
-	utils.c
-	precomp.h
 	version.rc
-	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_i.c
-	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.h
     ${CMAKE_CURRENT_BINARY_DIR}/shellex_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/shellex.def)
-
-generate_idl_iids(shell32_classes.idl)
-add_idl_headers(shell32_classes.idl)
-
-add_rpcproxy_files(
-    shell32_classes.idl)
 	
-add_library(shellex SHARED ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.c)
+add_library(shellex SHARED ${SOURCE})
 
 set_module_type(shellex win32dll ENTRYPOINT DllMain)
 target_link_libraries(shellex wine uuid)

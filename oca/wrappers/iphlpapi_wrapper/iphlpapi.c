@@ -342,65 +342,6 @@ static int tcp6_row_owner_cmp( const void *a, const void *b )
     return RtlUshortByteSwap( rowA->dwRemotePort ) - RtlUshortByteSwap( rowB->dwRemotePort );
 }
 
-/*************************************************************************************
- *          get_extended_tcp_table
- *
- * Implementation of GetExtendedTcpTable() which additionally handles TCP_TABLE2
- * corresponding to GetTcp(6)Table2()
- */
-DWORD get_extended_tcp_table( void *table, DWORD *size, BOOL sort, ULONG family, ULONG table_class )
-{
-    DWORD err, count, needed, i, num = 0, row_size = 0;
-    struct nsi_tcp_conn_key *key;
-    struct nsi_tcp_conn_dynamic *dyn;
-    struct nsi_tcp_conn_static *stat;
-
-    if (!size) return ERROR_INVALID_PARAMETER;
-
-    err = NsiAllocateAndGetTable( 1, &NPI_MS_TCP_MODULEID, tcp_table_id( table_class ), (void **)&key, sizeof(*key),
-                                  NULL, 0, (void **)&dyn, sizeof(*dyn),
-                                  (void **)&stat, sizeof(*stat), &count, 0 );
-    if (err) return err;
-
-    for (i = 0; i < count; i++)
-        if (key[i].local.si_family == family)
-            num++;
-
-    needed = tcp_table_size( family, table_class, num, &row_size );
-    if (!table || *size < needed)
-    {
-        *size = needed;
-        err = ERROR_INSUFFICIENT_BUFFER;
-    }
-    else
-    {
-        *size = needed;
-        *(DWORD *)table = num;
-        num = 0;
-        for (i = 0; i < count; i++)
-        {
-            if (key[i].local.si_family != family) continue;
-            tcp_row_fill( table, num++, family, table_class, key + i, dyn + i, stat + i );
-        }
-    }
-
-    if (!err && sort)
-    {
-        int (*fn)(const void *, const void *);
-        DWORD offset;
-
-        if (family == WS_AF_INET) fn = tcp_row_cmp;
-        else if (row_size == sizeof(MIB_TCP6ROW)) fn = tcp6_row_basic_cmp;
-        else fn = tcp6_row_owner_cmp;
-
-        offset = tcp_table_size( family, table_class, 0, &row_size );
-        qsort( (BYTE *)table + offset, num, row_size, fn );
-    }
-
-    NsiFreeTable( key, NULL, dyn, stat );
-    return err;
-}
-
 static const NPI_MODULEID *ip_module_id( USHORT family )
 {
     if (family == WS_AF_INET) return &NPI_MS_IPV4_MODULEID;
@@ -1322,65 +1263,87 @@ IF_INDEX WINAPI IPHLP_if_nametoindex(const char *name)
 /******************************************************************
  *    GetIpForwardTable2 (IPHLPAPI.@)
  */
-/******************************************************************
- *    GetIpForwardTable2 (IPHLPAPI.@)
- */
-DWORD WINAPI GetIpForwardTable2( ADDRESS_FAMILY family, MIB_IPFORWARD_TABLE2 **table )
+DWORD WINAPI GetIpForwardTable2(MIB_IPFORWARD_TABLE2 **Table)
 {
-    void *key[2] = { NULL, NULL };
-    struct nsi_ip_forward_rw *rw[2] = { NULL, NULL };
-    void *dyn[2] = { NULL, NULL };
-    struct nsi_ip_forward_static *stat[2] = { NULL, NULL };
-    static const USHORT fam[2] = { WS_AF_INET, WS_AF_INET6 };
-    static const DWORD key_size[2] = { sizeof(struct nsi_ipv4_forward_key), sizeof(struct nsi_ipv6_forward_key) };
-    static const DWORD dyn_size[2] = { sizeof(struct nsi_ipv4_forward_dynamic), sizeof(struct nsi_ipv6_forward_dynamic) };
-    DWORD err = ERROR_SUCCESS, i, size, count[2] = { 0, 0 };
+    DWORD size = 0;
+    DWORD ret;
+    PMIB_IPFORWARDTABLE oldTable;
+    DWORD i;
 
-    TRACE( "%u, %p\n", family, table );
+    ret = GetIpForwardTable(NULL, &size, FALSE);
+    if (ret != ERROR_INSUFFICIENT_BUFFER)
+        return ret;
 
-    if (!table || (family != WS_AF_INET && family != WS_AF_INET6 && family != WS_AF_UNSPEC))
-        return ERROR_INVALID_PARAMETER;
+    oldTable = (PMIB_IPFORWARDTABLE)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!oldTable)
+        return ERROR_NOT_ENOUGH_MEMORY;
 
-    for (i = 0; i < 2; i++)
+    ret = GetIpForwardTable(oldTable, &size, FALSE);
+    if (ret != NO_ERROR)
     {
-        if (family != WS_AF_UNSPEC && family != fam[i]) continue;
-
-        err = NsiAllocateAndGetTable( 1, ip_module_id( fam[i] ), NSI_IP_FORWARD_TABLE, key + i, key_size[i],
-                                      (void **)rw + i, sizeof(**rw), dyn + i, dyn_size[i],
-                                      (void **)stat + i, sizeof(**stat), count + i, 0 );
-        if (err) count[i] = 0;
+        HeapFree(GetProcessHeap(), 0, oldTable);
+        return ret;
     }
 
-    size = FIELD_OFFSET(MIB_IPFORWARD_TABLE2, Table[ count[0] + count[1] ]);
-    *table = heap_alloc( size );
-    if (!*table)
     {
-        err = ERROR_NOT_ENOUGH_MEMORY;
-        goto err;
+        ULONG count = oldTable->dwNumEntries;
+        SIZE_T newSize =
+            sizeof(MIB_IPFORWARD_TABLE2) +
+            (count - 1) * sizeof(MIB_IPFORWARD_ROW2);
+
+        MIB_IPFORWARD_TABLE2 *newTable =
+            (MIB_IPFORWARD_TABLE2*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, newSize);
+
+        if (!newTable)
+        {
+            HeapFree(GetProcessHeap(), 0, oldTable);
+            return ERROR_NOT_ENOUGH_MEMORY;
+        }
+
+        newTable->NumEntries = count;
+
+        for (i = 0; i < count; i++)
+        {
+            MIB_IPFORWARDROW *src = &oldTable->table[i];
+            MIB_IPFORWARD_ROW2 *dst = &newTable->Table[i];
+
+            dst->InterfaceIndex = src->dwForwardIfIndex;
+
+            /* Simular LUID */
+            dst->InterfaceLuid.Value =
+                ((ULONGLONG)src->dwForwardIfIndex);
+
+            dst->DestinationPrefix.Prefix.si_family = AF_INET;
+			dst->DestinationPrefix.Prefix.Ipv4.sin_addr.S_un.S_addr = src->dwForwardDest;
+			dst->DestinationPrefix.Prefix.Ipv4.sin_port = 0;
+
+            /* calcular prefix length */
+            {
+                DWORD mask = src->dwForwardMask;
+                UINT bits = 0;
+
+                while (mask)
+                {
+                    bits += (mask & 1);
+                    mask >>= 1;
+                }
+
+                dst->DestinationPrefix.PrefixLength = bits;
+            }
+
+            dst->NextHop.si_family = AF_INET;
+			dst->NextHop.Ipv4.sin_addr.S_un.S_addr = src->dwForwardNextHop;
+			dst->NextHop.Ipv4.sin_port = 0;
+
+            dst->Metric = src->dwForwardMetric1;
+        }
+
+        *Table = newTable;
     }
 
-    (*table)->NumEntries = count[0] + count[1];
-    for (i = 0; i < count[0]; i++)
-    {
-        MIB_IPFORWARD_ROW2 *row = (*table)->Table + i;
-        struct nsi_ipv4_forward_key *key4 = (struct nsi_ipv4_forward_key *)key[0];
-        struct nsi_ipv4_forward_dynamic *dyn4 = (struct nsi_ipv4_forward_dynamic *)dyn[0];
+    HeapFree(GetProcessHeap(), 0, oldTable);
 
-        forward_row2_fill( row, fam[0], key4 + i, rw[0] + i, dyn4 + i, stat[0] + i );
-    }
-
-    for (i = 0; i < count[1]; i++)
-    {
-        MIB_IPFORWARD_ROW2 *row = (*table)->Table + count[0] + i;
-        struct nsi_ipv6_forward_key *key6 = (struct nsi_ipv6_forward_key *)key[1];
-        struct nsi_ipv6_forward_dynamic *dyn6 = (struct nsi_ipv6_forward_dynamic *)dyn[1];
-
-        forward_row2_fill( row, fam[1], key6 + i, rw[1] + i, dyn6 + i, stat[1] + i );
-    }
-
-err:
-    for (i = 0; i < 2; i++) NsiFreeTable( key[i], rw[i], dyn[i], stat[i] );
-    return err;
+    return NO_ERROR;
 }
 
 void getInterfacePhysicalFromInfo( IFInfo *info,
@@ -1546,19 +1509,166 @@ ULONG WINAPI GetTcp6Table(PMIB_TCP6TABLE table, PULONG size, BOOL order)
 /******************************************************************
  *    GetTcp6Table2 (IPHLPAPI.@)
  */
-ULONG WINAPI GetTcp6Table2( MIB_TCP6TABLE2 *table, ULONG *size, BOOL sort )
+DWORD WINAPI GetTcp6Table2(MIB_TCP6TABLE2 **Table)
 {
-    TRACE( "table %p, size %p, sort %d\n", table, size, sort );
-    return get_extended_tcp_table( table, size, sort, WS_AF_INET6, TCP_TABLE2 );
+    DWORD size = 0;
+    DWORD ret;
+    PMIB_TCP6TABLE_OWNER_PID oldTable;
+    DWORD i;
+
+    ret = GetExtendedTcpTable(NULL,
+                              &size,
+                              FALSE,
+                              AF_INET6,
+                              TCP_TABLE_OWNER_PID_ALL,
+                              0);
+
+    if (ret != ERROR_INSUFFICIENT_BUFFER)
+        return ret;
+
+    oldTable = (PMIB_TCP6TABLE_OWNER_PID)
+        HeapAlloc(GetProcessHeap(), 0, size);
+
+    if (!oldTable)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    ret = GetExtendedTcpTable(oldTable,
+                              &size,
+                              FALSE,
+                              AF_INET6,
+                              TCP_TABLE_OWNER_PID_ALL,
+                              0);
+
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, oldTable);
+        return ret;
+    }
+
+    {
+        DWORD count = oldTable->dwNumEntries;
+        SIZE_T newSize =
+            sizeof(MIB_TCP6TABLE2) +
+            (count - 1) * sizeof(MIB_TCP6ROW2);
+
+        MIB_TCP6TABLE2 *newTable =
+            (MIB_TCP6TABLE2*)HeapAlloc(GetProcessHeap(),
+                                       HEAP_ZERO_MEMORY,
+                                       newSize);
+
+        if (!newTable)
+        {
+            HeapFree(GetProcessHeap(), 0, oldTable);
+            return ERROR_NOT_ENOUGH_MEMORY;
+        }
+
+        newTable->dwNumEntries = count;
+
+        for (i = 0; i < count; i++)
+        {
+            PMIB_TCP6ROW_OWNER_PID src = &oldTable->table[i];
+            MIB_TCP6ROW2 *dst = &newTable->table[i];
+
+            memcpy(&dst->LocalAddr, src->ucLocalAddr, 16);
+            dst->dwLocalScopeId = src->dwLocalScopeId;
+            dst->dwLocalPort = src->dwLocalPort;
+
+            memcpy(&dst->RemoteAddr, src->ucRemoteAddr, 16);
+            dst->dwRemoteScopeId = src->dwRemoteScopeId;
+            dst->dwRemotePort = src->dwRemotePort;
+
+            dst->State = src->dwState;
+            dst->dwOwningPid = src->dwOwningPid;
+        }
+
+        *Table = newTable;
+    }
+
+    HeapFree(GetProcessHeap(), 0, oldTable);
+
+    return NO_ERROR;
 }
 
 /******************************************************************
  *    GetTcpTable2 (IPHLPAPI.@)
  */
-ULONG WINAPI GetTcpTable2( MIB_TCPTABLE2 *table, ULONG *size, BOOL sort )
+DWORD WINAPI GetTcpTable2(MIB_TCPTABLE2 **Table)
 {
-    TRACE( "table %p, size %p, sort %d\n", table, size, sort );
-    return get_extended_tcp_table( table, size, sort, WS_AF_INET, TCP_TABLE2 );
+    DWORD size = 0;
+    DWORD ret;
+    PMIB_TCPTABLE_OWNER_PID oldTable;
+    DWORD i;
+
+    ret = GetExtendedTcpTable(NULL,
+                              &size,
+                              FALSE,
+                              AF_INET,
+                              TCP_TABLE_OWNER_PID_ALL,
+                              0);
+
+    if (ret != ERROR_INSUFFICIENT_BUFFER)
+        return ret;
+
+    oldTable = (PMIB_TCPTABLE_OWNER_PID)
+        HeapAlloc(GetProcessHeap(), 0, size);
+
+    if (!oldTable)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    ret = GetExtendedTcpTable(oldTable,
+                              &size,
+                              FALSE,
+                              AF_INET,
+                              TCP_TABLE_OWNER_PID_ALL,
+                              0);
+
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, oldTable);
+        return ret;
+    }
+
+    {
+        DWORD count = oldTable->dwNumEntries;
+        SIZE_T newSize =
+            sizeof(MIB_TCPTABLE2) +
+            (count - 1) * sizeof(MIB_TCPROW2);
+
+        MIB_TCPTABLE2 *newTable =
+            (MIB_TCPTABLE2*)HeapAlloc(GetProcessHeap(),
+                                      HEAP_ZERO_MEMORY,
+                                      newSize);
+
+        if (!newTable)
+        {
+            HeapFree(GetProcessHeap(), 0, oldTable);
+            return ERROR_NOT_ENOUGH_MEMORY;
+        }
+
+        newTable->dwNumEntries = count;
+
+        for (i = 0; i < count; i++)
+        {
+            PMIB_TCPROW_OWNER_PID src = &oldTable->table[i];
+            MIB_TCPROW2 *dst = &newTable->table[i];
+
+            dst->dwState = src->dwState;
+            dst->dwLocalAddr = src->dwLocalAddr;
+            dst->dwLocalPort = src->dwLocalPort;
+            dst->dwRemoteAddr = src->dwRemoteAddr;
+            dst->dwRemotePort = src->dwRemotePort;
+            dst->dwOwningPid = src->dwOwningPid;
+
+            /* campo inexistente no XP */
+            dst->dwOffloadState = 0;
+        }
+
+        *Table = newTable;
+    }
+
+    HeapFree(GetProcessHeap(), 0, oldTable);
+
+    return NO_ERROR;
 }
 
 /******************************************************************
@@ -1758,58 +1868,123 @@ DWORD WINAPI ConvertGuidToStringW( const GUID *guid, WCHAR *str, DWORD len )
 /******************************************************************
  *    ConvertInterfaceAliasToLuid (IPHLPAPI.@)
  */
-DWORD WINAPI ConvertInterfaceAliasToLuid( const WCHAR *alias, NET_LUID *luid )
+DWORD WINAPI ConvertInterfaceAliasToLuid(
+    LPCWSTR Alias,
+    NET_LUID *Luid)
 {
-    struct nsi_ndis_ifinfo_rw *data;
-    DWORD err, count, i, len;
-    NET_LUID *keys;
+    ULONG size;
+    DWORD ret;
+    PIP_ADAPTER_ADDRESSES aa;
+    PIP_ADAPTER_ADDRESSES cur;
 
-    TRACE( "(%s %p)\n", debugstr_w(alias), luid );
+    size = 0;
 
-    if (!alias || !*alias || !luid) return ERROR_INVALID_PARAMETER;
-    luid->Value = 0;
-    len = strlenW( alias );
+    ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size);
+    if (ret != ERROR_BUFFER_OVERFLOW)
+        return ret;
 
-    err = NsiAllocateAndGetTable( 1, &NPI_MS_NDIS_MODULEID, NSI_NDIS_IFINFO_TABLE, (void **)&keys, sizeof(*keys),
-                                  (void **)&data, sizeof(*data), NULL, 0, NULL, 0, &count, 0 );
-    if (err) return err;
+    aa = (PIP_ADAPTER_ADDRESSES)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!aa)
+        return ERROR_NOT_ENOUGH_MEMORY;
 
-    err = ERROR_INVALID_PARAMETER;
-    for (i = 0; i < count; i++)
+    ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, aa, &size);
+    if (ret != NO_ERROR)
     {
-        if (data[i].alias.Length == len * 2 && !memcmp( data[i].alias.String, alias, len * 2 ))
-        {
-            luid->Value = keys[i].Value;
-            err = ERROR_SUCCESS;
-            break;
-        }
+        HeapFree(GetProcessHeap(), 0, aa);
+        return ret;
     }
-    NsiFreeTable( keys, data, NULL, NULL );
-    return err;
+
+    cur = aa;
+
+    while (cur)
+    {
+        if (cur->FriendlyName && lstrcmpiW(cur->FriendlyName, Alias) == 0)
+        {
+            ULONG index = cur->IfIndex;
+            ULONG type  = cur->IfType;
+
+            Luid->Value = ((ULONGLONG)type << 24) | index;
+
+            HeapFree(GetProcessHeap(), 0, aa);
+            return NO_ERROR;
+        }
+
+        cur = cur->Next;
+    }
+
+    HeapFree(GetProcessHeap(), 0, aa);
+
+    return ERROR_NOT_FOUND;
 }
 
 /******************************************************************
  *    ConvertInterfaceLuidToAlias (IPHLPAPI.@)
  */
-DWORD WINAPI ConvertInterfaceLuidToAlias( const NET_LUID *luid, WCHAR *alias, SIZE_T len )
+DWORD WINAPI ConvertInterfaceLuidToAlias(
+    const NET_LUID *InterfaceLuid,
+    LPWSTR InterfaceAlias,
+    SIZE_T Length)
 {
-    DWORD err;
-    IF_COUNTED_STRING name;
+    DWORD ifIndex;
+    ULONG size = 0;
+    DWORD ret;
+    PIP_ADAPTER_ADDRESSES aa;
+    PIP_ADAPTER_ADDRESSES cur;
 
-    TRACE( "(%p %p %u)\n", luid, alias, (DWORD)len );
+    if (!InterfaceLuid || !InterfaceAlias)
+        return ERROR_INVALID_PARAMETER;
 
-    if (!luid || !alias) return ERROR_INVALID_PARAMETER;
+    ifIndex = (DWORD)(InterfaceLuid->Value & 0xFFFFFFFF);
 
-    err = NsiGetParameter( 1, &NPI_MS_NDIS_MODULEID, NSI_NDIS_IFINFO_TABLE, luid, sizeof(*luid),
-                           NSI_PARAM_TYPE_RW, &name, sizeof(name),
-                           FIELD_OFFSET(struct nsi_ndis_ifinfo_rw, alias) );
-    if (err) return err;
+    ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size);
 
-    if (len <= name.Length / sizeof(WCHAR)) return ERROR_NOT_ENOUGH_MEMORY;
-    memcpy( alias, name.String, name.Length );
-    alias[name.Length / sizeof(WCHAR)] = '\0';
+    if (ret != ERROR_BUFFER_OVERFLOW)
+        return ret;
 
-    return err;
+    aa = (PIP_ADAPTER_ADDRESSES)
+        HeapAlloc(GetProcessHeap(), 0, size);
+
+    if (!aa)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, aa, &size);
+
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, aa);
+        return ret;
+    }
+
+    cur = aa;
+
+    while (cur)
+    {
+        if (cur->IfIndex == ifIndex)
+        {
+            if (!cur->FriendlyName)
+            {
+                HeapFree(GetProcessHeap(), 0, aa);
+                return ERROR_NOT_FOUND;
+            }
+
+            if (lstrlenW(cur->FriendlyName) + 1 > Length)
+            {
+                HeapFree(GetProcessHeap(), 0, aa);
+                return ERROR_INSUFFICIENT_BUFFER;
+            }
+
+            lstrcpyW(InterfaceAlias, cur->FriendlyName);
+
+            HeapFree(GetProcessHeap(), 0, aa);
+            return NO_ERROR;
+        }
+
+        cur = cur->Next;
+    }
+
+    HeapFree(GetProcessHeap(), 0, aa);
+
+    return ERROR_NOT_FOUND;
 }
 
 DWORD WINAPI GetAnycastIpAddressTable(ADDRESS_FAMILY family, MIB_ANYCASTIPADDRESS_TABLE **table)

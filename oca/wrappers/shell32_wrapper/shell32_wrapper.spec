@@ -367,10 +367,8 @@
 @ stdcall SHGetFileInfoA(ptr long ptr long long)
 @ stdcall SHGetFileInfoW(ptr long ptr long long)
 @ stdcall SHGetFolderLocation(long long long long ptr)
-@ stdcall SHGetFolderPathA(long long long long ptr)
 @ stdcall SHGetFolderPathAndSubDirA(long long long long str ptr)
 @ stdcall SHGetFolderPathAndSubDirW(long long long long wstr ptr)
-@ stdcall SHGetFolderPathW(long long long long ptr)
 @ stdcall SHGetIconOverlayIndexA(str long)
 @ stdcall SHGetIconOverlayIndexW(wstr long)
 @ stdcall SHGetInstanceExplorer(long)
@@ -381,8 +379,6 @@
 @ stdcall SHGetPathFromIDListW(ptr ptr)
 @ stdcall SHGetSettings(ptr long)
 @ stdcall SHGetSpecialFolderLocation(long long ptr)
-@ stdcall SHGetSpecialFolderPathA(long ptr long long)
-@ stdcall SHGetSpecialFolderPathW(long ptr long long)
 @ stdcall SHGetUnreadMailCountW (long wstr long ptr wstr long)
 @ stdcall SHHelpShortcuts_RunDLL(long long long long) 
 @ stdcall SHHelpShortcuts_RunDLLA(long long long long)
@@ -534,6 +530,10 @@
 @ stdcall Shell_NotifyIcon(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconA(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) ;Shell_NotifyIconWInternal ;Redirected to Longhorn shell
+@ stdcall SHGetFolderPathA(long long long long ptr) SHGetFolderPathAHook
+@ stdcall SHGetFolderPathW(long long long long ptr) SHGetFolderPathWHook
+@ stdcall SHGetSpecialFolderPathA(long ptr long long) SHGetSpecialFolderPathAHook
+@ stdcall SHGetSpecialFolderPathW(long ptr long long) SHGetSpecialFolderPathWHook
 
 #Win7
 @ stdcall GetCurrentProcessExplicitAppUserModelID(ptr)

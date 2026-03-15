@@ -30,44 +30,15 @@ add_definitions(
     -D_ATL_NO_EXCEPTIONS)
 
 list(APPEND SOURCE
-	assoc.c
-	classes.c
-	debughlp.c
-	ebrowser.c
-	iconcache.c
-    hooks.c
-    main.c
-	misc.c
-	path.c
-	pidl.c
-	shellitem.c
-	shelllink.c
-	shellole.c
-	shellpath.c
-	shlfsbind.c
-	shlfileop.c
-	shlmenu.c
-	#shlview.c
-	shlview_cmenu.c
-	unimplemented.c
-	utils.c
-	precomp.h
 	version.rc
-	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_i.c
-	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.h
     ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper.def)
-
-generate_idl_iids(shell32_classes.idl)
-add_idl_headers(shell32_classes.idl)
-
-add_rpcproxy_files(
-    shell32_classes.idl)
 	
-add_library(shell32_wrapper SHARED ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.c)
+
+add_library(shell32_wrapper SHARED ${SOURCE})
 
 set_module_type(shell32_wrapper win32dll ENTRYPOINT DllMain)
-target_link_libraries(shell32_wrapper wine uuid)
+target_link_libraries(shell32_wrapper wine shell_shared uuid)
 #add_pch(shell32_wrapper precomp.h SOURCE)
 add_delay_importlibs(shell32_wrapper propsys secur32 psapi)
 add_importlibs(shell32_wrapper kernel32 kernelex advapi32 user32 msvcrt ntdll shellbase shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)

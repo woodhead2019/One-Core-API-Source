@@ -57,7 +57,6 @@
 #include <wingdi.h>
 #include <commdlg.h>
 #include <wine/heap.h>
-#include <shell32_classes_p.h>
 
 #define WIN32_NO_STATUS
 #define _INC_WINDOWS

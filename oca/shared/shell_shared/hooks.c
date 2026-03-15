@@ -41,17 +41,6 @@ WINE_DEFAULT_DEBUG_CHANNEL(hooks);
 
 static PFN_DllGetClassObject_Native pfnDllGetClassObjectNative = NULL;
 
-HINSTANCE WINAPI ShellExecuteANative(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile,
-                               LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd);
-
-BOOL WINAPI ShellExecuteExANative(
-  SHELLEXECUTEINFOA *pExecInfo
-);
-
-BOOL WINAPI ShellExecuteExWNative(
-  SHELLEXECUTEINFOW *pExecInfo
-);
-
 /*************************************************************************
  * ILLoadFromStream (SHELL32.26)
  *
@@ -163,51 +152,17 @@ CheckIfIsOSExec(){
     }	
 }
 
-/* Função auxiliar para verificar se é Windows 7+ */
-BOOL GetCurrentProcessImageVersion(WORD *pMajor, WORD *pMinor)
-{
-    HMODULE hModule;
-    PIMAGE_DOS_HEADER dos;
-    PIMAGE_NT_HEADERS nt;
-
-    if (!pMajor || !pMinor)
-        return FALSE;
-
-    *pMajor = 0;
-    *pMinor = 0;
-
-    /* Endereço base do executável principal */
-    hModule = GetModuleHandleW(NULL);
-    if (!hModule)
-        return FALSE;
-
-    dos = (PIMAGE_DOS_HEADER)hModule;
-
-    if (dos->e_magic != IMAGE_DOS_SIGNATURE)
-        return FALSE;
-
-    nt = (PIMAGE_NT_HEADERS)((BYTE*)hModule + dos->e_lfanew);
-
-    if (nt->Signature != IMAGE_NT_SIGNATURE)
-        return FALSE;
-
-    *pMajor = nt->OptionalHeader.MajorImageVersion;
-    *pMinor = nt->OptionalHeader.MinorImageVersion;
-
-    return TRUE;
-}
-
 /*************************************************************************
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
  */
-HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+HRESULT WINAPI DllGetClassObjectHook(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 {
 	IClassFactory * pcf = NULL;
 	HRESULT	hres;
 	int i;
-    HMODULE hShell32 = NULL;	
-    PFNDllGetClassObject pfnDllGetClassObject;	
+    // HMODULE hShell32 = NULL;	
+    // PFNDllGetClassObject pfnDllGetClassObject;	
 	
 	// TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
@@ -225,24 +180,24 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 	}	
 
     if (!pcf) {
-		hShell32 = GetModuleHandleW(shellName);
-		if (!hShell32){
-			hShell32 = LoadLibraryW(shellName);
-			if (!hShell32)
-			{
-				return HRESULT_FROM_WIN32(GetLastError());
-			}					
-		}	
+		// hShell32 = GetModuleHandleW(shellName);
+		// if (!hShell32){
+			// hShell32 = LoadLibraryW(shellName);
+			// if (!hShell32)
+			// {
+				// return HRESULT_FROM_WIN32(GetLastError());
+			// }					
+		// }	
 
-		pfnDllGetClassObject = (PFNDllGetClassObject)
-			GetProcAddress(hShell32, "DllGetClassObjectNative");
-		if (!pfnDllGetClassObject)
-		{
-			OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
-			return E_FAIL;
-		}
+		// pfnDllGetClassObject = (PFNDllGetClassObject)
+			// GetProcAddress(hShell32, "DllGetClassObjectNative");
+		// if (!pfnDllGetClassObject)
+		// {
+			// OutputDebugStringW(L"DllGetClassObject: não encontrou função nativa em shell32.dll\n");
+			// return E_FAIL;
+		// }
 				
-		return pfnDllGetClassObject(rclsid, iid, ppv); 
+		return DllGetClassObject(rclsid, iid, ppv); 
 				
 	}
 
@@ -510,13 +465,13 @@ WCHAR** WINAPI CommandLineToArgvW(const WCHAR *cmdline, int *numargs)
     return argv;
 }
 
-BOOL WINAPI ShellExecuteExA(
+BOOL WINAPI ShellExecuteExAHook(
     SHELLEXECUTEINFOA *pExecInfo
 )
 {
-    static PFN_ShellExecuteExA_Native pfnNative = NULL;
-    HMODULE hShell32 = NULL;
-    FARPROC proc = NULL;
+    // static PFN_ShellExecuteExA_Native pfnNative = NULL;
+    // HMODULE hShell32 = NULL;
+    // FARPROC proc = NULL;
     BOOL result = FALSE;
     const char prefix[] = "\\\\?\\";
     const char *originalFile = NULL;
@@ -527,37 +482,37 @@ BOOL WINAPI ShellExecuteExA(
         return FALSE;
     }
 
-    /* Se a função nativa ainda não foi resolvida, tenta resolver agora */
-    if (pfnNative == NULL) {
-        /* Primeiro tenta obter o módulo já carregado */
-        hShell32 = GetModuleHandleW(shellName);
-        if (hShell32) {
-            proc = GetProcAddress(hShell32, "ShellExecuteExANative");
-            if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
-        }
+    // /* Se a função nativa ainda não foi resolvida, tenta resolver agora */
+    // if (pfnNative == NULL) {
+        // /* Primeiro tenta obter o módulo já carregado */
+        // hShell32 = GetModuleHandleW(shellName);
+        // if (hShell32) {
+            // proc = GetProcAddress(hShell32, "ShellExecuteExANative");
+            // if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
+        // }
 
-        /* Se não encontrou, tenta carregar shell32 e resolver */
-        if (pfnNative == NULL) {
-            hShell32 = LoadLibraryW(shellName);
-            if (hShell32) {
-                proc = GetProcAddress(hShell32, "ShellExecuteExANative");
-                if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
-                /* Note: não liberamos o module handle carregado com LoadLibrary
-                   porque a shell32 é uma dll de sistema — deixar o refcount
-                   não causa problema em geral. Se quiser, pode FreeLibrary aqui,
-                   mas então o ponteiro seria inválido. */
-            }
-        }
+        // /* Se não encontrou, tenta carregar shell32 e resolver */
+        // if (pfnNative == NULL) {
+            // hShell32 = LoadLibraryW(shellName);
+            // if (hShell32) {
+                // proc = GetProcAddress(hShell32, "ShellExecuteExANative");
+                // if (proc) pfnNative = (PFN_ShellExecuteExA_Native)proc;
+                // /* Note: não liberamos o module handle carregado com LoadLibrary
+                   // porque a shell32 é uma dll de sistema — deixar o refcount
+                   // não causa problema em geral. Se quiser, pode FreeLibrary aqui,
+                   // mas então o ponteiro seria inválido. */
+            // }
+        // }
 
-        /* Se não conseguiu resolver, falha com erro apropriado */
-        if (pfnNative == NULL) {
-            /* Não foi possível achar a implementação nativa */
-            /* Para depuração: */
-            OutputDebugStringA("ShellExecuteExA: não encontrou ShellExecuteExANative em shell32.dll\n");
-            SetLastError(ERROR_PROC_NOT_FOUND);
-            return FALSE;
-        }
-    }
+        // /* Se não conseguiu resolver, falha com erro apropriado */
+        // if (pfnNative == NULL) {
+            // /* Não foi possível achar a implementação nativa */
+            // /* Para depuração: */
+            // OutputDebugStringA("ShellExecuteExA: não encontrou ShellExecuteExANative em shell32.dll\n");
+            // SetLastError(ERROR_PROC_NOT_FOUND);
+            // return FALSE;
+        // }
+    // }
 
     /* Se houver path com prefixo \\?\ - aloca um buffer em heap e usa-o */
     originalFile = pExecInfo->lpFile;
@@ -577,7 +532,7 @@ BOOL WINAPI ShellExecuteExA(
     }
 
     /* Chama a função nativa */
-    result = pfnNative(pExecInfo);
+    result = ShellExecuteExA(pExecInfo);
 
     /* Restaura e libera o buffer heap se tivermos alocado */
     if (heapCleanPath) {
@@ -590,13 +545,13 @@ BOOL WINAPI ShellExecuteExA(
 }
 
 //Intl.cpl require this hook with original name, don't accept alternate name
-BOOL WINAPI ShellExecuteExW(
+BOOL WINAPI ShellExecuteExWHook(
     SHELLEXECUTEINFOW *pExecInfo
 )
 {
-    static PFN_ShellExecuteExW_Native pfnNative = NULL;
-    HMODULE hShell32 = NULL;
-    FARPROC proc = NULL;
+    // static PFN_ShellExecuteExW_Native pfnNative = NULL;
+    // HMODULE hShell32 = NULL;
+    // FARPROC proc = NULL;
     BOOL result = FALSE;
     const wchar_t prefix[] = L"\\\\?\\";
     const wchar_t *originalFile = NULL;
@@ -607,36 +562,36 @@ BOOL WINAPI ShellExecuteExW(
         return FALSE;
     }
 
-    /* Resolver função nativa uma única vez */
-    if (pfnNative == NULL) {
-        hShell32 = GetModuleHandleW(shellName);
-        if (hShell32) {
-            proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
-            if (proc) pfnNative = (PFN_ShellExecuteExW_Native)proc;
-        }
+    // /* Resolver função nativa uma única vez */
+    // if (pfnNative == NULL) {
+        // hShell32 = GetModuleHandleW(shellName);
+        // if (hShell32) {
+            // proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
+            // if (proc) pfnNative = (PFN_ShellExecuteExW_Native)proc;
+        // }
 
-        if (pfnNative == NULL) {
-            if (!hShell32)
-                hShell32 = LoadLibraryW(shellName);
-            if (hShell32) {
-                proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
-                if (proc)
-                    pfnNative = (PFN_ShellExecuteExW_Native)proc;
-                else {
-                    /* Fallback para ShellExecuteExW normal */
-                    proc = GetProcAddress(hShell32, "ShellExecuteExW");
-                    if (proc)
-                        pfnNative = (PFN_ShellExecuteExW_Native)proc;
-                }
-            }
-        }
+        // if (pfnNative == NULL) {
+            // if (!hShell32)
+                // hShell32 = LoadLibraryW(shellName);
+            // if (hShell32) {
+                // proc = GetProcAddress(hShell32, "ShellExecuteExWNative");
+                // if (proc)
+                    // pfnNative = (PFN_ShellExecuteExW_Native)proc;
+                // else {
+                    // /* Fallback para ShellExecuteExW normal */
+                    // proc = GetProcAddress(hShell32, "ShellExecuteExW");
+                    // if (proc)
+                        // pfnNative = (PFN_ShellExecuteExW_Native)proc;
+                // }
+            // }
+        // }
 
-        if (pfnNative == NULL) {
-            OutputDebugStringW(L"ShellExecuteExW: não encontrou ShellExecuteExWNative em shell32.dll\n");
-            SetLastError(ERROR_PROC_NOT_FOUND);
-            return FALSE;
-        }
-    }
+        // if (pfnNative == NULL) {
+            // OutputDebugStringW(L"ShellExecuteExW: não encontrou ShellExecuteExWNative em shell32.dll\n");
+            // SetLastError(ERROR_PROC_NOT_FOUND);
+            // return FALSE;
+        // }
+    // }
 
     /* Limpa o prefixo \\?\ se presente */
     originalFile = pExecInfo->lpFile;
@@ -653,7 +608,7 @@ BOOL WINAPI ShellExecuteExW(
     }
 
     /* Chama a função real */
-    result = pfnNative(pExecInfo);
+    result = ShellExecuteExW(pExecInfo);
 
     /* Restaura e libera */
     if (heapCleanPath) {
@@ -662,6 +617,55 @@ BOOL WINAPI ShellExecuteExW(
     }
 
     return result;
+}
+
+// Prior to Windows Vista, SHGetFolderPath's Wow64 CSIDL's do not work on 32-bit systems.
+// This affects Java installers after around JDK 8u152, plus tons and tons of other installers.
+// Some programs handle it by only passing the X86 csidl's on 64-bit systems, but not all of them.
+NTSTATUS WINAPI SHGetFolderPathWHook(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPWSTR pszPath) {
+	DbgPrint("SHGetFolderPathWHook called\n");
+	DbgPrint("SHGetFolderPathWHook::csidl %i\n", csidl);
+	DbgPrint("SHGetFolderPathWHook::flags %d\n", dwFlags);
+//#ifdef _M_IX86
+    if (csidl & 0xFF == CSIDL_PROGRAM_FILES_COMMONX86) {
+        csidl &= ~0xFF;
+        DbgPrint("csidl CSIDL_PROGRAM_FILES_COMMONX86, flags %i\n", csidl);
+        csidl |= CSIDL_PROGRAM_FILES_COMMON;
+    } else if (csidl & 0xFF == CSIDL_PROGRAM_FILESX86) {
+        csidl &= ~0xFF;
+        DbgPrint("csidl CSIDL_PROGRAM_FILESX86, flags %i\n", csidl);
+        csidl |= CSIDL_PROGRAM_FILES;
+    } else if (csidl & 0xFF == CSIDL_SYSTEMX86) {
+        csidl &= ~0xFF;
+        DbgPrint("csidl CSIDL_SYSTEMX86, flags %i\n", csidl);
+        csidl |= CSIDL_SYSTEM;
+    }
+//#endif
+    return SHGetFolderPathW(hwnd, csidl, hToken, dwFlags, pszPath);
+}
+
+NTSTATUS WINAPI SHGetFolderPathAHook(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath) {
+	DbgPrint("SHGetFolderPathAHook called\n");
+//#ifdef _M_IX86
+	if (csidl & (~CSIDL_FLAG_MASK) == CSIDL_PROGRAM_FILES_COMMONX86)
+		csidl = (csidl & CSIDL_FLAG_MASK) | CSIDL_PROGRAM_FILES_COMMON;
+	else if (csidl & (~CSIDL_FLAG_MASK) == CSIDL_PROGRAM_FILESX86)
+		csidl = (csidl & CSIDL_FLAG_MASK) | CSIDL_PROGRAM_FILES;
+	else if (csidl & (~CSIDL_FLAG_MASK) == CSIDL_SYSTEMX86)
+		csidl = (csidl & CSIDL_FLAG_MASK) | CSIDL_SYSTEM;
+//#endif
+	return SHGetFolderPathA(hwnd, csidl, hToken, dwFlags, pszPath);
+}
+
+// Because SHGetSpecialFolderPath just calls SHGetFolderPath, we must hook those as well, because tons of things
+// still call SHGetSpecialFolderPath instead of SHGetFolderPath despite the docs calling it unsupported.
+BOOL WINAPI SHGetSpecialFolderPathWHook(HWND hwnd, LPWSTR pszPath, int csidl, BOOL create) {
+	// create flag is equalivent to CSIDL_FLAG_CREATE flag.
+	return SHGetFolderPathWHook(hwnd, create ? csidl | CSIDL_FLAG_CREATE : csidl, NULL, 0, pszPath) == 0;
+}
+
+BOOL WINAPI SHGetSpecialFolderPathAHook(HWND hwnd, LPSTR pszPath, int csidl, BOOL create) {
+	return SHGetFolderPathAHook(hwnd, create ? csidl | CSIDL_FLAG_CREATE : csidl, NULL, 0, pszPath) == 0;
 }
 
 // /*************************************************************************

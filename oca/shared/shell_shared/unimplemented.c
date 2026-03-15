@@ -202,16 +202,16 @@ HRESULT WINAPI SHCreateDataObject(PCIDLIST_ABSOLUTE pidl_folder, UINT count, PCU
     return E_NOTIMPL;
 }
 
-//@unimplemented
-HRESULT WINAPI SHEvaluateSystemCommandTemplate(
-  _In_       PCWSTR pszCmdTemplate,
-  _Out_      PWSTR *ppszApplication,
-  _Out_opt_  PWSTR *ppszCommandLine,
-  _Out_opt_  PWSTR *ppszParameters
-)
-{
-    return E_NOTIMPL;
-}
+// //@unimplemented
+// HRESULT WINAPI SHEvaluateSystemCommandTemplate(
+  // _In_       PCWSTR pszCmdTemplate,
+  // _Out_      PWSTR *ppszApplication,
+  // _Out_opt_  PWSTR *ppszCommandLine,
+  // _Out_opt_  PWSTR *ppszParameters
+// )
+// {
+    // return E_NOTIMPL;
+// }
 
 HRESULT WINAPI SHCreateDefaultExtractIcon(
   REFIID riid,
