@@ -1910,4 +1910,4 @@
 @ stdcall UrlUnescapeA(str ptr ptr long) ;shlwapi.UrlUnescapeA
 @ stdcall UrlUnescapeW(wstr ptr ptr long) ;shlwapi.UrlUnescapeW
 
-; @ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10
+; ; @ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10

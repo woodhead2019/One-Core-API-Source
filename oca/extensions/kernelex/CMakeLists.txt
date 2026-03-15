@@ -108,12 +108,9 @@ set_subsystem(kernelex console)
 
 target_link_libraries(kernelex wine ${PSEH_LIB})
 
-if(ARCH STREQUAL "i386")
-	add_importlibs(kernelex kernel32 ntext advapi32 user32 shlwapi idndl)
+add_importlibs(kernelex kernel32 ntext )
 
-elseif(ARCH STREQUAL "amd64")
-	add_importlibs(kernelex kernel32 ntext advapi32 user32 shlwapi idndl)
-endif()
+add_delay_importlibs(kernelex advapi32 user32 shlwapi idndl)
 
 if(MSVC)
     add_target_link_flags(kernelex "/RELEASE")
