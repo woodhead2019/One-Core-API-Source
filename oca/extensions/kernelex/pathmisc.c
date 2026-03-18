@@ -74,7 +74,6 @@ GetVolumeInformationByHandleW(
   if ( !NT_SUCCESS(errCode) )
     {
       WARN("Status: %x\n", errCode);
-      CloseHandle(hFile);
       BaseSetLastNTError (errCode);
       return FALSE;
     }
@@ -93,7 +92,6 @@ GetVolumeInformationByHandleW(
 	}
       else
         {
-	  CloseHandle(hFile);
 	  SetLastError(ERROR_MORE_DATA);
 	  return FALSE;
 	}
@@ -104,7 +102,7 @@ GetVolumeInformationByHandleW(
 	                                  FileFsAttribute,
 	                                  FS_ATTRIBUTE_BUFFER_SIZE,
 	                                  FileFsAttributeInformation);
-  CloseHandle(hFile);
+
   if (!NT_SUCCESS(errCode))
     {
       WARN("Status: %x\n", errCode);

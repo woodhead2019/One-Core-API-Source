@@ -1086,8 +1086,7 @@ ConvertStringSecurityDescriptorToSecurityDescriptorWImpl(
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
-    }
-    if (revision != SID_REVISION)
+    }if (revision != SID_REVISION)
     {
         SetLastError(ERROR_UNKNOWN_REVISION);
         return FALSE;
@@ -1164,4 +1163,72 @@ BOOL WINAPI IsWellKnownSidImpl( PSID sid, WELL_KNOWN_SID_TYPE type )
                 return TRUE;
 
     return FALSE;
+}
+
+BOOL
+WINAPI
+AddConditionalAce(
+    PACL pAcl,
+    DWORD dwAceRevision,
+    DWORD AceFlags,
+    ACCESS_MASK AccessMask,
+    PSID pSid,
+    PVOID pCondition,
+    DWORD cbCondition
+)
+{
+    DWORD cbSid;
+    DWORD cbAce;
+    PBYTE pAce;
+    ACCESS_ALLOWED_CALLBACK_ACE *pCallbackAce;
+
+    if (!pAcl || !pSid)
+        return FALSE;
+
+    cbSid = GetLengthSid(pSid);
+
+    /* tamanho total da ACE */
+    cbAce = sizeof(ACCESS_ALLOWED_CALLBACK_ACE) - sizeof(DWORD) +
+            cbSid + cbCondition;
+
+    /* aloca buffer */
+    pAce = (PBYTE)HeapAlloc(GetProcessHeap(), 0, cbAce);
+    if (!pAce)
+        return FALSE;
+
+    /* zera */
+    ZeroMemory(pAce, cbAce);
+
+    pCallbackAce = (ACCESS_ALLOWED_CALLBACK_ACE *)pAce;
+
+    /* header */
+    pCallbackAce->Header.AceType  = ACCESS_ALLOWED_CALLBACK_ACE_TYPE;
+    pCallbackAce->Header.AceFlags = (BYTE)AceFlags;
+    pCallbackAce->Header.AceSize  = (WORD)cbAce;
+
+    /* máscara */
+    pCallbackAce->Mask = AccessMask;
+
+    /* copia SID */
+    CopySid(cbSid, &pCallbackAce->SidStart, pSid);
+
+    /* copia condição logo após SID */
+    if (cbCondition > 0 && pCondition)
+    {
+        PBYTE pCondDst;
+
+        pCondDst = (PBYTE)&pCallbackAce->SidStart + cbSid;
+
+        CopyMemory(pCondDst, pCondition, cbCondition);
+    }
+
+    /* adiciona ACE na ACL */
+    if (!AddAce(pAcl, dwAceRevision, MAXDWORD, pAce, cbAce))
+    {
+        HeapFree(GetProcessHeap(), 0, pAce);
+        return FALSE;
+    }
+
+    HeapFree(GetProcessHeap(), 0, pAce);
+    return TRUE;
 }

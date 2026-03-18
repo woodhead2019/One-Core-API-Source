@@ -546,61 +546,196 @@ ConvertInterfaceLuidToGuid(
     return NO_ERROR;
 }
 
-/******************************************************************
- *    GetIfEntry2 (IPHLPAPI.@)
- */
-DWORD WINAPI GetIfEntry2( MIB_IF_ROW2 *row2 )
-{
-    DWORD ret;
-    char buf[MAX_ADAPTER_NAME], *name;
-    MIB_IFROW row;
+void ConvertIfTypeToNdisTypes(DWORD ifType, NDIS_MEDIUM *mediaType, NDIS_PHYSICAL_MEDIUM *physicalMediumType, NET_IF_CONNECTION_TYPE *connectType) {
+	NDIS_MEDIUM mType = -1;
+	NDIS_PHYSICAL_MEDIUM pmType = NdisPhysicalMediumUnspecified;
+	NET_IF_MEDIA_CONNECT_STATE netconnectType = NET_IF_CONNECTION_DEDICATED;
+	
+	switch (ifType) {
+		case IF_TYPE_OTHER:
+			break;
+		case IF_TYPE_ETHERNET_CSMACD:
+			mType = NdisMedium802_3;
+			pmType = NdisPhysicalMedium802_3;
+			break;
+		case IF_TYPE_ISO88025_TOKENRING:
+			mType = NdisMedium802_5;
+			pmType = NdisPhysicalMedium802_5;
+			break;
+		case IF_TYPE_FDDI:
+			mType = NdisMediumFddi;
+			break;
+		case IF_TYPE_ATM:
+		case IF_TYPE_ATM_DXI:
+			mType = NdisMediumAtm;
+			pmType = NdisPhysicalMedium802_3;
+			break;
+		case IF_TYPE_IEEE80211:
+			mType = NdisMediumNative802_11;
+			pmType = NdisPhysicalMediumNative802_11;
+			netconnectType = NET_IF_CONNECTION_PASSIVE;
+			break;
+		case IF_TYPE_TUNNEL:
+			mType = NdisMediumTunnel;
+			break;
+		case IF_TYPE_IEEE1394:
+			mType = NdisMedium1394;
+			pmType = NdisPhysicalMedium1394;
+			netconnectType = NET_IF_CONNECTION_PASSIVE;
+			break;
+		case IF_TYPE_ARCNET:
+			mType = NdisMediumArcnetRaw;
+		case IF_TYPE_ARCNET_PLUS:
+			mType = NdisMediumArcnet878_2;
+			break;
+		default:
+			TRACE("unsupported ifType type %i detected, report so your network adapter is supported properly for this wrapper\n", ifType);
+			break;
+	}
+	
+	if (mediaType) *mediaType = mType;
+	if (physicalMediumType) *physicalMediumType = pmType;
+	if (connectType) *connectType = netconnectType;
+}
 
-    TRACE("%p\n", row2);
-
-    if (!row2 || (!(name = getInterfaceNameByIndex( row2->InterfaceIndex, buf )) &&
-                  !(name = getInterfaceNameByIndex( row2->InterfaceLuid.Info.NetLuidIndex, buf ))))
-    {
-        return ERROR_INVALID_PARAMETER;
-    }
-    if ((ret = getInterfaceEntryByName( name, &row ))) return ret;
-    if ((ret = getInterfaceStatsByName( name, &row ))) return ret;
-
-    memset( row2, 0, sizeof(*row2) );
-    row2->InterfaceLuid.Info.Reserved     = 0;
-    row2->InterfaceLuid.Info.NetLuidIndex = row.dwIndex;
-    row2->InterfaceLuid.Info.IfType       = row.dwType;
-    row2->InterfaceIndex                  = row.dwIndex;
-    ConvertInterfaceLuidToGuid( &row2->InterfaceLuid, &row2->InterfaceGuid );
-    row2->Type                            = row.dwType;
-    row2->Mtu                             = row.dwMtu;
-    MultiByteToWideChar( CP_UNIXCP, 0, (const char *)row.bDescr, -1, row2->Description, ARRAY_SIZE(row2->Description) );
-    MultiByteToWideChar( CP_UNIXCP, 0, (const char *)row.bDescr, -1, row2->Alias, ARRAY_SIZE(row2->Alias) );
-    row2->PhysicalAddressLength           = row.dwPhysAddrLen;
-    memcpy( &row2->PhysicalAddress, &row.bPhysAddr, row.dwPhysAddrLen );
-    memcpy( &row2->PermanentPhysicalAddress, &row.bPhysAddr, row.dwPhysAddrLen );
-    row2->OperStatus                      = row.dwOperStatus == MIB_IF_OPER_STATUS_OPERATIONAL ? IfOperStatusUp : IfOperStatusDown;
-    row2->AdminStatus                     = NET_IF_ADMIN_STATUS_UP;
-    row2->MediaConnectState               = MediaConnectStateConnected;
-    row2->ConnectionType                  = NET_IF_CONNECTION_DEDICATED;
-    row2->TransmitLinkSpeed = row2->ReceiveLinkSpeed = row.dwSpeed;
-    row2->AccessType = (row2->Type == MIB_IF_TYPE_LOOPBACK) ? NET_IF_ACCESS_LOOPBACK : NET_IF_ACCESS_BROADCAST;
+DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversion) {
+	PIP_ADAPTER_ADDRESSES_XP adapterAddrs = NULL;
+	PIP_ADAPTER_ADDRESSES_XP adapterAddrCur;
+	
+	DWORD adapterAddrSize;
+	DWORD err = NO_ERROR;
+	BOOL accurateConversionSuccess = FALSE;
+	
+	memset( row2, 0, sizeof(MIB_IF_ROW2) );
+	
+	// convert stats and the "easy parts"
+	row2->InOctets        = row->dwInOctets;
+    row2->InUcastPkts     = row->dwInUcastPkts;
+    row2->InNUcastPkts    = row->dwInNUcastPkts;
+    row2->InDiscards      = row->dwInDiscards;
+    row2->InErrors        = row->dwInErrors;
+    row2->InUnknownProtos = row->dwInUnknownProtos;
+    row2->OutOctets       = row->dwOutOctets;
+    row2->OutUcastPkts    = row->dwOutUcastPkts;
+    row2->OutNUcastPkts   = row->dwOutNUcastPkts;
+    row2->OutDiscards     = row->dwOutDiscards;
+    row2->OutErrors       = row->dwOutErrors;
+	
+	row2->InterfaceIndex = row->dwIndex;
+	row2->Type = row->dwType;
+	row2->Mtu = row->dwMtu;
+	row2->TransmitLinkSpeed = row->dwSpeed;
+	row2->ReceiveLinkSpeed = row->dwSpeed;
+	row2->AccessType = (row2->Type == MIB_IF_TYPE_LOOPBACK) ? NET_IF_ACCESS_LOOPBACK : NET_IF_ACCESS_BROADCAST;
     row2->InterfaceAndOperStatusFlags.ConnectorPresent = row2->Type != MIB_IF_TYPE_LOOPBACK;
     row2->InterfaceAndOperStatusFlags.HardwareInterface = row2->Type != MIB_IF_TYPE_LOOPBACK;
+	row2->AdminStatus = row->dwAdminStatus == TRUE ? NET_IF_ADMIN_STATUS_UP : NET_IF_ADMIN_STATUS_DOWN; // will be filled in later
+	
+	// interface LUID will map to dwIndex
+	row2->InterfaceLuid.Info.Reserved = 0;
+	row2->InterfaceLuid.Info.NetLuidIndex = row->dwIndex;
+	row2->InterfaceLuid.Info.IfType = row->dwType;
+	
+	// interface GUID will be equalivent to {index, 0, 0, 0, 0, ...}
+	row2->InterfaceGuid.Data1 = row->dwIndex;
+	
+	// for PhysicalMediumType it is a 'best-guess' based on IfType
+	ConvertIfTypeToNdisTypes(row->dwType, &row2->MediaType, &row2->PhysicalMediumType, &row2->ConnectionType);
+	
+	// IF_MAX_PHYS_ADDRESS_LENGTH is 32, MAXLEN_PHYSADDR is 8, it is safe to do this... but why IPV6??
+	row2->PhysicalAddressLength = row->dwPhysAddrLen;
+    memmove( &row2->PhysicalAddress, &row->bPhysAddr, row->dwPhysAddrLen );
+    memmove( &row2->PermanentPhysicalAddress, &row->bPhysAddr, row->dwPhysAddrLen );
+	
+	// convert name and description to alias and description
+	memmove(&row2->Alias, &row->wszName, sizeof(row->wszName));
+	MultiByteToWideChar(CP_ACP, 0, (const char *)&(row->bDescr), row->dwDescrLen, &row2->Description, sizeof(row2->Description) / sizeof(WCHAR));
+	
+	if (!fastConversion) {
+		// alias is actually FriendlyName, so we have to do this
+		// 0xF = skip all the addresses that we don't need, speeds things up
+		if ((err = GetAdaptersAddresses(AF_UNSPEC, 0xF, 0, NULL, &adapterAddrSize)) != ERROR_BUFFER_OVERFLOW) goto finished;
+		if (!(adapterAddrs = malloc(adapterAddrSize))) goto finished;
+		if ((err = GetAdaptersAddresses(AF_UNSPEC, 0xF, 0, adapterAddrs, &adapterAddrSize))) goto finished;
+		
+		adapterAddrCur = adapterAddrs;
+		while (adapterAddrCur != NULL) {
+			if (adapterAddrCur->IfIndex == row->dwIndex) {
+				row2->OperStatus = adapterAddrCur->OperStatus;
+				row2->DirectionType = (adapterAddrCur->Flags & IP_ADAPTER_RECEIVE_ONLY) ? NET_IF_DIRECTION_RECEIVEONLY : NET_IF_DIRECTION_SENDRECEIVE;
+				wcscpy(&row2->Alias, adapterAddrCur->FriendlyName);
+				accurateConversionSuccess = TRUE;
+				goto finished;
+			}
+			adapterAddrCur = adapterAddrCur->Next;
+		}
+	finished:
+		free(adapterAddrs);
+	}
 
-    /* stats */
-    row2->InOctets        = row.dwInOctets;
-    row2->InUcastPkts     = row.dwInUcastPkts;
-    row2->InNUcastPkts    = row.dwInNUcastPkts;
-    row2->InDiscards      = row.dwInDiscards;
-    row2->InErrors        = row.dwInErrors;
-    row2->InUnknownProtos = row.dwInUnknownProtos;
-    row2->OutOctets       = row.dwOutOctets;
-    row2->OutUcastPkts    = row.dwOutUcastPkts;
-    row2->OutNUcastPkts   = row.dwOutNUcastPkts;
-    row2->OutDiscards     = row.dwOutDiscards;
-    row2->OutErrors       = row.dwOutErrors;
+	
+	if (!accurateConversionSuccess) {
+		// Convert dwOperStatus to IfOperStatus values because we can't get the actual
+		// dwOperStatus values through GetAdaptersAddresses
+		switch (row->dwOperStatus) {
+			case IF_OPER_STATUS_NON_OPERATIONAL:
+			case IF_OPER_STATUS_UNREACHABLE:
+			case IF_OPER_STATUS_DISCONNECTED:
+				row2->OperStatus = IfOperStatusDown;
+				break;
+			case IF_OPER_STATUS_CONNECTING:
+				row2->OperStatus = IfOperStatusTesting;
+				break;
+			default:
+				row2->OperStatus = IfOperStatusUp;
+				break;
+		}
+		row2->DirectionType = NET_IF_DIRECTION_SENDRECEIVE;
+	}
+	
+	return err;
+}
 
+DWORD WINAPI GetIfEntry2(MIB_IF_ROW2 *row2)
+{
+    DWORD ret;
+    MIB_IFROW row;
+	
+	TRACE("GetIfEntry2 called: %p\n", row2);
+	
+	if (!row2)
+		return ERROR_INVALID_PARAMETER;
+	
+	row.dwIndex = row2->InterfaceLuid.Info.NetLuidIndex ? row2->InterfaceLuid.Info.NetLuidIndex : row2->InterfaceIndex;
+	
+	if ((ret = GetIfEntry(&row))) return ret;
+	
+	ret = ConvertIfRowToIfRow2(&row, row2, FALSE);
+	if (ret)
+		TRACE("GetIfEntry2 accurate conversion failed with error %i\n", ret);
+	
     return NO_ERROR;
+}
+
+DWORD WINAPI GetIfEntry2Ex(MIB_IF_ENTRY_LEVEL level, PMIB_IF_ROW2 row2) {
+	DWORD ret;
+	
+	TRACE("GetIfEntry2Ex called: %p\n", row2);
+
+	if ((ret = GetIfEntry2(row2)) == NO_ERROR && level == MibIfEntryNormalWithoutStatistics) {
+		row2->InOctets        = 0;
+		row2->InUcastPkts     = 0;
+		row2->InNUcastPkts    = 0;
+		row2->InDiscards      = 0;
+		row2->InErrors        = 0;
+		row2->InUnknownProtos = 0;
+		row2->OutOctets       = 0;
+		row2->OutUcastPkts    = 0;
+		row2->OutNUcastPkts   = 0;
+		row2->OutDiscards     = 0;
+		row2->OutErrors       = 0;
+	}
+	return ret;
 }
 
 /***********************************************************************

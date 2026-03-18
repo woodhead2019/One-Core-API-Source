@@ -754,6 +754,7 @@
 @ stdcall TreeSetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr long)
 
 #Win7 function
+@ stdcall AddConditionalAce(ptr long long long ptr ptr long)
 @ stdcall EnableTraceEx2(int64 ptr long long int64 int64 long ptr)
 
 #Win8 functions
@@ -853,31 +854,6 @@
 ; @ stdcall V_SHAFinal(ptr ptr)
 ; @ stdcall V_SHAInit(ptr)
 ; @ stdcall V_SHAUpdate(ptr ptr long)
-
-; #Hooks
-; 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorAInternal
-; 88 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(wstr long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorWInternal
-; 89 stdcall ConvertStringSidToSidA(ptr ptr) ConvertStringSidToSidAInternal
-; 90 stdcall ConvertStringSidToSidW(ptr ptr) ConvertStringSidToSidWInternal
-; 101 stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) #CreateRestrictedTokenInternal
-; 105 stdcall CreateWellKnownSid(long ptr ptr ptr) CreateWellKnownSidInternal
-; 248 stdcall GetKernelObjectSecurity(long long ptr long ptr) GetKernelObjectSecurityInternal
-; 261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) GetNamedSecurityInfoWInternal
-; 273 stdcall GetSecurityInfo(long long long ptr ptr ptr ptr ptr) GetSecurityInfoInternal
-; 284 stdcall GetTokenInformation(ptr long ptr long ptr) GetTokenInformationInternal
-; 322 stdcall IsWellKnownSid(ptr long) IsWellKnownSidInternal
-; 429 stdcall OpenProcessToken(long long ptr) #OpenProcessTokenInternal
-; 434 stdcall OpenThreadToken(ptr long long ptr) #OpenThreadTokenInternal
-; 487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) RegGetValueWInternal
-; 490 stdcall RegNotifyChangeKeyValue(long long long long long) RegNotifyChangeKeyValueInternal
-; 503 stdcall RegQueryValueA(long str ptr ptr) RegQueryValueAInternal
-; 504 stdcall RegQueryValueExA(long str ptr ptr ptr ptr) RegQueryValueExAInternal
-; 505 stdcall RegQueryValueExW(long wstr ptr ptr ptr ptr) RegQueryValueExWInternal
-; 506 stdcall RegQueryValueW(long wstr ptr ptr) RegQueryValueWInternal
-; 563 stdcall SetKernelObjectSecurity(long long ptr) SetKernelObjectSecurityInternal
-; 567 stdcall SetNamedSecurityInfoW(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoWInternal
-; 576 stdcall SetSecurityInfo(long long long ptr ptr ptr ptr) SetSecurityInfoInternal
-; 583 stdcall SetTokenInformation(ptr long ptr long) SetTokenInformationInternal
 
 #Hooks
 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorAInternal

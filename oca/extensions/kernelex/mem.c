@@ -219,20 +219,153 @@ ReclaimVirtualMemory(
 	return ERROR_SUCCESS;
 }
 
+static ULONG OfferVirtualMemoryInternal(
+	IN	PVOID			VirtualAddress,
+	IN	SIZE_T			Size,
+	IN	OFFER_PRIORITY	Priority,
+	IN	BOOL			DiscardMemory)
+{
+	NTSTATUS Status;
+	MEMORY_BASIC_INFORMATION BasicInformation;
+	PVOID VirtualAllocResult;
+	ULONG OldProtect;
+
+	//
+	// Parameter validation.
+	//
+
+	if (!VirtualAddress || !Size) {
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	if ((ULONG_PTR) VirtualAddress & 0xFFF) {
+		// The virtual address must be page-aligned.
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	if (Size & 0xFFF) {
+		// The size must be a multiple of the page size.
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	ASSERT (Priority && Priority < VMOfferPriorityMaximum);
+
+	//
+	// Check to see if the memory region provided is valid.
+	// The entire region must be readable, writable, and committed.
+	//
+
+	Status = NtQueryVirtualMemory(
+		NtCurrentProcess(),
+		VirtualAddress,
+		MemoryBasicInformation,
+		&BasicInformation,
+		sizeof(BasicInformation),
+		NULL);
+
+	if (!NT_SUCCESS(Status)) {
+		return RtlNtStatusToDosError(Status);
+	}
+
+	if (BasicInformation.RegionSize < Size ||
+		BasicInformation.Protect != PAGE_READWRITE ||
+		BasicInformation.State != MEM_COMMIT) {
+
+		Status = STATUS_INVALID_PAGE_PROTECTION;
+		return RtlNtStatusToDosError(Status);
+	}
+
+	//
+	// Tell the kernel that we won't be needing the contents of this memory
+	// anymore.
+	//
+
+	VirtualAllocResult = VirtualAlloc(
+		VirtualAddress,
+		Size,
+		MEM_RESET,
+		PAGE_READWRITE);
+
+	if (VirtualAllocResult != VirtualAddress) {
+		return GetLastError();
+	}
+
+	if (DiscardMemory) {
+		VirtualUnlock(VirtualAddress, Size);
+	} else {
+		// If OfferVirtualMemory was called, then make those pages
+		// inaccessible.
+		VirtualProtect(VirtualAddress, Size, PAGE_NOACCESS, &OldProtect);
+	}
+
+	return ERROR_SUCCESS;
+}
+
+// ULONG WINAPI OfferVirtualMemory(
+	// IN	PVOID			VirtualAddress,
+	// IN	SIZE_T			Size,
+	// IN	OFFER_PRIORITY	Priority)
+// {
+	// DbgPrint(
+		// L"OfferVirtualMemory called\r\n\r\n"
+		// L"VirtualAddress: 0x%p\r\n"
+		// L"Size:           %lu",
+		// VirtualAddress,
+		// Size);
+
+	// if (!Priority || Priority >= VMOfferPriorityMaximum) {
+		// return ERROR_INVALID_PARAMETER;
+	// }
+
+	// return OfferVirtualMemoryInternal(VirtualAddress, Size, Priority, FALSE);
+// }
+
 DWORD
 WINAPI
 DiscardVirtualMemory(
-	_Inout_updates_(_uSize) PVOID _pVirtualAddress,
-	_In_ SIZE_T _uSize
+    _Inout_updates_(_uSize) PVOID _pVirtualAddress,
+    _In_ SIZE_T _uSize
 )
 {
-	// if (const auto _pfnDiscardVirtualMemory = try_get_DiscardVirtualMemory())
-	// {
-		// return _pfnDiscardVirtualMemory(_pVirtualAddress, _uSize);
-	// }
+    // if (const auto _pfnDiscardVirtualMemory = try_get_DiscardVirtualMemory())
+    // {
+        // return _pfnDiscardVirtualMemory(_pVirtualAddress, _uSize);
+    // }
 
-	if (!VirtualAlloc(_pVirtualAddress, _uSize, MEM_RESET, PAGE_NOACCESS))
-		return GetLastError();
+    VirtualAlloc(_pVirtualAddress, _uSize, MEM_RESET, PAGE_NOACCESS);
+    return ERROR_SUCCESS;
+}
 
-	return ERROR_SUCCESS;
+PVOID
+WINAPI
+VirtualAlloc2(
+        _In_opt_ HANDLE Process,
+        _In_opt_ PVOID BaseAddress,
+        _In_ SIZE_T Size,
+        _In_ ULONG AllocationType,
+        _In_ ULONG PageProtection,
+        _Inout_updates_opt_(ParameterCount) MEM_EXTENDED_PARAMETER* ExtendedParameters,
+        _In_ ULONG ParameterCount
+        )
+{
+		ULONG i;
+        // if (const auto pVirtualAlloc2 = try_get_VirtualAlloc2())
+        // {
+            // return pVirtualAlloc2(Process, BaseAddress, Size, AllocationType, PageProtection, ExtendedParameters, ParameterCount);
+        // }
+
+        //尝试搜索 MemExtendedParameterNumaNode
+        if (ExtendedParameters && ParameterCount)
+        {
+            for (i = 0; i != ParameterCount; ++i)
+            {
+                if (ExtendedParameters[i].Type == MemExtendedParameterNumaNode)
+                {
+                    return VirtualAllocExNuma(Process, BaseAddress, Size, AllocationType, PageProtection, ExtendedParameters[i].ULong);
+                }
+            }
+        }
+
+        //尽力了，只能调用VirtualAllocEx。
+        return VirtualAllocEx(Process, BaseAddress, Size, AllocationType, PageProtection);
 }

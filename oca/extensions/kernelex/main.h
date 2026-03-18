@@ -1019,10 +1019,11 @@ typedef struct COPYFILE2_EXTENDED_PARAMETERS {
 } COPYFILE2_EXTENDED_PARAMETERS, *PCOPYFILE2_EXTENDED_PARAMETERS;
 
 typedef enum _OFFER_PRIORITY {
-    VmOfferPriorityVeryLow = 1,
-    VmOfferPriorityLow,
-    VmOfferPriorityBelowNormal,
-    VmOfferPriorityNormal
+	VMOfferPriorityVeryLow			= 1,
+	VMOfferPriorityLow,
+	VMOfferPriorityBelowNormal,
+	VMOfferPriorityNormal,
+	VMOfferPriorityMaximum
 } OFFER_PRIORITY;
 
 /* Undocumented: layout of the locale data in the locale.nls file */
@@ -1328,6 +1329,33 @@ typedef struct IORING_CAPABILITIES {
   UINT32               MaxCompletionQueueSize;
   IORING_FEATURE_FLAGS FeatureFlags;
 } IORING_CAPABILITIES;
+
+#define MEM_EXTENDED_PARAMETER_TYPE_BITS 8
+
+typedef enum MEM_EXTENDED_PARAMETER_TYPE {
+    MemExtendedParameterInvalidType = 0,
+    MemExtendedParameterAddressRequirements,
+    MemExtendedParameterNumaNode,
+    MemExtendedParameterPartitionHandle,
+    MemExtendedParameterUserPhysicalHandle,
+    MemExtendedParameterAttributeFlags,
+    MemExtendedParameterImageMachine,
+    MemExtendedParameterMax
+} MEM_EXTENDED_PARAMETER_TYPE, *PMEM_EXTENDED_PARAMETER_TYPE;
+
+typedef struct MEM_EXTENDED_PARAMETER {
+  struct {
+    DWORD64 Type : MEM_EXTENDED_PARAMETER_TYPE_BITS;
+    DWORD64 Reserved : 64 - MEM_EXTENDED_PARAMETER_TYPE_BITS;
+  } DUMMYSTRUCTNAME;
+  union {
+    DWORD64 ULong64;
+    PVOID   Pointer;
+    SIZE_T  Size;
+    HANDLE  Handle;
+    DWORD   ULong;
+  } DUMMYUNIONNAME;
+} MEM_EXTENDED_PARAMETER, *PMEM_EXTENDED_PARAMETER;
 
 typedef HANDLE HPSS;
 
