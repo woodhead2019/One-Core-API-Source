@@ -70,32 +70,12 @@ Revision History:
 
 #define 	CP_UNIXCP   CP_ACP
 
-// typedef enum _NL_ROUTE_ORIGIN { 
-  // NlroManual,
-  // NlroWellKnown,
-  // NlroDHCP,
-  // NlroRouterAdvertisement,
-  // Nlro6to4
-// } NL_ROUTE_ORIGIN, *PNL_ROUTE_ORIGIN;
-
 #define MAKE_ROUTE_PROTOCOL(N, V) MIB_IPPROTO_ ## N = V, PROTO_IP_ ## N = V
 
-// typedef enum {
-  // RouteProtocolOther = 1,
-  // RouteProtocolLocal = 2,
-  // RouteProtocolNetMgmt = 3,
-  // RouteProtocolIcmp = 4,
-  // RouteProtocolEgp = 5,
-  // RouteProtocolGgp = 6,
-  // RouteProtocolHello = 7,
-  // RouteProtocolRip = 8,
-  // RouteProtocolIsIs = 9,
-  // RouteProtocolEsIs = 10,
-  // RouteProtocolCisco = 11,
-  // RouteProtocolBbn = 12,
-  // RouteProtocolOspf = 13,
-  // RouteProtocolBgp = 14
-// } NL_ROUTE_PROTOCOL,*PNL_ROUTE_PROTOCOL;
+typedef enum _MIB_IF_ENTRY_LEVEL {
+    MibIfEntryNormal = 0,
+    MibIfEntryNormalWithoutStatistics = 2
+} MIB_IF_ENTRY_LEVEL, *PMIB_IF_ENTRY_LEVEL;
 
 typedef VOID (WINAPI *PIPFORWARD_CHANGE_CALLBACK) (PVOID CallerContext, PMIB_IPFORWARD_ROW2 Row, MIB_NOTIFICATION_TYPE NotificationType);
 

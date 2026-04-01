@@ -25,6 +25,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(iphlpapi);
 
 #define CHARS_IN_GUID 39
 
+#define NdisMediumTunnel       15
+#define NdisMediumNative802_11 16
+
 const NPI_MODULEID NPI_MS_IPV4_MODULEID = {0x00};
 const NPI_MODULEID NPI_MS_IPV6_MODULEID = {0x01};
 const NPI_MODULEID NPI_MS_TCP_MODULEID = {0x03};
@@ -546,6 +549,7 @@ ConvertInterfaceLuidToGuid(
     return NO_ERROR;
 }
 
+#define NTDDI_VERSION 0x06000000 
 void ConvertIfTypeToNdisTypes(DWORD ifType, NDIS_MEDIUM *mediaType, NDIS_PHYSICAL_MEDIUM *physicalMediumType, NET_IF_CONNECTION_TYPE *connectType) {
 	NDIS_MEDIUM mType = -1;
 	NDIS_PHYSICAL_MEDIUM pmType = NdisPhysicalMediumUnspecified;
@@ -649,7 +653,7 @@ DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversio
 	
 	// convert name and description to alias and description
 	memmove(&row2->Alias, &row->wszName, sizeof(row->wszName));
-	MultiByteToWideChar(CP_ACP, 0, (const char *)&(row->bDescr), row->dwDescrLen, &row2->Description, sizeof(row2->Description) / sizeof(WCHAR));
+	MultiByteToWideChar(CP_ACP, 0, (const char *)&(row->bDescr), row->dwDescrLen, row2->Description, sizeof(row2->Description) / sizeof(WCHAR));
 	
 	if (!fastConversion) {
 		// alias is actually FriendlyName, so we have to do this
@@ -663,7 +667,7 @@ DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversio
 			if (adapterAddrCur->IfIndex == row->dwIndex) {
 				row2->OperStatus = adapterAddrCur->OperStatus;
 				row2->DirectionType = (adapterAddrCur->Flags & IP_ADAPTER_RECEIVE_ONLY) ? NET_IF_DIRECTION_RECEIVEONLY : NET_IF_DIRECTION_SENDRECEIVE;
-				wcscpy(&row2->Alias, adapterAddrCur->FriendlyName);
+				wcscpy(row2->Alias, adapterAddrCur->FriendlyName);
 				accurateConversionSuccess = TRUE;
 				goto finished;
 			}
