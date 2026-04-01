@@ -81,7 +81,7 @@ typedef struct _ADDRESS_WAIT_BLOCK
 	
 #define ADDRESS_GET_BLOCK(AW) ((ADDRESS_WAIT_BLOCK*)((SIZE_T)(AW) & (~(SIZE_T)(0x3))))
 
-BOOL NTAPI RtlpWaitCouldDeadlock();
+//BOOL NTAPI RtlpWaitCouldDeadlock();
 
 BOOL NTAPI RtlDllShutdownInProgress(VOID);
 
@@ -710,12 +710,12 @@ RtlRunOnceInitialize(
     once->Ptr = NULL;
 }
 
-BOOL NTAPI RtlpWaitCouldDeadlock()
-{
-	//byte_77F978A8极有可能是LdrpShutdownInProgress
-	//进程退出时，各种资源即将被销毁，继续等待将会出现错误的结果
-	return RtlDllShutdownInProgress()!=0;
-}
+// BOOL NTAPI RtlpWaitCouldDeadlock()
+// {
+	// //byte_77F978A8极有可能是LdrpShutdownInProgress
+	// //进程退出时，各种资源即将被销毁，继续等待将会出现错误的结果
+	// return RtlDllShutdownInProgress()!=0;
+// }
 
 //New ConditionVariable API
 void NTAPI RtlpInitConditionVariable(PEB* pPeb)
@@ -1715,8 +1715,7 @@ typedef struct _SRW_WAIT_NODE
 typedef ULONG_PTR SRW_STATE;
 
 /* Safely set bit 0 of a pointer-sized value; returns previous bit value (0/1). */
-
-static __forceinline LONG RtlpMarkSrwHeld(volatile PVOID* Target)
+__forceinline LONG RtlpInterlockedBit0SetPointer(volatile PVOID* Target)
 {
 #if defined(_M_X64)
     return _interlockedbittestandset64((volatile LONG64*)Target, 0);
@@ -1755,9 +1754,14 @@ static VOID NTAPI RtlpBackoffExp(ULONG* pCount)
     while (n--) YieldProcessor();
 }
 
+__forceinline BOOLEAN RtlpWaitCouldDeadlock(void)
+{
+    return FALSE;
+}
+
 /* Helpers to test node attributes; avoid raw bit-twiddling at callsites. */
-static __forceinline BOOLEAN SrwNodeIsExclusive(const SRW_WAIT_NODE* n) { return (n->flags & NODEF_EXCL) != 0; }
-static __forceinline BOOLEAN SrwNodeIsSpinning(const SRW_WAIT_NODE* n)  { return (n->flags & NODEF_SPIN) != 0; }
+__forceinline BOOLEAN SrwNodeIsExclusive(const SRW_WAIT_NODE* n) { return (n->flags & NODEF_EXCL) != 0; }
+__forceinline BOOLEAN SrwNodeIsSpinning(const SRW_WAIT_NODE* n)  { return (n->flags & NODEF_SPIN) != 0; }
 
 static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
 {
@@ -1767,13 +1771,16 @@ static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
 
     while (1)
     {
-        while (OldStatus & SRWF_Hold)
+        if (OldStatus & SRWF_Hold)
         {
-            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
-            if (CurrStatus == OldStatus) return;
-            OldStatus = (SRW_STATE)CurrStatus;
+            do
+            {
+                CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus - SRWF_Link), (PVOID)OldStatus);
+                if (CurrStatus == OldStatus) return;
+                OldStatus = (SRW_STATE)CurrStatus;
+            } while (OldStatus & SRWF_Hold);
         }
-		
+
         tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
         first = tail->head;
         if (first == NULL)
@@ -1792,18 +1799,18 @@ static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
         {
             tail->head = first->next;
             first->next = NULL;
-            InterlockedAndPointer(&SRWLock->Ptr, (PVOID)(~((SRW_STATE)SRWF_Link)));
+            InterlockedAndPointer(&SRWLock->Ptr, (PVOID)(~SRWF_Link));
             break;
         }
         else
         {
             CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)OldStatus);
-            if (CurrStatus == OldStatus) break;
+            if ((SRW_STATE)CurrStatus == OldStatus) break;
             tail->head = first;
             OldStatus = (SRW_STATE)CurrStatus;
         }
     }
-	
+
     do
     {
         SRW_WAIT_NODE* next = first->next;
@@ -1818,22 +1825,25 @@ static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
 static VOID NTAPI RtlpSrwCompressQueue(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
 {
     SRW_STATE CurrStatus;
-    while (OldStatus & SRWF_Hold)
+    if (OldStatus & SRWF_Hold)
     {
-        SRW_WAIT_NODE* tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
-        if (tail != NULL)
+        do
         {
-            SRW_WAIT_NODE* curr = tail;
-            while (curr->head == NULL)
+            SRW_WAIT_NODE* tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+            if (tail != NULL)
             {
-                curr->prev->next = curr;
-                curr = curr->prev;
+                SRW_WAIT_NODE* curr = tail;
+                while (curr->head == NULL)
+                {
+                    curr->prev->next = curr;
+                    curr = curr->prev;
+                }
+                tail->head = curr->head;
             }
-            tail->head = curr->head;
-        }
-        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
-        if (CurrStatus == OldStatus) return;
-        OldStatus = (SRW_STATE)CurrStatus;
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus - SRWF_Link), (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+            OldStatus = (SRW_STATE)CurrStatus;
+        } while (OldStatus & SRWF_Hold);
     }
     RtlpSrwWake(SRWLock, OldStatus);
 }
@@ -1853,7 +1863,7 @@ VOID NTAPI RtlAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
     SRW_STATE OldStatus;
     int i;
 
-    if (RtlpMarkSrwHeld(&SRWLock->Ptr) == 0)
+    if (RtlpInterlockedBit0SetPointer(&SRWLock->Ptr) == 0)
         return;
 
     OldStatus = (SRW_STATE)SRWLock->Ptr;
@@ -1907,7 +1917,7 @@ VOID NTAPI RtlAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
         }
         else
         {
-            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Hold), (PVOID)OldStatus);
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus + SRWF_Hold), (PVOID)OldStatus);
             if (CurrStatus == OldStatus) return;
             RtlpBackoffExp(&backoff);
             OldStatus = (SRW_STATE)SRWLock->Ptr;
@@ -1973,7 +1983,7 @@ VOID NTAPI RtlAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
         else
         {
             if (OldStatus & SRWF_Wait)
-                NewStatus = OldStatus | SRWF_Hold;
+                NewStatus = OldStatus + SRWF_Hold;
             else
                 NewStatus = (OldStatus + (1 << SRW_COUNT_BIT)) | SRWF_Hold;
             CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
@@ -1990,9 +2000,9 @@ VOID NTAPI RtlReleaseSRWLockExclusive(PRTL_SRWLOCK SRWLock)
     SRW_STATE OldStatus = (SRW_STATE)InterlockedExchangeAddPointer(&SRWLock->Ptr, (PVOID)(-(LONG_PTR)SRWF_Hold));
     if ((OldStatus & SRWF_Wait) && !(OldStatus & SRWF_Link))
     {
-        OldStatus &= ~(SRW_STATE)SRWF_Hold;
-        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Link), (PVOID)OldStatus);
-        if (CurrStatus == OldStatus) RtlpSrwWake(SRWLock, OldStatus | SRWF_Link);
+        OldStatus -= SRWF_Hold;
+        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus + SRWF_Link), (PVOID)OldStatus);
+        if (CurrStatus == OldStatus) RtlpSrwWake(SRWLock, OldStatus + SRWF_Link);
     }
 }
 
@@ -2003,27 +2013,30 @@ VOID NTAPI RtlReleaseSRWLockShared(PRTL_SRWLOCK SRWLock)
     SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)(((1 << SRW_COUNT_BIT) | SRWF_Hold)));
     if (OldStatus == ((1 << SRW_COUNT_BIT) | SRWF_Hold)) return;
 
-    while (!(OldStatus & SRWF_Wait))
+    if (!(OldStatus & SRWF_Wait))
     {
-        if (OldStatus < (2 << SRW_COUNT_BIT)) NewStatus = 0; // MSVC doesn't optimize this... for some reason.
-        else NewStatus = OldStatus - (1 << SRW_COUNT_BIT);
-        CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
-        if (CurrStatus == OldStatus) return;
-        OldStatus = CurrStatus;
+        do
+        {
+            if ((OldStatus & (SRWM_ITEM)) <= (1 << SRW_COUNT_BIT)) NewStatus = 0;
+            else NewStatus = OldStatus - (1 << SRW_COUNT_BIT);
+            CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            if (CurrStatus == OldStatus) return;
+            OldStatus = CurrStatus;
+        } while (!(OldStatus & SRWF_Wait));
     }
 
     if (OldStatus & SRWF_Many)
     {
-	    SRW_WAIT_NODE* curr = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
-	    while (curr->head == NULL) curr = curr->prev;
-	    curr = curr->head;
-	    count = InterlockedDecrement((PLONG)&curr->shareSnapshot);
+    SRW_WAIT_NODE* curr = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+    while (curr->head == NULL) curr = curr->prev;
+    curr = curr->head;
+    count = InterlockedDecrement((PLONG)&curr->shareSnapshot);
         if (count > 0) return;
     }
 
     while (1)
     {
-        NewStatus = OldStatus & (~(SRW_STATE)(SRWF_Many | SRWF_Hold));
+        NewStatus = OldStatus & (~(SRWF_Many | SRWF_Hold));
         if (OldStatus & SRWF_Link)
         {
             CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
@@ -2045,7 +2058,7 @@ VOID NTAPI RtlReleaseSRWLockShared(PRTL_SRWLOCK SRWLock)
 
 BOOLEAN NTAPI RtlTryAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
 {
-    return RtlpMarkSrwHeld(&SRWLock->Ptr) == 0;
+    return !(RtlpInterlockedBit0SetPointer(&SRWLock->Ptr) == TRUE);
 }
 
 BOOLEAN NTAPI RtlTryAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
@@ -2059,7 +2072,7 @@ BOOLEAN NTAPI RtlTryAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
     {
         if ((OldStatus & SRWF_Hold) && ((OldStatus & SRWF_Wait) || (OldStatus & SRWM_ITEM) == (SRW_STATE)NULL))
             return FALSE;
-        if (OldStatus & SRWF_Wait) NewStatus = OldStatus | SRWF_Hold;
+        if (OldStatus & SRWF_Wait) NewStatus = OldStatus + SRWF_Hold;
         else NewStatus = OldStatus + (1 << SRW_COUNT_BIT);
         CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
         if (CurrStatus == OldStatus) return TRUE;
@@ -2067,3 +2080,355 @@ BOOLEAN NTAPI RtlTryAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
         OldStatus = (SRW_STATE)SRWLock->Ptr;
     }
 }
+
+// static __forceinline LONG RtlpMarkSrwHeld(volatile PVOID* Target)
+// {
+// #if defined(_M_X64)
+    // return _interlockedbittestandset64((volatile LONG64*)Target, 0);
+// #elif defined(_M_IX86)
+    // return _interlockedbittestandset((volatile LONG*)Target, 0);
+// #else
+    // PVOID OldValue = *Target;
+    // for (;;)
+    // {
+        // ULONG_PTR OldBits = (ULONG_PTR)OldValue;
+        // if (OldBits & SRWF_Hold) return 1; /* bit was already set */
+		
+        // PVOID NewValue = (PVOID)(OldBits | SRWF_Hold);
+        // PVOID Prev = InterlockedCompareExchangePointer((PVOID*)Target, NewValue, OldValue);
+		
+        // if (Prev == OldValue) return 0;     /* successfully set from 0 to 1 */
+		
+        // OldValue = Prev;
+    // }
+// #endif
+// }
+
+// static VOID NTAPI RtlpBackoffExp(ULONG* pCount)
+// {
+    // ULONG n = *pCount;
+    // if (n == 0)
+    // {
+        // if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors == 1) return;
+        // n = 64;
+    // }
+    // else if (n < 0x2000)
+    // {
+        // n <<= 1;
+    // }
+    // *pCount = n;
+    // while (n--) YieldProcessor();
+// }
+
+// /* Helpers to test node attributes; avoid raw bit-twiddling at callsites. */
+// static __forceinline BOOLEAN SrwNodeIsExclusive(const SRW_WAIT_NODE* n) { return (n->flags & NODEF_EXCL) != 0; }
+// static __forceinline BOOLEAN SrwNodeIsSpinning(const SRW_WAIT_NODE* n)  { return (n->flags & NODEF_SPIN) != 0; }
+
+// static VOID NTAPI RtlpSrwWake(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
+// {
+    // SRW_STATE CurrStatus;
+    // SRW_WAIT_NODE* tail;
+    // SRW_WAIT_NODE* first;
+
+    // while (1)
+    // {
+        // while (OldStatus & SRWF_Hold)
+        // {
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus) return;
+            // OldStatus = (SRW_STATE)CurrStatus;
+        // }
+		
+        // tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+        // first = tail->head;
+        // if (first == NULL)
+        // {
+            // SRW_WAIT_NODE* curr = tail;
+            // do
+            // {
+                // curr->prev->next = curr;
+                // curr = curr->prev;
+                // first = curr->head;
+            // } while (first == NULL);
+            // if (tail != curr) tail->head = first;
+        // }
+
+        // if ((first->next != NULL) && SrwNodeIsExclusive(first))
+        // {
+            // tail->head = first->next;
+            // first->next = NULL;
+            // InterlockedAndPointer(&SRWLock->Ptr, (PVOID)(~((SRW_STATE)SRWF_Link)));
+            // break;
+        // }
+        // else
+        // {
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus) break;
+            // tail->head = first;
+            // OldStatus = (SRW_STATE)CurrStatus;
+        // }
+    // }
+	
+    // do
+    // {
+        // SRW_WAIT_NODE* next = first->next;
+        // if (InterlockedBitTestAndReset((PLONG)&first->flags, NODE_SPIN_BIT) == 0)
+        // {
+            // NtReleaseKeyedEvent(GlobalKeyedEventHandle, first, FALSE, NULL);
+        // }
+        // first = next;
+    // } while (first != NULL);
+// }
+
+// static VOID NTAPI RtlpSrwCompressQueue(PRTL_SRWLOCK SRWLock, SRW_STATE OldStatus)
+// {
+    // SRW_STATE CurrStatus;
+    // while (OldStatus & SRWF_Hold)
+    // {
+        // SRW_WAIT_NODE* tail = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+        // if (tail != NULL)
+        // {
+            // SRW_WAIT_NODE* curr = tail;
+            // while (curr->head == NULL)
+            // {
+                // curr->prev->next = curr;
+                // curr = curr->prev;
+            // }
+            // tail->head = curr->head;
+        // }
+        // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus & ~(SRW_STATE)SRWF_Link), (PVOID)OldStatus);
+        // if (CurrStatus == OldStatus) return;
+        // OldStatus = (SRW_STATE)CurrStatus;
+    // }
+    // RtlpSrwWake(SRWLock, OldStatus);
+// }
+
+// VOID NTAPI RtlInitializeSRWLock(PRTL_SRWLOCK SRWLock)
+// {
+    // SRWLock->Ptr = NULL;
+// }
+
+// VOID NTAPI RtlAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+// {
+    // __ALIGNED(16) SRW_WAIT_NODE node;
+    // BOOLEAN IsOptimize;
+    // SRW_STATE NewStatus;
+    // ULONG backoff = 0;
+    // SRW_STATE CurrStatus;
+    // SRW_STATE OldStatus;
+    // int i;
+
+    // if (RtlpMarkSrwHeld(&SRWLock->Ptr) == 0)
+        // return;
+
+    // OldStatus = (SRW_STATE)SRWLock->Ptr;
+
+    // while (1)
+    // {
+        // if (OldStatus & SRWF_Hold)
+        // {
+            // if (RtlpWaitCouldDeadlock()) NtTerminateProcess((HANDLE)-1, STATUS_THREAD_IS_TERMINATING);
+
+            // node.flags = NODEF_EXCL | NODEF_SPIN;
+            // node.next = NULL;
+            // IsOptimize = FALSE;
+
+            // if (OldStatus & SRWF_Wait)
+            // {
+                // node.head = NULL;
+                // node.shareSnapshot = 0;
+                // node.prev = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+                // NewStatus = (SRW_STATE)&node | (OldStatus & SRWF_Many) | (SRWF_Link | SRWF_Wait | SRWF_Hold);
+                // if (!(OldStatus & SRWF_Link)) IsOptimize = TRUE;
+            // }
+            // else
+            // {
+                // node.head = &node;
+                // node.shareSnapshot = (ULONG)(OldStatus >> SRW_COUNT_BIT);
+                // if (node.shareSnapshot > 1)
+                    // NewStatus = (SRW_STATE)&node | (SRWF_Many | SRWF_Wait | SRWF_Hold);
+                // else
+                    // NewStatus = (SRW_STATE)&node | (SRWF_Wait | SRWF_Hold);
+            // }
+
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus)
+            // {
+                // if (IsOptimize) RtlpSrwCompressQueue(SRWLock, NewStatus);
+                // for (i = SRWLockSpinCount; i > 0; --i)
+                // {
+                    // if (!SrwNodeIsSpinning(&node)) break;
+                    // YieldProcessor();
+                // }
+                // if (InterlockedBitTestAndReset((PLONG)&node.flags, NODE_SPIN_BIT))
+                    // NtWaitForKeyedEvent(GlobalKeyedEventHandle, &node, FALSE, NULL);
+                // OldStatus = CurrStatus;
+            // }
+            // else
+            // {
+                // RtlpBackoffExp(&backoff);
+                // OldStatus = (SRW_STATE)SRWLock->Ptr;
+            // }
+        // }
+        // else
+        // {
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Hold), (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus) return;
+            // RtlpBackoffExp(&backoff);
+            // OldStatus = (SRW_STATE)SRWLock->Ptr;
+        // }
+    // }
+// }
+
+// VOID NTAPI RtlAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
+// {
+    // __ALIGNED(16) SRW_WAIT_NODE node;
+    // BOOLEAN IsOptimize;
+    // ULONG backoff = 0;
+    // int i;
+
+    // SRW_STATE NewStatus;
+    // SRW_STATE CurrStatus;
+    // SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)((1 << SRW_COUNT_BIT) | SRWF_Hold), NULL);
+    // if (OldStatus == 0) return;
+
+    // while (1)
+    // {
+    // if ((OldStatus & SRWF_Hold) && ((OldStatus & SRWF_Wait) || ((OldStatus & SRWM_ITEM) == (SRW_STATE)NULL)))
+        // {
+            // if (RtlpWaitCouldDeadlock()) NtTerminateProcess((HANDLE)-1, STATUS_THREAD_IS_TERMINATING);
+
+            // node.flags = NODEF_SPIN;
+            // node.shareSnapshot = 0;
+            // IsOptimize = FALSE;
+            // node.next = NULL;
+
+            // if (OldStatus & SRWF_Wait)
+            // {
+                // node.prev = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+                // NewStatus = (SRW_STATE)&node | (OldStatus & (SRWF_Many | SRWF_Hold)) | (SRWF_Link | SRWF_Wait);
+                // node.head = NULL;
+                // if (!(OldStatus & SRWF_Link)) IsOptimize = TRUE;
+            // }
+            // else
+            // {
+                // node.head = &node;
+                // NewStatus = (SRW_STATE)&node | (SRWF_Wait | SRWF_Hold);
+            // }
+
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus)
+            // {
+                // if (IsOptimize) RtlpSrwCompressQueue(SRWLock, NewStatus);
+                // for (i = SRWLockSpinCount; i > 0; --i)
+                // {
+                    // if (!SrwNodeIsSpinning(&node)) break;
+                    // YieldProcessor();
+                // }
+                // if (InterlockedBitTestAndReset((PLONG)&node.flags, NODE_SPIN_BIT))
+                    // NtWaitForKeyedEvent(GlobalKeyedEventHandle, &node, FALSE, NULL);
+                // OldStatus = CurrStatus;
+            // }
+            // else
+            // {
+                // RtlpBackoffExp(&backoff);
+                // OldStatus = (SRW_STATE)SRWLock->Ptr;
+            // }
+        // }
+        // else
+        // {
+            // if (OldStatus & SRWF_Wait)
+                // NewStatus = OldStatus | SRWF_Hold;
+            // else
+                // NewStatus = (OldStatus + (1 << SRW_COUNT_BIT)) | SRWF_Hold;
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus) return;
+            // RtlpBackoffExp(&backoff);
+            // OldStatus = (SRW_STATE)SRWLock->Ptr;
+        // }
+    // }
+// }
+
+// VOID NTAPI RtlReleaseSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+// {
+    // SRW_STATE CurrStatus;
+    // SRW_STATE OldStatus = (SRW_STATE)InterlockedExchangeAddPointer(&SRWLock->Ptr, (PVOID)(-(LONG_PTR)SRWF_Hold));
+    // if ((OldStatus & SRWF_Wait) && !(OldStatus & SRWF_Link))
+    // {
+        // OldStatus &= ~(SRW_STATE)SRWF_Hold;
+        // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)(OldStatus | SRWF_Link), (PVOID)OldStatus);
+        // if (CurrStatus == OldStatus) RtlpSrwWake(SRWLock, OldStatus | SRWF_Link);
+    // }
+// }
+
+// VOID NTAPI RtlReleaseSRWLockShared(PRTL_SRWLOCK SRWLock)
+// {
+    // SRW_STATE CurrStatus, NewStatus;
+    // ULONG count;
+    // SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, NULL, (PVOID)(((1 << SRW_COUNT_BIT) | SRWF_Hold)));
+    // if (OldStatus == ((1 << SRW_COUNT_BIT) | SRWF_Hold)) return;
+
+    // while (!(OldStatus & SRWF_Wait))
+    // {
+        // if ((OldStatus & (SRWM_ITEM)) <= (1 << SRW_COUNT_BIT)) NewStatus = 0;
+        // else NewStatus = OldStatus - (1 << SRW_COUNT_BIT);
+        // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+        // if (CurrStatus == OldStatus) return;
+        // OldStatus = CurrStatus;
+    // }
+
+    // if (OldStatus & SRWF_Many)
+    // {
+        // SRW_WAIT_NODE* curr = (SRW_WAIT_NODE*)(OldStatus & SRWM_ITEM);
+        // while (curr->head == NULL) curr = curr->prev;
+        // curr = curr->head;
+        // count = InterlockedDecrement((PLONG)&curr->shareSnapshot);
+        // if (count > 0) return;
+    // }
+
+    // while (1)
+    // {
+        // NewStatus = OldStatus & (~(SRW_STATE)(SRWF_Many | SRWF_Hold));
+        // if (OldStatus & SRWF_Link)
+        // {
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus) return;
+        // }
+        // else
+        // {
+            // NewStatus |= SRWF_Link;
+            // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+            // if (CurrStatus == OldStatus)
+            // {
+                // RtlpSrwWake(SRWLock, NewStatus);
+                // return;
+            // }
+        // }
+        // OldStatus = CurrStatus;
+    // }
+// }
+
+// BOOLEAN NTAPI RtlTryAcquireSRWLockExclusive(PRTL_SRWLOCK SRWLock)
+// {
+    // return RtlpMarkSrwHeld(&SRWLock->Ptr) == 0;
+// }
+
+// BOOLEAN NTAPI RtlTryAcquireSRWLockShared(PRTL_SRWLOCK SRWLock)
+// {
+    // ULONG backoff = 0;
+    // SRW_STATE NewStatus;
+    // SRW_STATE CurrStatus;
+    // SRW_STATE OldStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)((1 << SRW_COUNT_BIT) | SRWF_Hold), NULL);
+    // if (OldStatus == 0) return TRUE;
+    // while (1)
+    // {
+        // if ((OldStatus & SRWF_Hold) && ((OldStatus & SRWF_Wait) || (OldStatus & SRWM_ITEM) == (SRW_STATE)NULL))
+            // return FALSE;
+        // if (OldStatus & SRWF_Wait) NewStatus = OldStatus | SRWF_Hold;
+        // else NewStatus = OldStatus + (1 << SRW_COUNT_BIT);
+        // CurrStatus = (SRW_STATE)InterlockedCompareExchangePointer(&SRWLock->Ptr, (PVOID)NewStatus, (PVOID)OldStatus);
+        // if (CurrStatus == OldStatus) return TRUE;
+        // RtlpBackoffExp(&backoff);
+        // OldStatus = (SRW_STATE)SRWLock->Ptr;
+    // }
+// }
