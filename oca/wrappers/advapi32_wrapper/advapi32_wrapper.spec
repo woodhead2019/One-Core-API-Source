@@ -760,6 +760,7 @@
 #Win8 functions
 @ stdcall EventSetInformation(ptr long ptr long) ntext.EtwEventSetInformation
 @ stdcall LsaLookupSids2(ptr long long ptr ptr ptr)
+@ stdcall TraceSetInformation(int64 long ptr long)
 
 ; #from Vista/Longhorn advapi32 (advapinew) 
 ; ; @ stdcall AddUsersToEncryptedFileEx(long long long long)

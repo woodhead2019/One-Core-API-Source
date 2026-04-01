@@ -1958,7 +1958,7 @@ static void tp_object_execute( struct threadpool_object *object, BOOL wait_threa
             // DbgPrint( "executing work callback %p(%p, %p, %p)\n",
                    // object->u.work.callback, callback_instance, object->userdata, object );
             object->u.work.callback( callback_instance, object->userdata, (TP_WORK *)object );
-            DbgPrint( "callback %p returned\n", object->u.work.callback );
+            //DbgPrint( "callback %p returned\n", object->u.work.callback );
             break;
         }
 
