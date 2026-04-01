@@ -10,6 +10,11 @@ if(NOT MSVC)
     add_compile_flags_language("-std=c++11" "CXX")
 endif()
 
+if(MSVC)
+    # error C4311: 'type cast': pointer truncation from 'HANDLE' to 'INT'
+    replace_compile_flags("/we4311" " ")
+endif()
+
 add_definitions(
     -D_ATL_NO_EXCEPTIONS)
 
