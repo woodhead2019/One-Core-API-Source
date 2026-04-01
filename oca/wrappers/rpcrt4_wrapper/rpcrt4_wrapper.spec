@@ -566,4 +566,8 @@
 @ stdcall I_RpcBindingInqSecurityContextKeyInfo(ptr ptr)
 @ stub I_RpcFwThisIsTheManager
 @ stdcall I_RpcServerInqRemoteConnAddress(ptr ptr ptr ptr)
-@ stub RpcCertMatchPrincipalName	
+@ stub RpcCertMatchPrincipalName
+
+#Win8 function
+
+@ stdcall RpcServerRegisterIf3(long ptr ptr long long long ptr ptr)

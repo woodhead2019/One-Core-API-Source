@@ -316,3 +316,17 @@ I_RpcServerInqRemoteConnAddress (
 {
     return RPC_S_OK;
 }
+
+// 2024 versions of NVDA will need this.
+RPC_STATUS WINAPI RpcServerRegisterIf3(
+  RPC_IF_HANDLE      IfSpec,
+  UUID               *MgrTypeUuid,
+  RPC_MGR_EPV        *MgrEpv,
+  unsigned int       Flags,
+  unsigned int       MaxCalls,
+  unsigned int       MaxRpcSize,
+  RPC_IF_CALLBACK_FN *IfCallback,
+  void               *SecurityDescriptor
+) {
+    return RpcServerRegisterIf2(IfSpec, MgrTypeUuid, MgrEpv, Flags, MaxCalls, MaxRpcSize, IfCallback);
+}
