@@ -16,11 +16,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 #include "main.h"
+#include "dxgi.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dxgiext);
 
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void   **ppFactory) {
-    return CreateDXGIFactory1(riid, ppFactory);
+    return CreateDXGIFactory(riid, ppFactory);
 };
 
 HRESULT WINAPI CreateDXGIFactory2(UINT Flags, REFIID riid, void   **ppFactory) {
