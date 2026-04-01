@@ -110,6 +110,9 @@ int WSAAPI WSAIoctlInternal(
   LPWSAOVERLAPPED                    lpOverlapped,
   LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
 ) {
+	int res;
+	
+	// Rust applications require SIO_BASE* functions, for whatever reason.
     if (dwIoControlCode == SIO_BASE_HANDLE
             || dwIoControlCode == SIO_BSP_HANDLE
             || dwIoControlCode == SIO_BSP_HANDLE_SELECT
@@ -125,7 +128,22 @@ int WSAAPI WSAIoctlInternal(
 	}else if (dwIoControlCode == SIO_LOOPBACK_FAST_PATH) {
         // Let Java and other applications handle fast TCP loopback not being supported. 
         return WSAEOPNOTSUPP;
-    }
+    } else if (dwIoControlCode == SIO_GET_EXTENSION_FUNCTION_POINTER) {
+		// Despite WSASendMsg being introduced as a function on Vista, some things query the WSAID_WSASENDMSG function
+		// for no reason at all. Maybe some proprietary driver defines this?
+		
+		// Anyways, Chromium needs this in order to access many UDP sockets.
+		
+		if ((res = WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, lpcbBytesReturned, lpOverlapped, lpCompletionRoutine))) {
+			if (lpvInBuffer && lpvOutBuffer && cbInBuffer >= sizeof(GUID) && cbOutBuffer >= sizeof(PVOID)) {
+				if (memcmp(WSAID_WSASENDMSG, lpvInBuffer, sizeof(GUID)) == 0) {
+					*lpvOutBuffer = &WSASendMsg;
+					return 0;
+				}
+			}
+		}
+		return res;
+	}
     // fall back into original function
     return WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, lpcbBytesReturned, lpOverlapped, lpCompletionRoutine); 
 }

@@ -825,7 +825,6 @@
 @ stdcall PaintMonitor(ptr ptr ptr) ;not-implemented
 @ stdcall PrivateRegisterICSProc(ptr) userbase.PrivateRegisterICSProc
 @ stdcall PhysicalToLogicalPoint(ptr ptr)
-@ stdcall PhysicalToLogicalPointForPerMonitorDPI(ptr ptr)
 @ stdcall QueryDisplayConfig(long ptr ptr ptr ptr ptr)
 @ stdcall RegisterErrorReportingDialog(ptr long)
 @ stdcall RegisterFrostWindow(ptr long)
@@ -911,6 +910,10 @@
 @ stdcall SetProcessDpiAwarenessInternal(long)
 @ stdcall SkipPointerFrameMessages(long)
 @ stdcall UnregisterSuspendResumeNotification(ptr)
+
+#Win8.1 functions
+@ stdcall LogicalToPhysicalPointForPerMonitorDPI(ptr ptr)
+@ stdcall PhysicalToLogicalPointForPerMonitorDPI(ptr ptr)
 
 #Win10 functions
 @ stdcall AdjustWindowRectExForDpi(ptr long long long long)
