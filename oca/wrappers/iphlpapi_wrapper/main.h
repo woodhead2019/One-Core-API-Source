@@ -77,7 +77,12 @@ typedef enum _MIB_IF_ENTRY_LEVEL {
     MibIfEntryNormalWithoutStatistics = 2
 } MIB_IF_ENTRY_LEVEL, *PMIB_IF_ENTRY_LEVEL;
 
-typedef VOID (WINAPI *PIPFORWARD_CHANGE_CALLBACK) (PVOID CallerContext, PMIB_IPFORWARD_ROW2 Row, MIB_NOTIFICATION_TYPE NotificationType);
+  typedef void (WINAPI *PIPFORWARD_CHANGE_CALLBACK)(
+       HANDLE                         NotificationHandle,
+       ADDRESS_FAMILY                 AddressFamily,
+       PVOID                          CallerContext,
+       PMIB_IPFORWARD_TABLE2          Table
+  );
 
 typedef VOID (WINAPI *PUNICAST_IPADDRESS_CHANGE_CALLBACK)(PVOID, PMIB_UNICASTIPADDRESS_ROW,
                                                           MIB_NOTIFICATION_TYPE);
@@ -91,6 +96,7 @@ typedef NET_IFINDEX IF_INDEX, *PIF_INDEX;
 typedef struct _InterfaceIndexTable {
    DWORD numIndexes;
    IF_INDEX indexes[1];
+   DWORD numAllocated;
 } InterfaceIndexTable;
 
 typedef enum  { 

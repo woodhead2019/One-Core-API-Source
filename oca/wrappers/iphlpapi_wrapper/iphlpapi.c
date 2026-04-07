@@ -28,10 +28,13 @@ WINE_DEFAULT_DEBUG_CHANNEL(iphlpapi);
 #define NdisMediumTunnel       15
 #define NdisMediumNative802_11 16
 
+#define IFENT_SOFTWARE_LOOPBACK 24 /* This is an SNMP constant from rfc1213 */
+
 const NPI_MODULEID NPI_MS_IPV4_MODULEID = {0x00};
 const NPI_MODULEID NPI_MS_IPV6_MODULEID = {0x01};
 const NPI_MODULEID NPI_MS_TCP_MODULEID = {0x03};
 const NPI_MODULEID NPI_MS_NDIS_MODULEID = {0x11};
+  
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -45,311 +48,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     }
 
     return TRUE;
-}
-
-static void forward_row2_fill( MIB_IPFORWARD_ROW2 *row, USHORT fam, void *key, struct nsi_ip_forward_rw *rw,
-                               void *dyn, struct nsi_ip_forward_static *stat )
-{
-    struct nsi_ipv4_forward_key *key4 = (struct nsi_ipv4_forward_key *)key;
-    struct nsi_ipv6_forward_key *key6 = (struct nsi_ipv6_forward_key *)key;
-    struct nsi_ipv4_forward_dynamic *dyn4 = (struct nsi_ipv4_forward_dynamic *)dyn;
-    struct nsi_ipv6_forward_dynamic *dyn6 = (struct nsi_ipv6_forward_dynamic *)dyn;
-
-    if (fam == WS_AF_INET)
-    {
-        row->InterfaceLuid = key4->luid;
-        row->DestinationPrefix.Prefix.Ipv4.sin_family = fam;
-        row->DestinationPrefix.Prefix.Ipv4.sin_port = 0;
-        row->DestinationPrefix.Prefix.Ipv4.sin_addr = key4->prefix;
-        memset( &row->DestinationPrefix.Prefix.Ipv4.sin_zero, 0, sizeof(row->DestinationPrefix.Prefix.Ipv4.sin_zero) );
-        row->DestinationPrefix.PrefixLength = key4->prefix_len;
-        row->NextHop.Ipv4.sin_family = fam;
-        row->NextHop.Ipv4.sin_port = 0;
-        row->NextHop.Ipv4.sin_addr = key4->next_hop;
-        memset( &row->NextHop.Ipv4.sin_zero, 0, sizeof(row->NextHop.Ipv4.sin_zero) );
-
-        row->Age = dyn4->age;
-    }
-    else
-    {
-        row->InterfaceLuid = key6->luid;
-
-        row->DestinationPrefix.Prefix.Ipv6.sin6_family = fam;
-        row->DestinationPrefix.Prefix.Ipv6.sin6_port = 0;
-        row->DestinationPrefix.Prefix.Ipv6.sin6_flowinfo = 0;
-        row->DestinationPrefix.Prefix.Ipv6.sin6_addr = key6->prefix;
-        row->DestinationPrefix.Prefix.Ipv6.sin6_scope_id = 0;
-        row->DestinationPrefix.PrefixLength = key6->prefix_len;
-        row->NextHop.Ipv6.sin6_family = fam;
-        row->NextHop.Ipv6.sin6_port = 0;
-        row->NextHop.Ipv6.sin6_flowinfo = 0;
-        row->NextHop.Ipv6.sin6_addr = key6->next_hop;
-        row->NextHop.Ipv6.sin6_scope_id = 0;
-
-        row->Age = dyn6->age;
-    }
-
-    row->InterfaceIndex = stat->if_index;
-
-    row->SitePrefixLength = rw->site_prefix_len;
-    row->ValidLifetime = rw->valid_lifetime;
-    row->PreferredLifetime = rw->preferred_lifetime;
-    row->Metric = rw->metric;
-    row->Protocol = rw->protocol;
-    row->Loopback = rw->loopback;
-    row->AutoconfigureAddress = rw->autoconf;
-    row->Publish = rw->publish;
-    row->Immortal = rw->immortal;
-
-    row->Origin = stat->origin;
-}
-
-static DWORD tcp_table_id( ULONG table_class )
-{
-    switch (table_class)
-    {
-    case TCP_TABLE_BASIC_LISTENER:
-    case TCP_TABLE_OWNER_PID_LISTENER:
-    case TCP_TABLE_OWNER_MODULE_LISTENER:
-        return NSI_TCP_LISTEN_TABLE;
-
-    case TCP_TABLE_BASIC_CONNECTIONS:
-    case TCP_TABLE_OWNER_PID_CONNECTIONS:
-    case TCP_TABLE_OWNER_MODULE_CONNECTIONS:
-        return NSI_TCP_ESTAB_TABLE;
-
-    case TCP_TABLE_BASIC_ALL:
-    case TCP_TABLE_OWNER_PID_ALL:
-    case TCP_TABLE_OWNER_MODULE_ALL:
-    case TCP_TABLE2:
-        return NSI_TCP_ALL_TABLE;
-
-    default:
-        ERR( "unhandled class %u\n", table_class );
-        return ~0u;
-    }
-}
-
-static DWORD tcp_table_size( ULONG family, ULONG table_class, DWORD row_count, DWORD *row_size )
-{
-    switch (table_class)
-    {
-    case TCP_TABLE_BASIC_LISTENER:
-    case TCP_TABLE_BASIC_CONNECTIONS:
-    case TCP_TABLE_BASIC_ALL:
-        *row_size = (family == WS_AF_INET) ? sizeof(MIB_TCPROW) : sizeof(MIB_TCP6ROW);
-        return (family == WS_AF_INET) ? FIELD_OFFSET(MIB_TCPTABLE, table[row_count]) :
-            FIELD_OFFSET(MIB_TCP6TABLE, table[row_count]);
-
-    case TCP_TABLE_OWNER_PID_LISTENER:
-    case TCP_TABLE_OWNER_PID_CONNECTIONS:
-    case TCP_TABLE_OWNER_PID_ALL:
-        *row_size = (family == WS_AF_INET) ? sizeof(MIB_TCPROW_OWNER_PID) : sizeof(MIB_TCP6ROW_OWNER_PID);
-        return (family == WS_AF_INET) ? FIELD_OFFSET(MIB_TCPTABLE_OWNER_PID, table[row_count]) :
-            FIELD_OFFSET(MIB_TCP6TABLE_OWNER_PID, table[row_count]);
-
-    case TCP_TABLE_OWNER_MODULE_LISTENER:
-    case TCP_TABLE_OWNER_MODULE_CONNECTIONS:
-    case TCP_TABLE_OWNER_MODULE_ALL:
-        *row_size = (family == WS_AF_INET) ? sizeof(MIB_TCPROW_OWNER_MODULE) : sizeof(MIB_TCP6ROW_OWNER_MODULE);
-        return (family == WS_AF_INET) ? FIELD_OFFSET(MIB_TCPTABLE_OWNER_MODULE, table[row_count]) :
-            FIELD_OFFSET(MIB_TCP6TABLE_OWNER_MODULE, table[row_count]);
-
-    case TCP_TABLE2:
-        *row_size = (family == WS_AF_INET) ? sizeof(MIB_TCPROW2) : sizeof(MIB_TCP6ROW2);
-        return (family == WS_AF_INET) ? FIELD_OFFSET(MIB_TCPTABLE2, table[row_count]) :
-            FIELD_OFFSET(MIB_TCP6TABLE2, table[row_count]);
-
-    default:
-        ERR( "unhandled class %u\n", table_class );
-        return 0;
-    }
-}
-
-static void tcp_row_fill( void *table, DWORD num, ULONG family, ULONG table_class,
-                          struct nsi_tcp_conn_key *key, struct nsi_tcp_conn_dynamic *dyn,
-                          struct nsi_tcp_conn_static *stat )
-{
-    if (family == WS_AF_INET)
-    {
-        switch (table_class)
-        {
-        case TCP_TABLE_BASIC_LISTENER:
-        case TCP_TABLE_BASIC_CONNECTIONS:
-        case TCP_TABLE_BASIC_ALL:
-        {
-            MIB_TCPROW *row = ((MIB_TCPTABLE *)table)->table + num;
-            row->dwState = dyn->state;
-            row->dwLocalAddr = key->local.Ipv4.sin_addr.s_addr;
-            row->dwLocalPort = key->local.Ipv4.sin_port;
-            row->dwRemoteAddr = key->remote.Ipv4.sin_addr.s_addr;
-            row->dwRemotePort = key->remote.Ipv4.sin_port;
-            return;
-        }
-        case TCP_TABLE_OWNER_PID_LISTENER:
-        case TCP_TABLE_OWNER_PID_CONNECTIONS:
-        case TCP_TABLE_OWNER_PID_ALL:
-        {
-            MIB_TCPROW_OWNER_PID *row = ((MIB_TCPTABLE_OWNER_PID *)table)->table + num;
-            row->dwState = dyn->state;
-            row->dwLocalAddr = key->local.Ipv4.sin_addr.s_addr;
-            row->dwLocalPort = key->local.Ipv4.sin_port;
-            row->dwRemoteAddr = key->remote.Ipv4.sin_addr.s_addr;
-            row->dwRemotePort = key->remote.Ipv4.sin_port;
-            row->dwOwningPid = stat->pid;
-            return;
-        }
-        case TCP_TABLE_OWNER_MODULE_LISTENER:
-        case TCP_TABLE_OWNER_MODULE_CONNECTIONS:
-        case TCP_TABLE_OWNER_MODULE_ALL:
-        {
-            MIB_TCPROW_OWNER_MODULE *row = ((MIB_TCPTABLE_OWNER_MODULE *)table)->table + num;
-            row->dwState = dyn->state;
-            row->dwLocalAddr = key->local.Ipv4.sin_addr.s_addr;
-            row->dwLocalPort = key->local.Ipv4.sin_port;
-            row->dwRemoteAddr = key->remote.Ipv4.sin_addr.s_addr;
-            row->dwRemotePort = key->remote.Ipv4.sin_port;
-            row->dwOwningPid = stat->pid;
-            row->liCreateTimestamp.QuadPart = stat->create_time;
-            row->OwningModuleInfo[0] = stat->mod_info;
-            memset( row->OwningModuleInfo + 1, 0, sizeof(row->OwningModuleInfo) - sizeof(row->OwningModuleInfo[0]) );
-            return;
-        }
-        case TCP_TABLE2:
-        {
-            MIB_TCPROW2 *row = ((MIB_TCPTABLE2 *)table)->table + num;
-            row->dwState = dyn->state;
-            row->dwLocalAddr = key->local.Ipv4.sin_addr.s_addr;
-            row->dwLocalPort = key->local.Ipv4.sin_port;
-            row->dwRemoteAddr = key->remote.Ipv4.sin_addr.s_addr;
-            row->dwRemotePort = key->remote.Ipv4.sin_port;
-            row->dwOwningPid = stat->pid;
-            row->dwOffloadState = 0; /* FIXME */
-            return;
-        }
-        default:
-            ERR( "Unknown class %d\n", table_class );
-            return;
-        }
-    }
-    else
-    {
-        switch (table_class)
-        {
-        case TCP_TABLE_BASIC_LISTENER:
-        case TCP_TABLE_BASIC_CONNECTIONS:
-        case TCP_TABLE_BASIC_ALL:
-        {
-            MIB_TCP6ROW *row = ((MIB_TCP6TABLE *)table)->table + num;
-            row->State = dyn->state;
-            memcpy( &row->LocalAddr, &key->local.Ipv6.sin6_addr, sizeof(row->LocalAddr) );
-            row->dwLocalScopeId = key->local.Ipv6.sin6_scope_id;
-            row->dwLocalPort = key->local.Ipv6.sin6_port;
-            memcpy( &row->RemoteAddr, &key->remote.Ipv6.sin6_addr, sizeof(row->RemoteAddr) );
-            row->dwRemoteScopeId = key->remote.Ipv6.sin6_scope_id;
-            row->dwRemotePort = key->remote.Ipv6.sin6_port;
-            return;
-        }
-        case TCP_TABLE_OWNER_PID_LISTENER:
-        case TCP_TABLE_OWNER_PID_CONNECTIONS:
-        case TCP_TABLE_OWNER_PID_ALL:
-        {
-            MIB_TCP6ROW_OWNER_PID *row = ((MIB_TCP6TABLE_OWNER_PID *)table)->table + num;
-            memcpy( &row->ucLocalAddr, &key->local.Ipv6.sin6_addr, sizeof(row->ucLocalAddr) );
-            row->dwLocalScopeId = key->local.Ipv6.sin6_scope_id;
-            row->dwLocalPort = key->local.Ipv6.sin6_port;
-            memcpy( &row->ucRemoteAddr, &key->remote.Ipv6.sin6_addr, sizeof(row->ucRemoteAddr) );
-            row->dwRemoteScopeId = key->remote.Ipv6.sin6_scope_id;
-            row->dwRemotePort = key->remote.Ipv6.sin6_port;
-            row->dwState = dyn->state;
-            row->dwOwningPid = stat->pid;
-            return;
-        }
-        case TCP_TABLE_OWNER_MODULE_LISTENER:
-        case TCP_TABLE_OWNER_MODULE_CONNECTIONS:
-        case TCP_TABLE_OWNER_MODULE_ALL:
-        {
-            MIB_TCP6ROW_OWNER_MODULE *row = ((MIB_TCP6TABLE_OWNER_MODULE *)table)->table + num;
-            memcpy( &row->ucLocalAddr, &key->local.Ipv6.sin6_addr, sizeof(row->ucLocalAddr) );
-            row->dwLocalScopeId = key->local.Ipv6.sin6_scope_id;
-            row->dwLocalPort = key->local.Ipv6.sin6_port;
-            memcpy( &row->ucRemoteAddr, &key->remote.Ipv6.sin6_addr, sizeof(row->ucRemoteAddr) );
-            row->dwRemoteScopeId = key->remote.Ipv6.sin6_scope_id;
-            row->dwRemotePort = key->remote.Ipv6.sin6_port;
-            row->dwState = dyn->state;
-            row->dwOwningPid = stat->pid;
-            row->liCreateTimestamp.QuadPart = stat->create_time;
-            row->OwningModuleInfo[0] = stat->mod_info;
-            memset( row->OwningModuleInfo + 1, 0, sizeof(row->OwningModuleInfo) - sizeof(row->OwningModuleInfo[0]) );
-            return;
-        }
-        case TCP_TABLE2:
-        {
-            MIB_TCP6ROW2 *row = ((MIB_TCP6TABLE2 *)table)->table + num;
-            memcpy( &row->LocalAddr, &key->local.Ipv6.sin6_addr, sizeof(row->LocalAddr) );
-            row->dwLocalScopeId = key->local.Ipv6.sin6_scope_id;
-            row->dwLocalPort = key->local.Ipv6.sin6_port;
-            memcpy( &row->RemoteAddr, &key->remote.Ipv6.sin6_addr, sizeof(row->RemoteAddr) );
-            row->dwRemoteScopeId = key->remote.Ipv6.sin6_scope_id;
-            row->dwRemotePort = key->remote.Ipv6.sin6_port;
-            row->State = dyn->state;
-            row->dwOwningPid = stat->pid;
-            row->dwOffloadState = 0; /* FIXME */
-            return;
-        }
-        default:
-            ERR( "Unknown class %d\n", table_class );
-            return;
-        }
-    }
-    ERR( "Unknown family %d\n", family );
-}
-
-static int tcp6_row_basic_cmp( const void *a, const void *b )
-{
-    const MIB_TCP6ROW *rowA = a;
-    const MIB_TCP6ROW *rowB = b;
-    int ret;
-
-    if ((ret = memcmp( &rowA->LocalAddr, &rowB->LocalAddr, sizeof(rowA->LocalAddr) )) != 0) return ret;
-    if ((ret = rowA->dwLocalScopeId - rowB->dwLocalScopeId) != 0) return ret;
-    if ((ret = RtlUshortByteSwap( rowA->dwLocalPort ) - RtlUshortByteSwap( rowB->dwLocalPort )) != 0) return ret;
-    if ((ret = memcmp( &rowA->RemoteAddr, &rowB->RemoteAddr, sizeof(rowA->RemoteAddr) )) != 0) return ret;
-    if ((ret = rowA->dwRemoteScopeId - rowB->dwRemoteScopeId) != 0) return ret;
-    return RtlUshortByteSwap( rowA->dwRemotePort ) - RtlUshortByteSwap( rowB->dwRemotePort );
-}
-
-static int tcp_row_cmp( const void *a, const void *b )
-{
-    const MIB_TCPROW *rowA = a;
-    const MIB_TCPROW *rowB = b;
-    int ret;
-
-    if ((ret = RtlUlongByteSwap( rowA->dwLocalAddr ) - RtlUlongByteSwap( rowB->dwLocalAddr )) != 0) return ret;
-    if ((ret = RtlUshortByteSwap( rowA->dwLocalPort ) - RtlUshortByteSwap( rowB->dwLocalPort )) != 0) return ret;
-    if ((ret = RtlUlongByteSwap( rowA->dwRemoteAddr ) - RtlUlongByteSwap( rowB->dwRemoteAddr )) != 0) return ret;
-    return RtlUshortByteSwap( rowA->dwRemotePort ) - RtlUshortByteSwap( rowB->dwRemotePort );
-}
-
-static int tcp6_row_owner_cmp( const void *a, const void *b )
-{
-    const MIB_TCP6ROW_OWNER_PID *rowA = a;
-    const MIB_TCP6ROW_OWNER_PID *rowB = b;
-    int ret;
-
-    if ((ret = memcmp( &rowA->ucLocalAddr, &rowB->ucLocalAddr, sizeof(rowA->ucLocalAddr) )) != 0) return ret;
-    if ((ret = rowA->dwLocalScopeId - rowB->dwLocalScopeId) != 0) return ret;
-    if ((ret = RtlUshortByteSwap( rowA->dwLocalPort ) - RtlUshortByteSwap( rowB->dwLocalPort )) != 0) return ret;
-    if ((ret = memcmp( &rowA->ucRemoteAddr, &rowB->ucRemoteAddr, sizeof(rowA->ucRemoteAddr) )) != 0) return ret;
-    if ((ret = rowA->dwRemoteScopeId - rowB->dwRemoteScopeId) != 0) return ret;
-    return RtlUshortByteSwap( rowA->dwRemotePort ) - RtlUshortByteSwap( rowB->dwRemotePort );
-}
-
-static const NPI_MODULEID *ip_module_id( USHORT family )
-{
-    if (family == WS_AF_INET) return &NPI_MS_IPV4_MODULEID;
-    if (family == WS_AF_INET6) return &NPI_MS_IPV6_MODULEID;
-    return NULL;
 }
 
 static BOOL map_address_6to4( const SOCKADDR_IN6 *addr6, SOCKADDR_IN *addr4 )
@@ -865,36 +563,298 @@ DWORD WINAPI NotifyUnicastIpAddressChange(ADDRESS_FAMILY family, PUNICAST_IPADDR
 }
 
 /******************************************************************
+ *    GetIpForwardTable2 (IPHLPAPI.@)
+ */
+DWORD WINAPI
+GetIpForwardTable2(
+    ADDRESS_FAMILY Family,
+    PMIB_IPFORWARD_TABLE2 *Table
+)
+{
+    DWORD ret, size = 0;
+    PMIB_IPFORWARDTABLE v1_table = NULL;
+    PMIB_IPFORWARD_TABLE2 out_table;
+    ULONG i, count;
+
+    if (!Table)
+        return ERROR_INVALID_PARAMETER;
+
+    if (Family != AF_UNSPEC && Family != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    *Table = NULL;
+
+    /* Query size */
+    ret = GetIpForwardTable(NULL, &size, FALSE);
+    if (ret != ERROR_INSUFFICIENT_BUFFER)
+        return ret;
+
+    v1_table = HeapAlloc(GetProcessHeap(), 0, size);
+    if (!v1_table)
+        return ERROR_OUTOFMEMORY;
+
+    ret = GetIpForwardTable(v1_table, &size, FALSE);
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, v1_table);
+        return ret;
+    }
+
+    count = v1_table->dwNumEntries;
+
+    /* Alocar tabela com espaço variável */
+    out_table = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+        sizeof(MIB_IPFORWARD_TABLE2) +
+        (count - 1) * sizeof(MIB_IPFORWARD_ROW2));
+
+    if (!out_table)
+    {
+        HeapFree(GetProcessHeap(), 0, v1_table);
+        return ERROR_OUTOFMEMORY;
+    }
+
+    out_table->NumEntries = count;
+
+    for (i = 0; i < count; i++)
+    {
+        const MIB_IPFORWARDROW *r1 = &v1_table->table[i];
+        MIB_IPFORWARD_ROW2 *r2 = &out_table->Table[i];
+
+        /* Interface */
+        r2->InterfaceIndex = r1->dwForwardIfIndex;
+        r2->InterfaceLuid.Value = 0; /* não temos equivalente direto */
+
+        /* DestinationPrefix */
+        r2->DestinationPrefix.Prefix.si_family = AF_INET;
+        r2->DestinationPrefix.Prefix.Ipv4.sin_addr.s_addr = r1->dwForwardDest;
+
+        /* máscara -> prefix length */
+        {
+            DWORD mask = ntohl(r1->dwForwardMask);
+            ULONG prefix = 0;
+
+            while (mask & 0x80000000)
+            {
+                prefix++;
+                mask <<= 1;
+            }
+
+            r2->DestinationPrefix.PrefixLength = (UCHAR)prefix;
+        }
+
+        /* NextHop */
+        r2->NextHop.si_family = AF_INET;
+        r2->NextHop.Ipv4.sin_addr.s_addr = r1->dwForwardNextHop;
+
+        /* Métrica */
+        r2->Metric = r1->dwForwardMetric1;
+
+        /* Protocolo */
+        r2->Protocol = (NL_ROUTE_PROTOCOL)r1->dwForwardProto;
+
+        /* Idade */
+        r2->Age = r1->dwForwardAge;
+
+        /* Defaults razoáveis */
+        r2->ValidLifetime = 0xFFFFFFFF;
+        r2->PreferredLifetime = 0xFFFFFFFF;
+
+        r2->Loopback = FALSE;
+        r2->AutoconfigureAddress = FALSE;
+        r2->Publish = FALSE;
+        r2->Immortal = FALSE;
+
+        r2->Origin = NlroManual;
+    }
+
+    HeapFree(GetProcessHeap(), 0, v1_table);
+
+    *Table = out_table;
+    return NO_ERROR;
+}
+
+/******************************************************************
  *    NotifyRouteChange2 (IPHLPAPI.@)
  */
-DWORD WINAPI NotifyRouteChange2(ADDRESS_FAMILY family, PIPFORWARD_CHANGE_CALLBACK callback, VOID* context,
-                                BOOLEAN init_notify, HANDLE* handle)
+DWORD WINAPI
+NotifyRouteChange2(
+          ADDRESS_FAMILY             AddressFamily,
+          PIPFORWARD_CHANGE_CALLBACK Callback,
+          PVOID                      CallerContext,
+          BOOLEAN                    InitialNotification,
+          HANDLE                     *NotificationHandle
+)
 {
-    FIXME("(family %d, callback %p, context %p, init_notify %d, handle %p): stub\n",
-        family, callback, context, init_notify, handle);
-    if (family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) return ERROR_INVALID_PARAMETER;
-    if (handle) *handle = NULL;
+    PMIB_IPFORWARD_TABLE2 table = NULL;
+    HANDLE handle_value = NULL;
+
+    TRACE("NotifyRouteChange2(Family %d, Callback %p, Ctx %p, Initial %d, Handle %p)\n",
+          AddressFamily, Callback, CallerContext, InitialNotification, NotificationHandle);
+
+    if (!NotificationHandle || !Callback)
+        return ERROR_INVALID_PARAMETER;
+
+    if (AddressFamily != AF_UNSPEC && AddressFamily != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    /* Allocate a dummy handle to represent the registration. */
+    handle_value = HeapAlloc(GetProcessHeap(), 0, sizeof(DWORD));
+    if (!handle_value)
+        return ERROR_OUTOFMEMORY;
+
+    *NotificationHandle = handle_value;
+
+    if (InitialNotification)
+    {
+        if (GetIpForwardTable2(AddressFamily, &table) == NO_ERROR)
+        {
+            Callback(*NotificationHandle, AddressFamily, CallerContext, table);
+            /* Free immediately since we don't yet provide FreeMibTable export here. */
+            HeapFree(GetProcessHeap(), 0, table);
+        }
+    }
+
     return NO_ERROR;
 }
 
 /******************************************************************
  *    GetBestRoute2 (IPHLPAPI.@)
+ *
+ * PARAMS
+ *  InterfaceLuid    [In]     Interface LUID (can be NULL)
+ *  InterfaceIndex   [In]     Interface index (can be 0)
+ *  SourceAddress    [In]     Source address (can be NULL)
+ *  DestinationAddress [In]   Destination address
+ *  AddressSortOptions [In]   Address sorting options
+ *  BestRoute        [Out]    Best route information
+ *  BestSourceAddress [Out]   Best source address (can be NULL)
+ *
+ * RETURNS
+ *  DWORD
  */
-DWORD WINAPI GetBestRoute2(NET_LUID *luid, NET_IFINDEX index,
-                           const SOCKADDR_INET *source, const SOCKADDR_INET *destination,
-                           ULONG options, PMIB_IPFORWARD_ROW2 bestroute,
-                           SOCKADDR_INET *bestaddress)
+DWORD WINAPI
+GetBestRoute2(
+    IN PVOID InterfaceLuid,
+    IN ULONG InterfaceIndex,
+    IN CONST PVOID SourceAddress,
+    IN CONST PVOID DestinationAddress,
+    IN ULONG AddressSortOptions,
+    OUT PMIB_IPFORWARD_ROW2 BestRoute,
+    OUT PVOID BestSourceAddress)
 {
-    static int once;
+    DWORD ret;
+    MIB_IPFORWARDROW oldRoute;
+    DWORD destAddr, srcAddr = 0;
+    PSOCKADDR_IN destSockAddr;
+    PSOCKADDR_IN srcSockAddr;
 
-    if (!once++)
-        FIXME("(%p, %d, %p, %p, 0x%08x, %p, %p): stub\n", luid, index, source,
-                destination, options, bestroute, bestaddress);
-
-    if (!destination || !bestroute || !bestaddress)
+    if (!DestinationAddress || !BestRoute)
         return ERROR_INVALID_PARAMETER;
 
-    return ERROR_NOT_SUPPORTED;
+    destSockAddr = (PSOCKADDR_IN)DestinationAddress;
+    srcSockAddr  = (PSOCKADDR_IN)SourceAddress;
+
+    if (destSockAddr->sin_family != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    destAddr = destSockAddr->sin_addr.s_addr;
+
+    if (srcSockAddr && srcSockAddr->sin_family == AF_INET)
+        srcAddr = srcSockAddr->sin_addr.s_addr;
+
+    ret = GetBestRoute(destAddr, srcAddr, &oldRoute);
+    if (ret != ERROR_SUCCESS)
+        return ret;
+
+    ZeroMemory(BestRoute, sizeof(MIB_IPFORWARD_ROW2));
+
+    /* Interface */
+    BestRoute->InterfaceIndex = oldRoute.dwForwardIfIndex;
+    BestRoute->InterfaceLuid.Value = 0; /* não temos equivalente direto */
+
+    /* DestinationPrefix */
+    BestRoute->DestinationPrefix.Prefix.si_family = AF_INET;
+    BestRoute->DestinationPrefix.Prefix.Ipv4.sin_addr.s_addr =
+        oldRoute.dwForwardDest;
+
+    /* máscara -> prefix length */
+    {
+        DWORD mask = ntohl(oldRoute.dwForwardMask);
+        ULONG prefix = 0;
+
+        while (mask & 0x80000000)
+        {
+            prefix++;
+            mask <<= 1;
+        }
+
+        BestRoute->DestinationPrefix.PrefixLength = (UCHAR)prefix;
+    }
+
+    /* NextHop */
+    BestRoute->NextHop.si_family = AF_INET;
+    BestRoute->NextHop.Ipv4.sin_addr.s_addr =
+        oldRoute.dwForwardNextHop;
+
+    /* Métrica */
+    BestRoute->Metric = oldRoute.dwForwardMetric1;
+
+    /* Protocolo */
+    BestRoute->Protocol = (NL_ROUTE_PROTOCOL)oldRoute.dwForwardProto;
+
+    /* Idade */
+    BestRoute->Age = oldRoute.dwForwardAge;
+
+    /* Valores padrão */
+    BestRoute->ValidLifetime     = 0xFFFFFFFF;
+    BestRoute->PreferredLifetime = 0xFFFFFFFF;
+
+    BestRoute->Loopback = (oldRoute.dwForwardType == MIB_IPROUTE_TYPE_DIRECT);
+    BestRoute->AutoconfigureAddress = FALSE;
+    BestRoute->Publish = FALSE;
+    BestRoute->Immortal = FALSE;
+
+    BestRoute->Origin = NlroManual;
+
+    /* Melhor endereço de origem */
+    if (BestSourceAddress)
+    {
+        PMIB_IPADDRTABLE addrTable = NULL;
+        DWORD size = 0;
+        ULONG i;
+
+        PSOCKADDR_IN bestSrc = (PSOCKADDR_IN)BestSourceAddress;
+
+        ZeroMemory(bestSrc, sizeof(SOCKADDR_IN));
+        bestSrc->sin_family = AF_INET;
+
+        ret = GetIpAddrTable(NULL, &size, FALSE);
+        if (ret == ERROR_INSUFFICIENT_BUFFER)
+        {
+            addrTable = HeapAlloc(GetProcessHeap(), 0, size);
+            if (addrTable)
+            {
+                ret = GetIpAddrTable(addrTable, &size, FALSE);
+                if (ret == ERROR_SUCCESS)
+                {
+                    for (i = 0; i < addrTable->dwNumEntries; i++)
+                    {
+                        if (addrTable->table[i].dwIndex ==
+                            oldRoute.dwForwardIfIndex)
+                        {
+                            bestSrc->sin_addr.s_addr =
+                                addrTable->table[i].dwAddr;
+                            break;
+                        }
+                    }
+                }
+
+                HeapFree(GetProcessHeap(), 0, addrTable);
+            }
+        }
+    }
+
+    return ERROR_SUCCESS;
 }
 
 /******************************************************************
@@ -1399,92 +1359,6 @@ IF_INDEX WINAPI IPHLP_if_nametoindex(const char *name)
     return index;
 }
 
-/******************************************************************
- *    GetIpForwardTable2 (IPHLPAPI.@)
- */
-DWORD WINAPI GetIpForwardTable2(MIB_IPFORWARD_TABLE2 **Table)
-{
-    DWORD size = 0;
-    DWORD ret;
-    PMIB_IPFORWARDTABLE oldTable;
-    DWORD i;
-
-    ret = GetIpForwardTable(NULL, &size, FALSE);
-    if (ret != ERROR_INSUFFICIENT_BUFFER)
-        return ret;
-
-    oldTable = (PMIB_IPFORWARDTABLE)HeapAlloc(GetProcessHeap(), 0, size);
-    if (!oldTable)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    ret = GetIpForwardTable(oldTable, &size, FALSE);
-    if (ret != NO_ERROR)
-    {
-        HeapFree(GetProcessHeap(), 0, oldTable);
-        return ret;
-    }
-
-    {
-        ULONG count = oldTable->dwNumEntries;
-        SIZE_T newSize =
-            sizeof(MIB_IPFORWARD_TABLE2) +
-            (count - 1) * sizeof(MIB_IPFORWARD_ROW2);
-
-        MIB_IPFORWARD_TABLE2 *newTable =
-            (MIB_IPFORWARD_TABLE2*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, newSize);
-
-        if (!newTable)
-        {
-            HeapFree(GetProcessHeap(), 0, oldTable);
-            return ERROR_NOT_ENOUGH_MEMORY;
-        }
-
-        newTable->NumEntries = count;
-
-        for (i = 0; i < count; i++)
-        {
-            MIB_IPFORWARDROW *src = &oldTable->table[i];
-            MIB_IPFORWARD_ROW2 *dst = &newTable->Table[i];
-
-            dst->InterfaceIndex = src->dwForwardIfIndex;
-
-            /* Simular LUID */
-            dst->InterfaceLuid.Value =
-                ((ULONGLONG)src->dwForwardIfIndex);
-
-            dst->DestinationPrefix.Prefix.si_family = AF_INET;
-			dst->DestinationPrefix.Prefix.Ipv4.sin_addr.S_un.S_addr = src->dwForwardDest;
-			dst->DestinationPrefix.Prefix.Ipv4.sin_port = 0;
-
-            /* calcular prefix length */
-            {
-                DWORD mask = src->dwForwardMask;
-                UINT bits = 0;
-
-                while (mask)
-                {
-                    bits += (mask & 1);
-                    mask >>= 1;
-                }
-
-                dst->DestinationPrefix.PrefixLength = bits;
-            }
-
-            dst->NextHop.si_family = AF_INET;
-			dst->NextHop.Ipv4.sin_addr.S_un.S_addr = src->dwForwardNextHop;
-			dst->NextHop.Ipv4.sin_port = 0;
-
-            dst->Metric = src->dwForwardMetric1;
-        }
-
-        *Table = newTable;
-    }
-
-    HeapFree(GetProcessHeap(), 0, oldTable);
-
-    return NO_ERROR;
-}
-
 void getInterfacePhysicalFromInfo( IFInfo *info,
                                    PDWORD len, PBYTE addr, PDWORD type ) {
     *len = info->if_info.ent.if_physaddrlen;
@@ -1616,13 +1490,172 @@ DWORD getInterfaceStatusByName(const char *name, PDWORD status) {
     return STATUS_SUCCESS;
 }
 
+BOOL isLoopback( HANDLE tcpFile, TDIEntityID *loop_maybe ) {
+    IFEntrySafelySized entryInfo;
+    NTSTATUS status;
+
+    status = tdiGetMibForIfEntity( tcpFile,
+                                   loop_maybe,
+                                   &entryInfo );
+
+    return NT_SUCCESS(status) &&
+           (entryInfo.ent.if_type == IFENT_SOFTWARE_LOOPBACK);
+}
+
+
+InterfaceIndexTable *getInterfaceIndexTableInt( BOOL nonLoopbackOnly ) {
+  DWORD numInterfaces, curInterface = 0;
+  int i;
+  IFInfo *ifInfo;
+  InterfaceIndexTable *ret = 0;
+  HANDLE tcpFile;
+  NTSTATUS status = openTcpFile( &tcpFile, FILE_READ_DATA );
+
+  if( NT_SUCCESS(status) ) {
+      status = getInterfaceInfoSet( tcpFile, &ifInfo, &numInterfaces );
+
+      TRACE("InterfaceInfoSet: %08x, %04x:%08x\n",
+             status,
+             ifInfo->entity_id.tei_entity,
+             ifInfo->entity_id.tei_instance);
+
+      if( NT_SUCCESS(status) ) {
+          ret = (InterfaceIndexTable *)
+              calloc(1,
+                     sizeof(InterfaceIndexTable) +
+                     (numInterfaces - 1) * sizeof(DWORD));
+
+          if (ret) {
+              ret->numAllocated = numInterfaces;
+              TRACE("NumInterfaces = %d\n", numInterfaces);
+
+              for( i = 0; i < numInterfaces; i++ ) {
+                  TRACE("Examining interface %d\n", i);
+                  if( !nonLoopbackOnly ||
+                      !isLoopback( tcpFile, &ifInfo[i].entity_id ) ) {
+                      TRACE("Interface %d matches (%d)\n", i, curInterface);
+                      ret->indexes[curInterface++] =
+                          ifInfo[i].if_info.ent.if_index;
+                  }
+              }
+
+              ret->numIndexes = curInterface;
+          }
+
+          tdiFreeThingSet( ifInfo );
+      }
+      closeTcpFile( tcpFile );
+  }
+
+  return ret;
+}
+
+InterfaceIndexTable *getInterfaceIndexTable(void) {
+    return getInterfaceIndexTableInt( FALSE );
+}
+
 /******************************************************************
  *    GetIpInterfaceTable (IPHLPAPI.@)
  */
-DWORD WINAPI GetIpInterfaceTable(ADDRESS_FAMILY family, PMIB_IPINTERFACE_TABLE *table)
+DWORD WINAPI GetIpInterfaceTable(
+    ADDRESS_FAMILY Family,
+    PMIB_IPINTERFACE_TABLE *Table
+)
 {
-    FIXME("(%u %p): stub\n", family, table);
-    return ERROR_NOT_SUPPORTED;
+    InterfaceIndexTable *if_table;
+    PMIB_IPINTERFACE_TABLE out_table;
+    DWORD i, count;
+
+    if (!Table)
+        return ERROR_INVALID_PARAMETER;
+
+    if (Family != AF_UNSPEC && Family != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    *Table = NULL;
+
+    if_table = getInterfaceIndexTable();
+    if (!if_table)
+        return ERROR_OUTOFMEMORY;
+
+    count = if_table->numIndexes;
+
+    /* Estrutura variável */
+    out_table = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+        sizeof(MIB_IPINTERFACE_TABLE) +
+        (count - 1) * sizeof(MIB_IPINTERFACE_ROW));
+
+    if (!out_table)
+    {
+        free(if_table);
+        return ERROR_OUTOFMEMORY;
+    }
+
+    out_table->NumEntries = 0;
+
+    for (i = 0; i < count; i++)
+    {
+        MIB_IFROW ifrow;
+        MIB_IPINTERFACE_ROW *row;
+        DWORD idx = if_table->indexes[i];
+        DWORD ret;
+
+        ZeroMemory(&ifrow, sizeof(ifrow));
+        ifrow.dwIndex = idx;
+
+        ret = GetIfEntry(&ifrow);
+        if (ret != NO_ERROR)
+            continue;
+
+        row = &out_table->Table[out_table->NumEntries];
+        ZeroMemory(row, sizeof(*row));
+
+        /* Interface */
+        row->InterfaceIndex = idx;
+        row->InterfaceLuid.Value = 0; /* fallback */
+
+        row->Family = AF_INET;
+
+        /* Métricas */
+        row->Metric = 0;
+        row->UseAutomaticMetric = TRUE;
+
+        /* MTU */
+        row->NlMtu = ifrow.dwMtu;
+
+        /* Flags padrão */
+        row->Connected = (ifrow.dwOperStatus == IF_OPER_STATUS_OPERATIONAL);
+        row->SupportsWakeUpPatterns = FALSE;
+        row->SupportsNeighborDiscovery = FALSE;
+        row->SupportsRouterDiscovery = FALSE;
+
+        row->ReachableTime = 0;
+        //row->TransmitOffload = 0;
+        //row->ReceiveOffload = 0;
+
+        row->DisableDefaultRoutes = FALSE;
+
+        /* Valores padrão razoáveis */
+        row->AdvertisingEnabled = FALSE;
+        //row->ForwardingEnabled = (ifrow.dwType == IF_TYPE_ROUTER_WORKSTATION_DIALOUT);
+
+        row->WeakHostSend = FALSE;
+        row->WeakHostReceive = FALSE;
+
+        row->UseNeighborUnreachabilityDetection = FALSE;
+
+        row->ManagedAddressConfigurationSupported = FALSE;
+        row->OtherStatefulConfigurationSupported = FALSE;
+
+        row->AdvertiseDefaultRoute = FALSE;
+
+        out_table->NumEntries++;
+    }
+
+    free(if_table);
+
+    *Table = out_table;
+    return NO_ERROR;
 }
 
 /******************************************************************
