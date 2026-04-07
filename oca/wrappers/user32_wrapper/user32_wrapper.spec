@@ -899,6 +899,7 @@
 @ stdcall GetPointerInfoHistory(long ptr ptr)
 @ stdcall GetPointerPenInfo(long ptr)
 @ stdcall GetPointerPenInfoHistory(long ptr ptr)
+@ stdcall GetPointerDeviceProperties(long ptr ptr)
 @ stdcall GetPointerTouchInfo(long ptr)
 @ stdcall GetPointerTouchInfoHistory(long ptr ptr)
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)

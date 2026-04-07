@@ -883,6 +883,10 @@ typedef BOOL (WINAPI *ControlMagnificationFuncPtr)(
 	PVOID);	
 	
 typedef BOOL (WINAPI *PrivateRegisterICSProcFuncPtr)(
-    PCONVERT_TO_DIB_PROC);		
+    PCONVERT_TO_DIB_PROC);	
+	
+VOID WINAPI PointerApiThreadStartup(HINSTANCE hinstDLL);
+
+VOID WINAPI PointerApiThreadShutdown(HINSTANCE hinstDLL);
 	
 static PrivateRegisterICSProcFuncPtr PrivateRegisterICSProcAddr;

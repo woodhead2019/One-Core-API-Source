@@ -23,6 +23,8 @@ Revision History:
 WINE_DEFAULT_DEBUG_CHANNEL(main);
 
 HMODULE userBaseHinst;
+
+DWORD g_pointerTlsInfo;
  
 BOOL WINAPI DllMain(
     HINSTANCE hinstDLL,  // handle to DLL module

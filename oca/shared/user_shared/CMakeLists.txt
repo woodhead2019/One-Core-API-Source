@@ -4,6 +4,8 @@ if(MSVC)
     replace_compile_flags("/we4101" " ")
 endif()
 
+remove_definitions(-D_WIN32_WINNT=0x502)
+add_definitions(-D_WIN32_WINNT=0x602)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/host)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/win32k)

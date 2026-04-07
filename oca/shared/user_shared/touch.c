@@ -20,6 +20,183 @@ Revision History:
 
 #include <main.h>
 
+#ifndef GET_X_LPARAM
+#define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
+#endif
+#ifndef GET_Y_LPARAM
+#define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
+#endif
+
+DWORD g_pointerTlsInfo;
+DWORD g_MouseInPointerState = -1;
+
+typedef struct _OCA_POINTER_HOOK {
+	POINTER_INFO pointerInfo; // must be first!
+	HHOOK hook;
+} OCA_POINTER_HOOK, *POCA_POINTER_HOOK;
+
+// Converts legacy WM_MOUSE messages to a modern WM_POINTER message.
+
+void SendPointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, POINT pt, DWORD time) {
+    POINTER_INFO* pointerInfo = TlsGetValue(g_pointerTlsInfo);
+    DWORD message = 0;
+	
+    pointerInfo->pointerType = PT_MOUSE;
+	pointerInfo->pointerId = 1;
+	pointerInfo->sourceDevice = INVALID_HANDLE_VALUE;
+	pointerInfo->historyCount = 1;
+	pointerInfo->frameId++;
+	pointerInfo->hwndTarget = hwnd;
+	pointerInfo->dwTime = time;
+	pointerInfo->pointerFlags = POINTER_FLAG_UPDATE | POINTER_MESSAGE_FLAG_PRIMARY;
+	
+    pointerInfo->ptPixelLocation.x = pt.x;
+    pointerInfo->ptPixelLocation.y = pt.y;
+	pointerInfo->ptHimetricLocation.x = pt.x;
+    pointerInfo->ptHimetricLocation.y = pt.y;
+	pointerInfo->ptPixelLocationRaw.x = pt.x;
+    pointerInfo->ptPixelLocationRaw.y = pt.y;
+	pointerInfo->ptHimetricLocationRaw.x = pt.x;
+    pointerInfo->ptHimetricLocationRaw.y = pt.y;
+	pointerInfo->ButtonChangeType = 0;
+	
+    switch (msg) {
+        case WM_MOUSEMOVE:
+            message = WM_POINTERUPDATE;
+			pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_INRANGE;
+            break;
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
+            message = WM_POINTERDOWN;
+            pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_PRIMARY | POINTER_MESSAGE_FLAG_INCONTACT;
+			if (msg == WM_LBUTTONDOWN)
+			{
+				pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_FIRSTBUTTON;
+				pointerInfo->ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_DOWN;
+			}
+			else if (msg == WM_RBUTTONDOWN)
+			{
+				pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_SECONDBUTTON;
+				pointerInfo->ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_DOWN;
+			}
+			else if (msg == WM_MBUTTONDOWN)
+			{
+				pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_THIRDBUTTON;
+				pointerInfo->ButtonChangeType = POINTER_CHANGE_THIRDBUTTON_DOWN;
+			}
+			else if (msg == WM_XBUTTONDOWN && LOWORD(wParam) == MK_LBUTTON)
+			{
+				pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_FIRSTBUTTON;
+				pointerInfo->ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_DOWN;
+			}
+			else if (msg == WM_XBUTTONDOWN && LOWORD(wParam) == MK_RBUTTON)
+			{
+                pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_SECONDBUTTON;
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_DOWN;
+            }
+            else if (msg == WM_XBUTTONDOWN && LOWORD(wParam) == MK_MBUTTON)
+            {
+                pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_THIRDBUTTON;
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_THIRDBUTTON_DOWN;
+            }
+            else if (msg == WM_XBUTTONDOWN && LOWORD(wParam) == MK_XBUTTON1)
+            {
+                pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_FOURTHBUTTON;
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_FOURTHBUTTON_DOWN;
+            }
+            else if (msg == WM_XBUTTONDOWN && LOWORD(wParam) == MK_XBUTTON2)
+            {
+                pointerInfo->pointerFlags |= POINTER_MESSAGE_FLAG_FIFTHBUTTON;
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_FIFTHBUTTON_DOWN;
+            }
+            break;
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONUP:
+            message = WM_POINTERUP;
+            if (msg == WM_LBUTTONUP) pointerInfo->ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_UP;
+            else if (msg == WM_RBUTTONUP) pointerInfo->ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_UP;
+            else if (msg == WM_MBUTTONUP) pointerInfo->ButtonChangeType = POINTER_CHANGE_THIRDBUTTON_UP;
+            else if (msg == WM_XBUTTONUP && LOWORD(wParam) == MK_LBUTTON)
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_UP;
+            else if (msg == WM_XBUTTONUP && LOWORD(wParam) == MK_RBUTTON)
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_UP;
+            else if (msg == WM_XBUTTONUP && LOWORD(wParam) == MK_MBUTTON)
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_THIRDBUTTON_UP;
+            else if (msg == WM_XBUTTONUP && LOWORD(wParam) == MK_XBUTTON1)
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_FOURTHBUTTON_UP;
+            else if (msg == WM_XBUTTONUP && LOWORD(wParam) == MK_XBUTTON2)
+                pointerInfo->ButtonChangeType = POINTER_CHANGE_FIFTHBUTTON_UP;
+            break;
+        case WM_MOUSEWHEEL:
+            message = WM_POINTERWHEEL;
+            pointerInfo->pointerFlags = HIWORD(wParam);
+            break;
+        case WM_MOUSEHWHEEL:
+            message = WM_POINTERHWHEEL;
+            pointerInfo->pointerFlags = HIWORD(wParam);
+            break;
+    }
+	
+    if (message) {
+        // Send the message to the window
+		SendMessageW(hwnd, message, MAKELONG(pointerInfo->pointerId, LOWORD(pointerInfo->pointerFlags)), MAKELONG(pt.x, pt.y));
+    }
+}
+
+LRESULT CALLBACK GetMsgProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+	// We should only activate this emulation when EnableMouseInPointer is called with parameters TRUE.
+    if (g_MouseInPointerState == 1 && nCode >= 0)
+    {
+        MSG* pMsg = (MSG*)lParam;
+		
+		// only intercept messages of interest
+		switch (pMsg->message) {
+			case WM_MOUSEMOVE:
+			case WM_LBUTTONDOWN:
+			case WM_RBUTTONDOWN:
+			case WM_MBUTTONDOWN:
+			case WM_XBUTTONDOWN:
+			case WM_LBUTTONUP:
+			case WM_RBUTTONUP:
+			case WM_MBUTTONUP:
+			case WM_XBUTTONUP:
+			case WM_MOUSEWHEEL:
+			case WM_MOUSEHWHEEL:
+				SendPointerMessage(pMsg->hwnd, pMsg->message, pMsg->wParam, pMsg->lParam, pMsg->pt, pMsg->time);
+		}
+    }
+
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+VOID WINAPI PointerApiThreadStartup(HINSTANCE hinstDLL) {
+	OCA_POINTER_HOOK* ptrInfo;
+
+	if (TlsGetValue(g_pointerTlsInfo) != NULL)
+		return;
+
+	ptrInfo = malloc(sizeof(OCA_POINTER_HOOK));
+	if (ptrInfo) {
+		memset(ptrInfo, 0, sizeof(OCA_POINTER_HOOK));
+		ptrInfo->hook = SetWindowsHookEx(WH_GETMESSAGE, GetMsgProc, hinstDLL, GetCurrentThreadId());
+	}
+	TlsSetValue(g_pointerTlsInfo, ptrInfo);
+}
+
+VOID WINAPI PointerApiThreadShutdown(HINSTANCE hinstDLL) {
+	OCA_POINTER_HOOK* ptrInfo = TlsGetValue(g_pointerTlsInfo);
+	if (ptrInfo != NULL) {
+		UnhookWindowsHookEx(ptrInfo->hook);
+		free(ptrInfo);
+		TlsSetValue(g_pointerTlsInfo, NULL);
+	}
+}
+
 void WINAPI FreeUMHandleEntry(PRTL_CRITICAL_SECTION a1, PBOOL a2)
 {
   PBOOL resp; // ebx@1
@@ -263,38 +440,45 @@ RegisterTouchHitTestingWindow(
 	return TRUE;
 }
 
-BOOL WINAPI GetPointerInfo(UINT32 pointerId, POINTER_INFO *pointerInfo) {
-	pointerInfo->pointerType = PT_MOUSE;
-	pointerInfo->pointerId = pointerId;
-	pointerInfo->frameId = 0;
-	pointerInfo->pointerFlags = POINTER_FLAG_NONE;
-	pointerInfo->sourceDevice = NULL;
-	pointerInfo->hwndTarget = NULL;
-	GetCursorPos(&pointerInfo->ptPixelLocation);
-	GetCursorPos(&pointerInfo->ptHimetricLocation);
-	GetCursorPos(&pointerInfo->ptPixelLocationRaw);
-	GetCursorPos(&pointerInfo->ptHimetricLocationRaw);
-	pointerInfo->dwTime = 0;
-	pointerInfo->historyCount = 1;
-	pointerInfo->InputData = 0;
-	pointerInfo->dwKeyStates = 0;
-	pointerInfo->PerformanceCount = 0;
-	pointerInfo->ButtonChangeType = POINTER_CHANGE_NONE;
-
-	return FALSE;
+__declspec(dllexport)
+BOOL WINAPI GetPointerInfo(UINT32 id, POINTER_INFO *info) {
+	POINTER_INFO *frame = TlsGetValue(g_pointerTlsInfo);
+	
+	if (!frame) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	
+	if (!id || !info || !frame->frameId || id != frame->pointerId) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	
+	memmove(info, frame, sizeof(POINTER_INFO));
+	return TRUE;
 }
 
 BOOL WINAPI GetPointerTouchInfoHistory(UINT32 pointerId, UINT32 *entriesCount, POINTER_TOUCH_INFO *touchInfo) {
 	SetLastError(ERROR_DATATYPE_MISMATCH);
 	return FALSE;
 }
-BOOL WINAPI GetPointerInfoHistory(UINT32 pointerId, UINT32 *entriesCount, POINTER_INFO *pointerInfo) {
-	if (*entriesCount != 0) {
-		GetPointerInfo(pointerId, pointerInfo);
-		*entriesCount = 1;
+__declspec(dllexport)
+BOOL WINAPI GetPointerInfoHistory(UINT32 pointerId, UINT32 *entriesCount, POINTER_INFO* pointerInfo) {
+	if (!entriesCount) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
 	}
-	return TRUE;
+	if (*entriesCount == 0) {
+		*entriesCount = 1;
+		return TRUE;
+	}
+	if (!pointerInfo) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	return GetPointerInfo(pointerId, &pointerInfo[0]);
 }
+
 BOOL WINAPI GetPointerPenInfoHistory(UINT32 pointerId, UINT32 *entriesCount, POINTER_PEN_INFO *penInfo) {
 	SetLastError(ERROR_DATATYPE_MISMATCH);
 	return FALSE;
@@ -362,7 +546,27 @@ HRESULT WINAPI PackTouchHitTestingProximityEvaluation(const TOUCH_HIT_TESTING_IN
   return result;
 }
 
-BOOL WINAPI IsMouseInPointerEnabled()
+__declspec(dllexport)
+BOOL WINAPI IsMouseInPointerEnabled() {
+	return g_MouseInPointerState == 1;
+}
+
+/***********************************************************************
+ *		EnableMouseInPointer (USER32.@)
+ */
+BOOL WINAPI EnableMouseInPointer(BOOL enable)
 {
-	return FALSE;
+    DbgPrint("EnableMouseInPointer stub\n", enable);
+
+    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+    return FALSE;
+}
+
+// needed for photoshop 2025.
+BOOL WINAPI GetPointerDeviceProperties(HANDLE device, UINT32 *propertyCount, POINTER_DEVICE_PROPERTY *pointerProperties) {
+    if (!propertyCount)
+        return FALSE;
+    
+    *propertyCount = 0;
+    return TRUE;
 }

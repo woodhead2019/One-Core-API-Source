@@ -22,17 +22,6 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(input);
 
-/***********************************************************************
- *		EnableMouseInPointer (USER32.@)
- */
-BOOL WINAPI EnableMouseInPointer(BOOL enable)
-{
-    DbgPrint("EnableMouseInPointer stub\n", enable);
-
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
-}
-
 HSYNTHETICPOINTERDEVICE WINAPI CreateSyntheticPointerDevice(POINTER_INPUT_TYPE type, ULONG max_count, POINTER_FEEDBACK_MODE mode)
 {
     FIXME( "type %ld, max_count %ld, mode %d stub!\n", type, max_count, mode);
