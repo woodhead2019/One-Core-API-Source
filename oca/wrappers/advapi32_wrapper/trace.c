@@ -20,6 +20,8 @@ Revision History:
 
 #include "main.h"
 
+WINE_DEFAULT_DEBUG_CHANNEL(trace); 
+
 /******************************************************************************
  *     TraceSetInformation   (sechost.@)
  */

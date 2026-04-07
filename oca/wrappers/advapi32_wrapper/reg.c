@@ -2436,45 +2436,45 @@ LSTATUS WINAPI RegQueryValueA( HKEY hkey, LPCSTR name, LPSTR data, LPLONG count 
 }
 
 
-/************************************************************************
- *  RegQueryValueW
- *
- * @implemented
- */
-LSTATUS WINAPI RegQueryValueW( HKEY hkey, LPCWSTR name, LPWSTR data, LPLONG count )
-{
-    DWORD ret;
-    HKEY subkey = hkey;
+// /************************************************************************
+ // *  RegQueryValueW
+ // *
+ // * @implemented
+ // */
+// LSTATUS WINAPI RegQueryValueW( HKEY hkey, LPCWSTR name, LPWSTR data, LPLONG count )
+// {
+    // DWORD ret;
+    // HKEY subkey = hkey;
 
-    TRACE("(%p,%s,%p,%d)\n", hkey, debugstr_w(name), data, count ? *count : 0 );
-    if (hkey == NULL)
-    {
-       return ERROR_INVALID_HANDLE;
-    }
-    if (name && name[0])
-    {
-        ret = RegOpenKeyW( hkey, name, &subkey);
-        if (ret != ERROR_SUCCESS)
-        {
-            return ret;
-        }
-    }
+    // TRACE("(%p,%s,%p,%d)\n", hkey, debugstr_w(name), data, count ? *count : 0 );
+    // if (hkey == NULL)
+    // {
+       // return ERROR_INVALID_HANDLE;
+    // }
+    // if (name && name[0])
+    // {
+        // ret = RegOpenKeyW( hkey, name, &subkey);
+        // if (ret != ERROR_SUCCESS)
+        // {
+            // return ret;
+        // }
+    // }
 
-    ret = RegQueryValueExW( subkey, NULL, NULL, NULL, (LPBYTE)data, (LPDWORD)count );
+    // ret = RegQueryValueExW( subkey, NULL, NULL, NULL, (LPBYTE)data, (LPDWORD)count );
 
-    if (subkey != hkey)
-    {
-        RegCloseKey( subkey );
-    }
+    // if (subkey != hkey)
+    // {
+        // RegCloseKey( subkey );
+    // }
 
-    if (ret == ERROR_FILE_NOT_FOUND)
-    {
-        /* return empty string if default value not found */
-        if (data)
-            *data = 0;
-        if (count)
-            *count = sizeof(WCHAR);
-        ret = ERROR_SUCCESS;
-    }
-    return ret;
-}
+    // if (ret == ERROR_FILE_NOT_FOUND)
+    // {
+        // /* return empty string if default value not found */
+        // if (data)
+            // *data = 0;
+        // if (count)
+            // *count = sizeof(WCHAR);
+        // ret = ERROR_SUCCESS;
+    // }
+    // return ret;
+// }

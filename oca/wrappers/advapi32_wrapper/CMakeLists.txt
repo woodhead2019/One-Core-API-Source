@@ -28,6 +28,7 @@ list(APPEND SOURCE
 	security.c
 	sha1.c
 	shutdown.c
+	trace.c
 	unimplemented.c
 	workarounds.c
     version.rc
