@@ -19,6 +19,7 @@
 #include "rpcdce.h"
 #include "cguid.h"
 #include "devpropdef.h"
+#include <cmfuncs.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 

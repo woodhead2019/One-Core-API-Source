@@ -632,6 +632,8 @@
 @ stdcall SetupGetInfDriverStoreLocationW(wstr ptr wstr ptr long ptr) 
 @ stdcall SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
 @ stdcall SetupDiSetDevicePropertyW(ptr ptr ptr long ptr long long)
+@ stdcall SetupDiGetDevicePropertyKeys(ptr ptr ptr long ptr long)
+@ stdcall SetupDiGetDeviceInterfacePropertyKeys(ptr ptr ptr long ptr long)
 
 #Win7 functions
 @ stdcall CM_MapCrToWin32Err(long long)

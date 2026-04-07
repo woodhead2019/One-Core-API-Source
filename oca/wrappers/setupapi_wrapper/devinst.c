@@ -25,9 +25,25 @@ WINE_DEFAULT_DEBUG_CHANNEL(setupapi);
 static struct device **devnode_table;
 static unsigned int devnode_table_size;
 
+DEFINE_DEVPROPKEY(DEVPKEY_DeviceInterface_Enabled, 0x026e516e,0xb814,0x414b,0x83,0xcd,0x85,0x6d,0x6f,0xef,0x48,0x22, 3);
+DEFINE_DEVPROPKEY(DEVPKEY_DeviceInterface_ClassGuid, 0x026e516e,0xb814,0x414b,0x83,0xcd,0x85,0x6d,0x6f,0xef,0x48,0x22, 4);
+DEFINE_DEVPROPKEY(DEVPKEY_Device_InstanceId, 0x78c34fc8,0x104a,0x4aca,0x9e,0xa4,0x52,0x4d,0x52,0x99,0x6e,0x57, 256);
+
 /* is used to identify if a DeviceInfoSet pointer is
 valid or not */
 #define SETUP_DEVICE_INFO_SET_MAGIC 0xd00ff056
+
+struct device_iface
+{
+    WCHAR           *refstr;
+    WCHAR           *symlink;
+    struct device   *device;
+    GUID             class;
+    DWORD            flags;
+    HKEY             class_key;
+    HKEY             refstr_key;
+    struct list      entry;
+};
 
 static void SETUPDI_GuidToString(const GUID *guid, LPWSTR guidStr)
 {
@@ -199,6 +215,101 @@ static BOOL is_valid_property_type(DEVPROPTYPE prop_type)
         return FALSE;
 
     return TRUE;
+}
+
+static DWORD get_device_reg_properties( HKEY base_key, DEVPROPKEY *buf, DWORD buf_len, DWORD *req_len )
+{
+    HKEY properties;
+    DEVPROPKEY *keys;
+    LSTATUS ls;
+    DWORD i, count = 0;
+
+    if (req_len)
+        *req_len = 0;
+    if ((ls = RegOpenKeyExW( base_key, L"Properties", 0, KEY_ENUMERATE_SUB_KEYS, &properties )))
+        return ls == ERROR_FILE_NOT_FOUND ? ERROR_SUCCESS : ls;
+
+    //keys = malloc( sizeof( *keys ) * buf_len ); 
+    keys = HeapAlloc(GetProcessHeap(), 0, sizeof( *keys ) * buf_len); 
+    if (!keys && buf_len)
+    {
+        RegCloseKey( properties );
+        return ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    for (i = 0; ;i++)
+    {
+        WCHAR guid_str[39];
+        HKEY prop_fmtid_key;
+        GUID prop_guid;
+        DWORD len, j;
+
+        len = ARRAY_SIZE( guid_str );
+        if ((ls = RegEnumKeyExW( properties, i, guid_str, &len, NULL, NULL, NULL, NULL )))
+        {
+            if (ls == ERROR_NO_MORE_ITEMS)
+                ls = ERROR_SUCCESS;
+            else
+                ERR( "Could not enumerate subkeys: %lu\n", ls );
+            break;
+        }
+        if ((ls = RegOpenKeyExW( properties, guid_str, 0, KEY_ENUMERATE_SUB_KEYS, &prop_fmtid_key )))
+            break;
+        guid_str[37] = '\0';
+        if (UuidFromStringW( &guid_str[1], &prop_guid ))
+        {
+            ERR( "Could not parse propkey GUID string %s\n", debugstr_w( &guid_str[1] ) );
+            RegCloseKey( prop_fmtid_key );
+            continue;
+        }
+        for (j = 0; ;j++)
+        {
+            DEVPROPID pid;
+            WCHAR key_name[6];
+
+            len = 5;
+            if ((ls = RegEnumKeyExW( prop_fmtid_key, j, key_name, &len, NULL, NULL, NULL, NULL )))
+            {
+                if (ls != ERROR_NO_MORE_ITEMS)
+                    ERR( "Could not enumerate subkeys under fmtid %s: %lu", debugstr_guid( &prop_guid ), ls );
+                break;
+            }
+            swscanf( key_name, L"%04X", &pid );
+            if (++count <= buf_len)
+            {
+                keys[count - 1].fmtid = prop_guid;
+                keys[count - 1].pid = pid;
+            }
+        }
+        RegCloseKey( prop_fmtid_key );
+    }
+
+    RegCloseKey( properties );
+    if (!ls)
+    {
+        if (req_len)
+            *req_len = count;
+        if (buf_len < count)
+            ls = ERROR_INSUFFICIENT_BUFFER;
+        else
+            memcpy( buf, keys, count * sizeof( *keys ) );
+    }
+    //free( keys );
+    return ls;
+}
+
+static struct device_iface *get_device_iface(HDEVINFO devinfo, const SP_DEVICE_INTERFACE_DATA *data)
+{
+    if (!get_device_set(devinfo))
+        return FALSE;
+
+    if (!data || data->cbSize != sizeof(*data) || !data->Reserved)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    return (struct device_iface *)data->Reserved;
 }
 
 /***********************************************************************
@@ -455,4 +566,76 @@ CONFIGRET WINAPI CM_Unregister_Notification(HCMNOTIFICATION *notify_context )
     FIXME("%p stub!\n",  notify_context);
 
     return CR_CALL_NOT_IMPLEMENTED;
+}
+
+BOOL WINAPI SetupDiGetDevicePropertyKeys( HDEVINFO devinfo, PSP_DEVINFO_DATA device_data,
+                                          DEVPROPKEY *prop_keys, DWORD prop_keys_len,
+                                          DWORD *required_prop_keys, DWORD flags )
+{
+    struct device *device;
+    LSTATUS ret;
+
+    TRACE( "%p, %p, %p, %lu, %p, %#lx\n", devinfo, device_data, prop_keys, prop_keys_len,
+           required_prop_keys, flags);
+
+    if (flags)
+    {
+        SetLastError( ERROR_INVALID_FLAGS );
+        return FALSE;
+    }
+    if (!prop_keys && prop_keys_len)
+    {
+        SetLastError( ERROR_INVALID_USER_BUFFER );
+        return FALSE;
+    }
+
+    device = get_device( devinfo, device_data );
+    if (!device)
+        return FALSE;
+    ret = get_device_reg_properties( device->key, prop_keys, prop_keys_len, required_prop_keys );
+    SetLastError( ret );
+    return !ret;
+}
+
+BOOL WINAPI SetupDiGetDeviceInterfacePropertyKeys( HDEVINFO devinfo, SP_DEVICE_INTERFACE_DATA *iface_data,
+                                                   DEVPROPKEY *buf, DWORD buf_len, DWORD *req_len, DWORD flags )
+{
+    DEVPROPKEY default_props[3];// = { ((ULONG)DEVPKEY_DeviceInterface_Enabled), ((ULONG)DEVPKEY_DeviceInterface_ClassGuid),
+                                  // (ULONG)DEVPKEY_Device_InstanceId };
+    struct device_iface *iface;
+    DWORD ret, required = 0;
+	
+	default_props[0] = DEVPKEY_DeviceInterface_Enabled;
+	default_props[1] = DEVPKEY_DeviceInterface_ClassGuid;
+	default_props[2] = DEVPKEY_Device_InstanceId;
+
+    TRACE( "devinfo %p, iface_data %p, buf %p, buf_len %lu, req_len %p, flags %#lx\n", devinfo, iface_data, buf,
+           buf_len, req_len, flags );
+
+    if (!(iface = get_device_iface( devinfo, iface_data )))
+        return FALSE;
+    if (flags)
+    {
+        SetLastError( ERROR_INVALID_FLAGS );
+        return FALSE;
+    }
+    if (!buf && buf_len)
+    {
+        SetLastError( ERROR_INVALID_USER_BUFFER );
+        return FALSE;
+    }
+
+    ret = get_device_reg_properties( iface->refstr_key, buf, buf_len, &required );
+    if (!ret || ret == ERROR_INSUFFICIENT_BUFFER)
+    {
+        required += ARRAY_SIZE( default_props );
+        if (required <= buf_len)
+            memcpy( &buf[required - ARRAY_SIZE( default_props )], &default_props, sizeof( default_props ) );
+        else
+            ret = ERROR_INSUFFICIENT_BUFFER;
+    }
+    if (req_len)
+        *req_len = required;
+    SetLastError( ret );
+    return !ret;
 }
