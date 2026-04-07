@@ -856,66 +856,139 @@ CreateThreadpoolWait(
     return wait;
 }
 
-/***********************************************************************
+// /***********************************************************************
+ // *              GetThreadGroupAffinity (KERNEL32.@)
+ // */
+// BOOL WINAPI GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
+// {
+    // HANDLE hProcess;
+    // DWORD_PTR ProcessAffinityMask;
+    // DWORD_PTR SystemAffinityMask;    
+    // DWORD Pid = GetProcessIdOfThread(hThread);
+    // BOOL Res;
+    // if (!GroupAffinity) {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    
+    // if(!Pid)
+        // return FALSE;
+    // hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+    // if(!hProcess)
+        // return FALSE;
+    // Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+    // CloseHandle(hProcess);
+    // if (Res) {
+        // GroupAffinity->Mask = ProcessAffinityMask;
+        // GroupAffinity->Group = 0;
+    // }
+    // return Res;
+// }
+
+// /***********************************************************************
+ // *              SetThreadGroupAffinity (KERNEL32.@)
+ // */
+// BOOL WINAPI SetThreadGroupAffinity(HANDLE hThread, const GROUP_AFFINITY *GroupAffinity, PGROUP_AFFINITY PreviousGroupAffinity)
+// {
+    // DWORD Pid;
+    // HANDLE hProcess;
+    // DWORD_PTR ProcessAffinityMask;
+    // DWORD_PTR SystemAffinityMask;
+    // BOOL Res;
+    
+    // if (!GroupAffinity) {
+        // SetLastError(ERROR_NOACCESS);
+        // return FALSE;
+    // } else if (!PreviousGroupAffinity) {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    // Pid = GetProcessIdOfThread(hThread);
+    // if (!Pid)
+        // return FALSE;
+    // hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+    // if (!hProcess)
+        // return FALSE;
+    // Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+    // CloseHandle(hProcess);
+    // if (!Res)
+        // return FALSE;
+    // PreviousGroupAffinity->Mask = ProcessAffinityMask;
+    // PreviousGroupAffinity->Group = 0;
+    // return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
+// }
+
+/*********************************************************************** 
  *              GetThreadGroupAffinity (KERNEL32.@)
  */
 BOOL WINAPI GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
-{
-    HANDLE hProcess;
-    DWORD_PTR ProcessAffinityMask;
-    DWORD_PTR SystemAffinityMask;    
-    DWORD Pid = GetProcessIdOfThread(hThread);
-    BOOL Res;
-    if (!GroupAffinity) {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-    
-    if(!Pid)
-        return FALSE;
-    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
-    if(!hProcess)
-        return FALSE;
-    Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
-    CloseHandle(hProcess);
-    if (Res) {
-        GroupAffinity->Mask = ProcessAffinityMask;
-        GroupAffinity->Group = 0;
-    }
-    return Res;
-}
-
-/***********************************************************************
- *              SetThreadGroupAffinity (KERNEL32.@)
- */
-BOOL WINAPI SetThreadGroupAffinity(HANDLE hThread, const GROUP_AFFINITY *GroupAffinity, PGROUP_AFFINITY PreviousGroupAffinity)
 {
     DWORD Pid;
     HANDLE hProcess;
     DWORD_PTR ProcessAffinityMask;
     DWORD_PTR SystemAffinityMask;
-    BOOL Res;
-    
+    DWORD_PTR OldMask;
+
     if (!GroupAffinity) {
         SetLastError(ERROR_NOACCESS);
         return FALSE;
-    } else if (!PreviousGroupAffinity) {
+    }
+
+    Pid = GetProcessIdOfThread(hThread);
+    if (!Pid) return FALSE;
+
+    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+    if (!hProcess) return FALSE;
+
+    if (!GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask)) {
+        CloseHandle(hProcess);
+        return FALSE;
+    }
+    CloseHandle(hProcess);
+
+    OldMask = SetThreadAffinityMask(hThread, ProcessAffinityMask);
+    if (OldMask == 0) return FALSE;
+
+    SetThreadAffinityMask(hThread, OldMask); /* восстанавливаем оригинальную аффинность */
+
+    GroupAffinity->Mask = OldMask;
+    GroupAffinity->Group = 0;
+    GroupAffinity->Reserved[0] = 0;
+    GroupAffinity->Reserved[1] = 0;
+    GroupAffinity->Reserved[2] = 0;
+
+    return TRUE;
+}
+
+/*********************************************************************** 
+ *              SetThreadGroupAffinity (KERNEL32.@)
+ */
+BOOL WINAPI SetThreadGroupAffinity(HANDLE hThread, const GROUP_AFFINITY *GroupAffinity, PGROUP_AFFINITY PreviousGroupAffinity)
+{
+    DWORD_PTR OldMask;
+
+    if (!GroupAffinity) {
+        SetLastError(ERROR_NOACCESS);
+        return FALSE;
+    }
+    if (GroupAffinity->Group != 0) {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
     }
-    Pid = GetProcessIdOfThread(hThread);
-    if (!Pid)
+
+    OldMask = SetThreadAffinityMask(hThread, GroupAffinity->Mask);
+    if (OldMask == 0) {
         return FALSE;
-    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
-    if (!hProcess)
-        return FALSE;
-    Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
-    CloseHandle(hProcess);
-    if (!Res)
-        return FALSE;
-    PreviousGroupAffinity->Mask = ProcessAffinityMask;
-    PreviousGroupAffinity->Group = 0;
-    return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
+    }
+
+    if (PreviousGroupAffinity) {
+        PreviousGroupAffinity->Mask = OldMask;
+        PreviousGroupAffinity->Group = 0;
+        PreviousGroupAffinity->Reserved[0] = 0;
+        PreviousGroupAffinity->Reserved[1] = 0;
+        PreviousGroupAffinity->Reserved[2] = 0;
+    }
+    return TRUE;
 }
 
 /*************************************************************************

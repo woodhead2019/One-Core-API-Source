@@ -73,3 +73,29 @@ QueryUnbiasedInterruptTime(ULONGLONG *time)
     RtlQueryUnbiasedInterruptTime(time);
     return TRUE;
 }
+
+/**************************************************************************
+ * 				timeGetTime    [MMSYSTEM.607]
+ * 				timeGetTime    [WINMM.@]
+ */
+DWORD WINAPI timeGetTime(void)
+{
+    LARGE_INTEGER perfCount;
+#if defined(COMMENTOUTPRIORTODELETING)
+    DWORD       count;
+
+    /* FIXME: releasing the win16 lock here is a temporary hack (I hope)
+     * that lets mciavi.drv run correctly
+     */
+    if (pFnReleaseThunkLock) pFnReleaseThunkLock(&count);
+    if (pFnRestoreThunkLock) pFnRestoreThunkLock(count);
+#endif
+    /* Use QPC if a high-resolution timer was requested (<= 5ms) */
+    if (TIME_qpcFreq.QuadPart != 0)
+    {
+        QueryPerformanceCounter(&perfCount);
+        return (DWORD)(perfCount.QuadPart / TIME_qpcFreq.QuadPart);
+    }
+    /* Otherwise continue using GetTickCount */
+    return GetTickCount();
+}
