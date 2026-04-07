@@ -1,34 +1,29 @@
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
+/*++
 
+Copyright (c) 2025 Shorthorn Project
+
+Module Name:
+
+    d3dkmt.c
+
+Abstract:
+
+    Implement GDI Font Info and Managemet Transfer Emulation Functions
+
+Author:
+
+    Skulltrail 11-Febraoy-2021
+	
+Environment:
+
+    User mode only.	
+
+Revision History:
+
+--*/
 #include <main.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include "wine/list.h"
-#include <ft2build.h>
-#include <freetype.h>
-#include <unicode.h>
-#include <tttables.h>
 
-WINE_DEFAULT_DEBUG_CHANNEL(gdi);
+WINE_DEFAULT_DEBUG_CHANNEL(font);
 
 HDC currentHdcFont;
 
@@ -39,7 +34,7 @@ HDC currentHdcFont;
           ( ( (FT_ULong)_x4 << 24 ) |     \
             ( (FT_ULong)_x3 << 16 ) |     \
             ( (FT_ULong)_x2 <<  8 ) |     \
-			  (FT_ULong)_x1 )
+            (FT_ULong)_x1 )
 
 #define MS_TTCF_TAG MS_MAKE_TAG('t', 't', 'c', 'f')
 
@@ -131,46 +126,9 @@ static inline struct font_handle_entry *handle_entry( DWORD handle )
     return NULL;
 }
 
-LPCWSTR fontPath = L"C:\\Windows\\Fonts\\Tahoma.ttf";
-
-typedef struct _FONT_FILE_INFO {
-    DWORD dwVersion;
-    DWORD dwSize;
-    DWORD dwType;
-    DWORD dwChecksum;
-    WCHAR szFaceName[LF_FACESIZE];
-    WCHAR szFileName[MAX_PATH];
-    DWORD dwFlags;
-} FONT_FILE_INFO, *PFONT_FILE_INFO;
-
-#define MAX_FONTS 512
-
-typedef struct _MY_FONT_ENTRY {
-    ULONG id;                 /* instance_id */
-    WCHAR path[MAX_PATH];
-    LARGE_INTEGER size;
-    LARGE_INTEGER writetime;
-} MY_FONT_ENTRY;
-
-static MY_FONT_ENTRY g_fonts[MAX_FONTS];
-static ULONG g_font_count = 0;
-
-static MY_FONT_ENTRY* GetFontEntry(ULONG id)
-{
-    ULONG i;
-
-    for (i = 0; i < g_font_count; i++)
-    {
-        if (g_fonts[i].id == id)
-            return &g_fonts[i];
-    }
-
-    return NULL;
-}
-
 LSTATUS GetFontFileFromRegistry(
     LPCWSTR faceName,
-    LPCWSTR *outPath // to be freed
+    LPCWSTR *outPath /* to be freed by caller */
 )
 {
     HKEY hKey;
@@ -179,19 +137,20 @@ LSTATUS GetFontFileFromRegistry(
     WCHAR data[MAX_PATH];
     WCHAR outDir[MAX_PATH];
     DWORD valueSize, dataSize, type;
-	LPCWSTR str;
-	LSTATUS status;
-	
+    LSTATUS status;
+    DWORD face_len;
+    LPWSTR str;
+
     if ((status = RegOpenKeyExW(
             HKEY_LOCAL_MACHINE,
             L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
             0,
-			// we can get away with just STANDARD_RIGHTS_READ and KEY_QUERY_VALUE because RegEnumValueW
-			// does not require KEY_ENUMERATE_SUB_KEYS.
-            STANDARD_RIGHTS_READ | KEY_QUERY_VALUE, 
+            STANDARD_RIGHTS_READ | KEY_QUERY_VALUE,
             &hKey)) != ERROR_SUCCESS)
         return status;
-	
+
+    face_len = lstrlenW(faceName);
+
     while (1)
     {
         valueSize = sizeof(valueName) / sizeof(WCHAR);
@@ -206,234 +165,126 @@ LSTATUS GetFontFileFromRegistry(
                 &type,
                 (LPBYTE)&data,
                 &dataSize);
-		
-		if (status != STATUS_SUCCESS) {
-			if (status == ERROR_NO_MORE_ITEMS)
-				break;
-			if (status == ERROR_MORE_DATA) // Font display name or value is too long
-				continue;
-			break;
-		}
-		
+
+        if (status != ERROR_SUCCESS) {
+            if (status == ERROR_NO_MORE_ITEMS)
+                break;
+            if (status == ERROR_MORE_DATA) /* Font display name or value is too long */
+                continue;
+            break;
+        }
+
         if (type != REG_SZ)
             continue;
-		
-        if (wcscmp(valueName, faceName) == 0) {
-            // check if the path has a : character. If it is, then it's a path to a
-			// installed font outside the FONTS folder.
-			if (wcsstr(valueName, L":")) {
-				lstrcpyW(outDir, valueName);
-				break;
-			}
-			
-			GetWindowsDirectoryW(outDir, MAX_PATH);
-			
-            lstrcatW(outDir, L"\\Fonts\\");
-            lstrcatW(outDir, data);
-			
+
+        if (face_len > 0 &&
+            wcsncmp(valueName, faceName, face_len) == 0 &&
+            (valueName[face_len] == L'\0' || valueName[face_len] == L' ' || valueName[face_len] == L'('))
+        {
+            if (wcschr(data, L':') != NULL) {
+                lstrcpyW(outDir, data);
+            } else {
+                GetWindowsDirectoryW(outDir, MAX_PATH);
+                lstrcatW(outDir, L"\\Fonts\\");
+                lstrcatW(outDir, data);
+            }
             break;
         }
     }
 
     RegCloseKey(hKey);
-	if (status != STATUS_SUCCESS)
-		return status;
-	str = malloc((wcslen((const wchar_t*)outPath) + 1) * sizeof(WCHAR));
-	// if (str == NULL)
-		// return ERR_OUT_OF_MEMORY;
-	lstrcpyW(str, outDir);
-	*outPath = str;
-    return status;
-}
+    if (status != ERROR_SUCCESS)
+        return status;
 
-// struct font_fileinfo
-// {
-    // FILETIME writetime;
-    // LARGE_INTEGER size;
-    // WCHAR path[1];
-// };
+    str = malloc((lstrlenW(outDir) + 1) * sizeof(WCHAR));
+    if (str == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    lstrcpyW(str, outDir);
+    *outPath = str;
+    return ERROR_SUCCESS;
+}
 
 BOOL 
 WINAPI 
 GetFontRealizationInfo(HDC hdc, struct font_realization_info *info)
 {
-	REALIZATION_INFO reinfo;
-	HFONT font;
-	
-	//Just return GetRealizationInfo, because call internally same syscall, NtGdiGetRealizationInfo
-	if(GdiRealizationInfo(hdc, &reinfo)){
-		if (!(font = GetCurrentObject(hdc, OBJ_FONT)))
-			return FALSE;
-        info->flags = reinfo.iTechnology;
-        info->cache_num = 0;
-		// For instance_id we store the HFONT itself as the instance ID...
-		info->instance_id = (DWORD)font;
-		
-		// Compatibility with BETA dwrite.dll
-        if (info->size >= 20)
-            info->file_count = 1;
-        if (info->size >= 22)
-            info->face_index = reinfo.iFontFileId;
-        if (info->size >= 24)
-            info->simulations = 0;
-		
-		return TRUE;
-	}
-	
-	return FALSE;	
+    REALIZATION_INFO reinfo;
+    HFONT font;
+
+    if (!GdiRealizationInfo(hdc, &reinfo))
+        return FALSE;
+
+    if (!(font = GetCurrentObject(hdc, OBJ_FONT)))
+        return FALSE;
+
+    info->flags      = reinfo.iTechnology;
+    info->cache_num  = 0;
+    info->instance_id = (DWORD)font;
+
+    if (info->size >= 20)
+        info->file_count = 1;
+    if (info->size >= 22)
+        info->face_index = reinfo.iFontFileId;
+    if (info->size >= 24)
+        info->simulations = 0;
+
+    return TRUE;
 }
 
-BOOL WINAPI GetFontFileInfo(DWORD instance_id, DWORD file_index, struct font_fileinfo *info, SIZE_T size, SIZE_T *needed) {
-	BOOL success = FALSE;
-	LSTATUS status;
-	DWORD requiredSize;
-	WIN32_FILE_ATTRIBUTE_DATA data;
-	
-	LPWSTR filePath;
-	HFONT font;
-	LOGFONTW logfont;
-	HANDLE hFile = INVALID_HANDLE_VALUE;
-	
-	// instance_id is the HFONT itself
-	font = (HFONT)(instance_id);
-	
-	if (!GetObjectW((HANDLE)instance_id, sizeof(logfont), &logfont))
-		return FALSE;
-	
-	if ((status = GetFontFileFromRegistry(logfont.lfFaceName, &filePath)) != STATUS_SUCCESS) {
-		SetLastError(status);
-		return FALSE;
-	}
+BOOL WINAPI GetFontFileInfo(DWORD instance_id, DWORD file_index, struct font_fileinfo *info, SIZE_T size, SIZE_T *needed)
+{
+    LSTATUS status;
+    LPWSTR filePath = NULL;
+    WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
+    DWORD requiredSize;
+    HFONT font;
+    LOGFONTW logfont = { 0 };
 
-	requiredSize = sizeof(*info) + (lstrlenW(filePath) + 1) * sizeof(WCHAR);
-	if (requiredSize < size) {
-		SetLastError(ERROR_INSUFFICIENT_BUFFER);
-		goto exit;
-	}
-	hFile = CreateFileW(filePath, FILE_READ_ATTRIBUTES, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) goto exit;
-	if (!GetFileAttributesExW(hFile, GetFileExInfoStandard, &data)) goto exit;
-	
-	// And we're done!
-	success = TRUE;
-	info->writetime = data.ftLastWriteTime;
-	info->size.LowPart = data.nFileSizeLow;
-	info->size.HighPart = data.nFileSizeHigh;
-	//lstrcpyW(&path, filePath);
-	
-exit:
-	if (needed) *needed = requiredSize;
-	if (hFile != INVALID_HANDLE_VALUE) CloseHandle(hFile);
-	free(filePath);
-	return success;
+    if (!handle_entry(instance_id))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    /* instance_id здесь — это HFONT */
+    font = (HFONT)instance_id;
+    if (!GetObjectW(font, sizeof(logfont), &logfont))
+        return FALSE;
+
+    status = GetFontFileFromRegistry(logfont.lfFaceName, &filePath);
+    if (status != ERROR_SUCCESS)
+    {
+        SetLastError(status);
+        return FALSE;
+    }
+
+    requiredSize = sizeof(*info) + lstrlenW(filePath) * sizeof(WCHAR);
+
+    if (needed)
+        *needed = requiredSize;
+
+    if (size < requiredSize)
+    {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        free(filePath);
+        return FALSE;
+    }
+
+    if (!GetFileAttributesExW(filePath, GetFileExInfoStandard, &data))
+    {
+        free(filePath);
+        return FALSE;
+    }
+
+    info->writetime = data.ftLastWriteTime;
+    info->size.LowPart  = data.nFileSizeLow;
+    info->size.HighPart = data.nFileSizeHigh;
+    lstrcpyW(info->path, filePath);
+
+    free(filePath);
+    return TRUE;
 }
-
-// BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD file_index, struct font_fileinfo *info, DWORD size, DWORD *needed ) {
-    // struct font_fileinfo fileinfo = {0};
-	// DWORD neededLength;
-    
-    // ZeroMemory(&fileinfo, sizeof(fileinfo));
-	
-	// DbgPrint("GetFontFileInfo called\n");
-    
-    // neededLength = sizeof(info) + (strlenW(fontPath) + 1) * sizeof(WCHAR);
-
-    // //font = entry->obj;
-    // *needed = neededLength;
-    // if (*needed > size)
-    // {
-		// DbgPrint("GetFontFileInfo:: insufficient size\n");
-        // SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        // return FALSE;
-    // }
-    // info->writetime.dwLowDateTime = 0;
-    // info->writetime.dwHighDateTime = 0;
-    // info->size.LowPart = 1000000; // replace with actual font size
-    // info->size.HighPart = 1000000; // replace with actual font size
-    // memcpy(&(info->path), fontPath, (strlenW(fontPath) + 1) * sizeof(WCHAR));
-	
-	// DbgPrint("GetFontFileInfo return TRUE\n");
-    // return TRUE;
-// }
-
-// /*************************************************************************
- // *             GetFontFileInfo   (GDI32.@)
- // */
-// BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD unknown, struct font_fileinfo *info, DWORD size, DWORD *needed )
-// {
-    // // LOGFONTW logfont;
-    // // HFONT hfont;
-    // // HRESULT hr;
-
-    // // // *fontface = NULL;
-
-    // // hfont = GetCurrentObject(currentHdcFont, OBJ_FONT);
-    // // if (!hfont)
-        // // return E_INVALIDARG;
-    // // GetObjectW(hfont, sizeof(logfont), &logfont);
-	
-    // //struct font_handle_entry *entry = handle_entry( instance_id );
-    // //const GdiFont *font;
-
-    // // if (!entry)
-    // // {
-        // // SetLastError(ERROR_INVALID_PARAMETER);
-        // // return FALSE;
-    // // }
-	
-	// struct font_fileinfo fileinfo = {0};
-	
-	// ZeroMemory(&fileinfo, sizeof(fileinfo));
-	
-	// fileinfo.path = L"C:\\Windows\\Fonts\\Tahoma.ttf";
-	// fileinfo.size = sizeof(*info) + strlenW(fileinfo.path) * sizeof(WCHAR);
-
-    // //font = entry->obj;
-    // *needed = fileinfo.size;
-    // if (*needed > size)
-    // {
-        // SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        // return FALSE;
-    // }
-
-    // /* path is included too */
-    // memcpy(info, fileinfo, *needed);
-    // return TRUE;
-// }
-
-/*************************************************************
- *           GetFontRealizationInfo    (GDI32.@)
- */
-// BOOL 
-// WINAPI 
-// GetFontRealizationInfo(HDC hdc, struct font_realization_info *info)
-// {
-	// REALIZATION_INFO reinfo;
-	
-	// if(hdc){
-		// currentHdcFont = hdc;
-	// }
-	// //Just return GetRealizationInfo, because call internally same syscall, NtGdiGetRealizationInfo
-	// if(GdiRealizationInfo(hdc, &reinfo)){
-        // info->flags = reinfo.iTechnology;
-        // info->cache_num = 0;
-        // info->instance_id = reinfo.iUniq;
-        // if (info->size >= 20)
-            // info->file_count = 1;
-        // if (info->size >= 22)
-            // info->face_index = reinfo.iFontFileId;
-        // if (info->size >= 24)
-            // info->simulations = 0;
-		// // info->instance_id = reinfo.iUniq;
-		// // info->face_index = reinfo.iFontFileId;
-		// // info->simulations = 0;
-		// DbgPrint("GetFontRealizationInfo return TRUE\n");
-		// return TRUE;
-	// }
-	
-	// DbgPrint("GetFontRealizationInfo return FALSE\n");
-	// return FALSE;	
-// }
 
 static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf, DWORD cbData)
 {
@@ -467,12 +318,12 @@ static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf
         err = FT_Load_Sfnt_Table(ft_face, table, offset, NULL, &needed);
         if( !err && needed < len) len = needed;
     }
-    err = FT_Load_Sfnt_Table(ft_face, table, offset, buf, &len);
+    err = FT_Load_Sfnt_Table(ft_face, table, offset, (FT_Byte*)buf, &len);
     if (err)
     {
         table = RtlUlongByteSwap( table );
         TRACE("Can't find table %s\n", debugstr_an((char*)&table, 4));
-	return GDI_ERROR;
+        return GDI_ERROR;
     }
     return len;
 }
@@ -480,29 +331,43 @@ static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf
 /*************************************************************************
  *             GetFontFileData   (GDI32.@)
  */
-BOOL WINAPI GetFontFileData( DWORD instance_id, DWORD unknown, UINT64 offset, void *buff, DWORD buff_size )
+BOOL WINAPI GetFontFileData( DWORD instance_id, DWORD file_index, UINT64 offset, void *buff, DWORD buff_size )
 {
-    // struct font_handle_entry *entry = handle_entry( instance_id );
-    // DWORD tag = 0, size;
-    // GdiFont *font;
-    // if (!entry)
-    // {
-        // SetLastError(ERROR_INVALID_PARAMETER);
-        // return FALSE;
-    // }
-    // font = entry->obj;
-    // if (font->ttc_item_offset)
-        // tag = MS_TTCF_TAG;
-    // size = get_font_data( font, tag, 0, NULL, 0 );
-    // if (size < buff_size || offset > size - buff_size)
-    // {
-        // SetLastError(ERROR_INVALID_PARAMETER);
-        // return FALSE;
-    // }
-    // /* For now this only works for SFNT case. */
-    // return get_font_data( font, tag, offset, buff, buff_size ) != 0;
-	HDC hdc = CreateCompatibleDC(0);
+    struct font_handle_entry *entry;
+    GdiFont *font;
+    DWORD tag = 0;
+    DWORD size;
+    //DWORD ret;
 
-	DbgPrint("GetFontFileData calling GetFontData\n");
-	return GetFontData(hdc, unknown, offset, buff, buff_size);
+    entry = handle_entry( instance_id );
+    if (!entry)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    font = (GdiFont *)entry->obj;
+
+    if (font->ttc_item_offset)
+        tag = MS_TTCF_TAG;
+
+    /* getting size of font file */
+    size = get_font_data(font, tag, 0, NULL, 0);
+    if (size == GDI_ERROR)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    /* check boundaries
+    if (offset > (UINT64)size ||
+        (UINT64)buff_size > (UINT64)size - offset)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    ret = get_font_data(font, tag, (DWORD)offset, buff, buff_size);
+*/
+    return (size != GDI_ERROR);
 }

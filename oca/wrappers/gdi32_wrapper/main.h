@@ -33,6 +33,15 @@
 #include <strsafe.h>
 #include <ddrawint.h>
 #include <d3dhal.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "wine/list.h"
+#include <ft2build.h>
+#include <freetype.h>
+#include <unicode.h>
+#include <tttables.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 

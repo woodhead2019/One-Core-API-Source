@@ -695,6 +695,6 @@
 @ stdcall EndGdiRendering(long long ptr) NtGdiEndGdiRendering
 @ stdcall CreateBitmapFromDxSurface(long long long long ptr)
 @ stdcall GetFontFileData(long long int64 ptr long)
-@ stdcall GetFontFileInfo(long long ptr long long) gdibase.GetFontFileInfo
+@ stdcall GetFontFileInfo(long long ptr long long) ;gdibase.GetFontFileInfo
 @ stdcall GetFontRealizationInfo(long ptr) ;GdiRealizationInfo
 @ stdcall GdiGetBitmapBitsSize(ptr) #please, be careful with this function!
