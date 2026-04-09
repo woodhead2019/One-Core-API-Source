@@ -666,3 +666,13 @@ void WINAPI RoFailFastWithErrorContextInternal2(HRESULT error, ULONG exception_c
     FIXME("%#lx, %lu, %p stub.\n", error, exception_count, information);
     RaiseFailFastException(NULL, NULL, 0);
 }
+
+
+/***********************************************************************
+ *      RoFailFastWithErrorContext (combase.@)
+ */
+void WINAPI RoFailFastWithErrorContext(HRESULT hr)
+{
+    FIXME("(0x%08lx)\n", hr);
+    RaiseFailFastException(NULL, NULL, 0);
+}

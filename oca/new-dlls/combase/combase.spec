@@ -441,6 +441,7 @@
 @ stdcall GetRestrictedErrorInfo(ptr)
 @ stdcall RoActivateInstance(ptr ptr)
 @ stdcall RoCaptureErrorContext(long)
+@ stdcall RoFailFastWithErrorContext(long)
 @ stdcall RoFailFastWithErrorContextInternal2(long long ptr)
 @ stdcall RoInitialize(long)
 @ stdcall RoGetActivationFactory(ptr ptr ptr)

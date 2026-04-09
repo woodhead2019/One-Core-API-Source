@@ -491,43 +491,65 @@ DWORD get_interface_indices( BOOL skip_loopback, InterfaceIndexTable **table )
 /******************************************************************
  *    GetIfTable2Ex (IPHLPAPI.@)
  */
-DWORD WINAPI GetIfTable2Ex( MIB_IF_TABLE_LEVEL level, MIB_IF_TABLE2 **table )
-{
-    DWORD i, nb_interfaces, size = sizeof(MIB_IF_TABLE2);
-    InterfaceIndexTable *index_table;
-    MIB_IF_TABLE2 *ret;
-
-    TRACE( "level %u, table %p\n", level, table );
-
-    if (!table || level > MibIfTableRaw)
-        return ERROR_INVALID_PARAMETER;
-
-    if (level != MibIfTableNormal)
-        FIXME("level %u not fully supported\n", level);
-
-    if ((nb_interfaces = get_interface_indices( FALSE, NULL )) > 1)
-        size += (nb_interfaces - 1) * sizeof(MIB_IF_ROW2);
-
-    if (!(ret = HeapAlloc( GetProcessHeap(), 0, size ))) return ERROR_OUTOFMEMORY;
-
-    get_interface_indices( FALSE, &index_table );
-    if (!index_table)
-    {
-        HeapFree( GetProcessHeap(), 0, ret );
-        return ERROR_OUTOFMEMORY;
-    }
-
-    ret->NumEntries = 0;
-    for (i = 0; i < index_table->numIndexes; i++)
-    {
-        ret->Table[i].InterfaceIndex = index_table->indexes[i];
-        GetIfEntry2( &ret->Table[i] );
-        ret->NumEntries++;
-    }
-
-    HeapFree( GetProcessHeap(), 0, index_table );
-    *table = ret;
-    return NO_ERROR;
+DWORD WINAPI GetIfTable2Ex(MIB_IF_TABLE_LEVEL Level, PMIB_IF_TABLE2 *Table) {
+	DWORD res;
+	DWORD size;
+	DWORD newSize;
+	PMIB_IFTABLE ifTable = NULL;
+	PMIB_IF_TABLE2 ifTable2;
+	PIP_ADAPTER_ADDRESSES_XP adapterAddrs = NULL;
+	PIP_ADAPTER_ADDRESSES_XP adapterAddrCur;
+	
+	int i;
+	
+	if ((res = GetIfTable(NULL, &size, FALSE)) != ERROR_INSUFFICIENT_BUFFER)
+		return res;
+	
+	if ((ifTable = malloc(size)) == NULL) return ERROR_NOT_ENOUGH_MEMORY;
+	
+	if ((res = GetIfTable(ifTable, &size, FALSE)) != ERROR_SUCCESS) goto cleanup;
+	
+	// Get the amount of interface entries we want, converting the size of MIB_IF_TABLE to MIB_IFTABLE2.
+	newSize = sizeof(MIB_IF_TABLE2) + (sizeof(MIB_IF_ROW2) * (ifTable->dwNumEntries - 1));
+	
+	if ((ifTable2 = HeapAlloc(GetProcessHeap(), 0, newSize)) == NULL) {
+		res = ERROR_NOT_ENOUGH_MEMORY;
+		goto cleanup;
+	}
+	
+	ifTable2->NumEntries = ifTable->dwNumEntries;
+	
+	for (i = 0; i < ifTable->dwNumEntries; i++) {
+		ConvertIfRowToIfRow2(&ifTable->table[i], &ifTable2->Table[i], TRUE);
+	}
+	
+	// we have to set alias on all GetIfTable2Ex entries at the same time, because slow conversion is too slow when calling it 100+ times.
+	if ((res = GetAdaptersAddresses(AF_UNSPEC, 0xF, 0, NULL, &newSize)) != ERROR_BUFFER_OVERFLOW) goto cleanup_adapters;
+	if (!(adapterAddrs = malloc(newSize))) goto cleanup_adapters;
+	if ((res = GetAdaptersAddresses(AF_UNSPEC, 0xF, 0, adapterAddrs, &newSize))) goto cleanup_adapters;
+		
+	adapterAddrCur = adapterAddrs;
+	while (adapterAddrCur != NULL) {
+		for (i = 0; i < ifTable->dwNumEntries; i++) {
+			PMIB_IF_ROW2 ifRow = &ifTable2->Table[i];
+			if (ifRow->InterfaceIndex == adapterAddrCur->IfIndex) {
+				ifRow->OperStatus = adapterAddrCur->OperStatus;
+				ifRow->DirectionType = (adapterAddrCur->Flags & IP_ADAPTER_RECEIVE_ONLY) ? NET_IF_DIRECTION_RECEIVEONLY : NET_IF_DIRECTION_SENDRECEIVE;
+				wcscpy(ifRow->Alias, adapterAddrCur->FriendlyName);
+				break;
+			}
+		}
+		adapterAddrCur = adapterAddrCur->Next;
+	}
+	
+	free(adapterAddrs);
+	goto cleanup;
+cleanup_adapters:
+	free(ifTable2);
+	free(adapterAddrs);
+cleanup:		
+	free(ifTable);
+	return res;
 }
 
 /******************************************************************
@@ -1216,7 +1238,7 @@ ConvertInterfaceIndexToLuid(
     row.dwIndex = InterfaceIndex;
     Status = GetIfEntry(&row);
     if (Status != NO_ERROR) {
-        ERR("ConvertInterfaceIndexToLuid: GetIfEntry failed with result %i", Status);
+        ERR("ConvertInterfaceIndexToLuid: GetIfEntry(%i) failed with result %i", Status, InterfaceIndex);
         return Status;
     }
     InterfaceLuid->Info.Reserved     = 0;
