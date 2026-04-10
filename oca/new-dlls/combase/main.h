@@ -4,26 +4,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <stdarg.h>
-
 #define COBJMACROS
 #define NONAMELESSUNION
 
 #include "windef.h"
 #include "winbase.h"
+#include "winerror.h"
 #include "wingdi.h"
 #include "winuser.h"
-#include "initguid.h"
-#include "ocidl.h"
-#include "shellscalingapi.h"
-#include "shlwapi.h"
-#include "unknwn.h"
-
-#include "wine/debug.h"
-#include "wine/heap.h"
-#include "combaseapi.h"
-#include "objidlbase.h"
-#include "winerror.h"
 #include "winnls.h"
 #include "winreg.h"
 #include "ole2.h"
@@ -33,6 +21,9 @@
 #include "olestd.h"
 
 #include "wine/list.h"
+
+#include "windef.h"
+#include "winbase.h"
 #include "wtypes.h"
 #include "dcomcombase.h"
 #include "winreg.h"
@@ -40,6 +31,7 @@
 #include "wine/debug.h"
 #include "wine/exception.h"
 #include "servprov.h"
+#include "combaseapi.h"
 
 #define APTTYPEQUALIFIER_APPLICATION_STA 6
 #define APTTYPEQUALIFIER_RESERVED_1 7
@@ -66,12 +58,6 @@
         break; \
     } \
     return hr;
-	
-enum AgileReferenceOptions
-{
-    AGILEREFERENCE_DEFAULT,
-    AGILEREFERENCE_DELAYEDMARSHAL
-};	
 
 /* private flag indicating that the caller does not want to notify the stub
  * when the proxy disconnects or is destroyed */

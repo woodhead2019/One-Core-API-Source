@@ -45,6 +45,8 @@ Revision History:
 
 #include "wine/debug.h"
 #include "wine/heap.h"
+#include "combaseapi.h"
+#include "initguid.h"
 
 #include "wine/debug.h"
 
@@ -52,6 +54,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(combase);
 
 #define COINIT_DISABLEOLE1DDE 4
 #define NT_SUCCESS(status)              (status >= 0)
+
+#define STATUS_FAIL_FAST_EXCEPTION              ((NTSTATUS)0xC0000602)
 
 DEFINE_GUID(IID_IUnknown, 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 DEFINE_GUID(IID_IAgileObject, 0x94ea2b94, 0xe9cc, 0x49e0, 0xc0,0xff, 0xee,0x64,0xca,0x8f,0x5b,0x90);
@@ -657,6 +661,43 @@ HRESULT WINAPI RoGetBufferMarshaler(
 	return E_NOTIMPL;
 }
 
+VOID 
+WINAPI 
+RaiseFailFastException(
+	EXCEPTION_RECORD *record, 
+	CONTEXT *context, 
+	DWORD flags
+)
+{
+    EXCEPTION_RECORD rec;
+    CONTEXT ctx;
+
+    if (!context)
+    {
+        ctx.ContextFlags = CONTEXT_FULL;
+        NtGetContextThread(GetCurrentThread(), &ctx);
+        context = &ctx;
+    }
+
+    if (!record)
+    {
+        rec.ExceptionCode    = STATUS_FAIL_FAST_EXCEPTION;
+        rec.ExceptionFlags   = 0;
+        rec.ExceptionRecord  = NULL;
+        rec.ExceptionAddress = RaiseFailFastException;
+        rec.NumberParameters = 0;
+        record = &rec;
+    }
+
+    if (!NtCurrentTeb()->Peb->BeingDebugged)
+    {
+        EXCEPTION_POINTERS epointers;
+
+        epointers.ExceptionRecord = record;
+        epointers.ContextRecord = context;
+       // start_debugger_atomic(&epointers);
+    }
+}
 
 /***********************************************************************
  *      RoFailFastWithErrorContextInternal2 (combase.@)
@@ -675,4 +716,13 @@ void WINAPI RoFailFastWithErrorContext(HRESULT hr)
 {
     FIXME("(0x%08lx)\n", hr);
     RaiseFailFastException(NULL, NULL, 0);
+}
+
+/***********************************************************************
+ *      RoReportUnhandledError (combase.@)
+ */
+HRESULT WINAPI RoReportUnhandledError(IRestrictedErrorInfo *info)
+{
+    FIXME("(%p): stub\n", info);
+    return S_OK;
 }
