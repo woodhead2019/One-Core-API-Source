@@ -170,9 +170,12 @@
 @ stdcall ConvertInterfaceLuidToNameW( ptr ptr long )
 @ stdcall ConvertInterfaceNameToLuidA( str ptr )
 @ stdcall ConvertInterfaceNameToLuidW( wstr ptr )
+@ stdcall ConvertIpv4MaskToLength( long ptr )
 @ stdcall ConvertLengthToIpv4Mask(long ptr)
 @ stdcall ConvertStringToGuidW( ptr ptr )
+@ stdcall CreateIpForwardEntry2( ptr )
 @ stdcall CreateSortedAddressPairs(ptr long ptr long long ptr ptr)
+@ stdcall DeleteIpForwardEntry2(ptr)
 @ stdcall FreeMibTable(ptr)
 @ stdcall GetAnycastIpAddressTable( long ptr )
 @ stdcall GetBestRoute2(ptr long ptr ptr long ptr ptr)
@@ -195,6 +198,7 @@
 @ stdcall IcmpSendEcho2Ex(ptr ptr ptr ptr long long ptr long ptr ptr long long)
 @ stdcall if_indextoname(long ptr) IPHLP_if_indextoname
 @ stdcall if_nametoindex(str) IPHLP_if_nametoindex
+@ stdcall InitializeIpForwardEntry(ptr)
 @ stdcall NotifyIpInterfaceChange(long ptr ptr long ptr)
 @ stdcall NotifyStableUnicastIpAddressTable(long ptr ptr ptr ptr)
 @ stdcall NotifyRouteChange2(ptr ptr ptr long ptr)

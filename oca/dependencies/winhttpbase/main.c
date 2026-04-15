@@ -180,3 +180,10 @@ HRESULT WINAPI DllUnregisterServer(void)
 {
     return __wine_unregister_resources( winhttp_instance );
 }
+
+VOID WINAPI WinHttpAutoProxySvcMain(
+	DWORD a1,
+    LPWSTR *lp2)
+{
+	;
+}

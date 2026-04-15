@@ -589,6 +589,21 @@ typedef enum tagPOINTER_FLAGS {
   POINTER_FLAG_HWHEEL         = 0x00100000 
 } POINTER_FLAGS;
 
+/*
+ * Flags that appear in pointer input message parameters
+ */
+#define POINTER_MESSAGE_FLAG_NEW                0x00000001 // New pointer
+#define POINTER_MESSAGE_FLAG_INRANGE            0x00000002 // Pointer has not departed
+#define POINTER_MESSAGE_FLAG_INCONTACT          0x00000004 // Pointer is in contact
+#define POINTER_MESSAGE_FLAG_FIRSTBUTTON        0x00000010 // Primary action
+#define POINTER_MESSAGE_FLAG_SECONDBUTTON       0x00000020 // Secondary action
+#define POINTER_MESSAGE_FLAG_THIRDBUTTON        0x00000040 // Third button
+#define POINTER_MESSAGE_FLAG_FOURTHBUTTON       0x00000080 // Fourth button
+#define POINTER_MESSAGE_FLAG_FIFTHBUTTON        0x00000100 // Fifth button
+#define POINTER_MESSAGE_FLAG_PRIMARY            0x00002000 // Pointer is primary
+#define POINTER_MESSAGE_FLAG_CONFIDENCE         0x00004000 // Pointer is considered unlikely to be accidental
+#define POINTER_MESSAGE_FLAG_CANCELED           0x00008000 // Pointer is departing in an abnormal manner
+
 typedef UINT32 TOUCH_FLAGS;
 #define TOUCH_FLAG_NONE  0x00000000
 
@@ -597,6 +612,25 @@ typedef UINT32 TOUCH_MASK;
 #define TOUCH_MASK_CONTACTAREA  0x00000001
 #define TOUCH_MASK_ORIENTATION  0x00000002
 #define TOUCH_MASK_PRESSURE     0x00000004
+
+// messages (from WinUser.h)
+#define WM_POINTERDEVICECHANGE          0x238
+#define WM_POINTERDEVICEINRANGE         0x239
+#define WM_POINTERDEVICEOUTOFRANGE      0x23A
+
+#define WM_NCPOINTERUPDATE              0x0241
+#define WM_NCPOINTERDOWN                0x0242
+#define WM_NCPOINTERUP                  0x0243
+#define WM_POINTERUPDATE                0x0245
+#define WM_POINTERDOWN                  0x0246
+#define WM_POINTERUP                    0x0247
+#define WM_POINTERENTER                 0x0249
+#define WM_POINTERLEAVE                 0x024A
+#define WM_POINTERACTIVATE              0x024B
+#define WM_POINTERCAPTURECHANGED        0x024C
+#define WM_TOUCHHITTESTING              0x024D
+#define WM_POINTERWHEEL                 0x024E
+#define WM_POINTERHWHEEL                0x024F
 
 typedef struct tagPOINTER_TOUCH_INFO {
   POINTER_INFO pointerInfo;
@@ -739,34 +773,6 @@ typedef struct
     CURSORICONDIRENTRY  idEntries[1];
 } CURSORICONDIR;
 
-// typedef struct _CURSORICONFILEDIRENTRY
-// {
-    // BYTE bWidth;
-    // BYTE bHeight;
-    // BYTE bColorCount;
-    // BYTE bReserved;
-    // union
-    // {
-        // WORD wPlanes; /* For icons */
-        // WORD xHotspot; /* For cursors */
-    // };
-    // union
-    // {
-        // WORD wBitCount; /* For icons */
-        // WORD yHotspot; /* For cursors */
-    // };
-    // DWORD dwDIBSize;
-    // DWORD dwDIBOffset;
-// } CURSORICONFILEDIRENTRY;
-
-// typedef struct _CURSORICONFILEDIR
-// {
-    // WORD idReserved;
-    // WORD idType;
-    // WORD idCount;
-    // CURSORICONFILEDIRENTRY idEntries[1];
-// } CURSORICONFILEDIR;
-
 typedef struct
 {
     WORD idReserved;   // Sempre 0
@@ -800,6 +806,18 @@ typedef struct tagPOINTER_TYPE_INFO {
     POINTER_PEN_INFO   penInfo;
   } DUMMYUNIONNAME;
 } POINTER_TYPE_INFO, *PPOINTER_TYPE_INFO;
+
+typedef struct tagPOINTER_DEVICE_PROPERTY
+{
+    INT32 logicalMin;
+    INT32 logicalMax;
+    INT32 physicalMin;
+    INT32 physicalMax;
+    UINT32 unit;
+    UINT32 unitExponent;
+    USHORT usagePageId;
+    USHORT usageId;
+} POINTER_DEVICE_PROPERTY;
 
 BOOL 
 WINAPI 

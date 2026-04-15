@@ -743,7 +743,7 @@ VOID WINAPI RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlReleaseSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlReleaseSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlAcquireSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
-
+NTSTATUS NTAPI NtGetNextThread( __in HANDLE ProcessHandle, __in HANDLE ThreadHandle, __in ACCESS_MASK DesiredAccess,__in ULONG HandleAttributes,__in ULONG Flags,__out PHANDLE NewThreadHandle );
 
 #ifdef __i386__
 #define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)

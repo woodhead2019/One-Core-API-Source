@@ -22,6 +22,15 @@ Revision History:
 #include "stubs.h"
 #include "stdio.h"
 
+#define IOC_WS2                        0x08000000
+#define _WSAIORW(x,y)                  (IOC_INOUT|(x)|(y))
+#define SIO_GET_EXTENSION_FUNCTION_POINTER  _WSAIORW(IOC_WS2,6)
+
+#define WSAID_WSASENDMSG /* a441e712-754f-43ca-84a7-0dee44cf606d */ \
+    {0xa441e712,0x754f,0x43ca,{0x84,0xa7,0x0d,0xee,0x44,0xcf,0x60,0x6d}}
+	
+const GUID WSASendMsg_GUID = WSAID_WSASENDMSG;	
+
 // /*
  // * @implemented
  // */
@@ -110,7 +119,7 @@ int WSAAPI WSAIoctlInternal(
   LPWSAOVERLAPPED                    lpOverlapped,
   LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
 ) {
-	int res;
+	int res = 0;
 	
 	// Rust applications require SIO_BASE* functions, for whatever reason.
     if (dwIoControlCode == SIO_BASE_HANDLE
@@ -136,8 +145,8 @@ int WSAAPI WSAIoctlInternal(
 		
 		if ((res = WSAIoctl(s, dwIoControlCode, lpvInBuffer, cbInBuffer, lpvOutBuffer, cbOutBuffer, lpcbBytesReturned, lpOverlapped, lpCompletionRoutine))) {
 			if (lpvInBuffer && lpvOutBuffer && cbInBuffer >= sizeof(GUID) && cbOutBuffer >= sizeof(PVOID)) {
-				if (memcmp(WSAID_WSASENDMSG, lpvInBuffer, sizeof(GUID)) == 0) {
-					*lpvOutBuffer = &WSASendMsg;
+				if (memcmp(&WSASendMsg_GUID, lpvInBuffer, sizeof(GUID)) == 0) {
+					lpvOutBuffer = &WSASendMsg_GUID;
 					return 0;
 				}
 			}

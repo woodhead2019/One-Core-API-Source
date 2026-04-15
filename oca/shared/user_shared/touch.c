@@ -180,7 +180,7 @@ VOID WINAPI PointerApiThreadStartup(HINSTANCE hinstDLL) {
 	if (TlsGetValue(g_pointerTlsInfo) != NULL)
 		return;
 
-	ptrInfo = malloc(sizeof(OCA_POINTER_HOOK));
+	ptrInfo = HeapAlloc(GetProcessHeap(), 0, sizeof(OCA_POINTER_HOOK));
 	if (ptrInfo) {
 		memset(ptrInfo, 0, sizeof(OCA_POINTER_HOOK));
 		ptrInfo->hook = SetWindowsHookEx(WH_GETMESSAGE, GetMsgProc, hinstDLL, GetCurrentThreadId());
@@ -192,7 +192,7 @@ VOID WINAPI PointerApiThreadShutdown(HINSTANCE hinstDLL) {
 	OCA_POINTER_HOOK* ptrInfo = TlsGetValue(g_pointerTlsInfo);
 	if (ptrInfo != NULL) {
 		UnhookWindowsHookEx(ptrInfo->hook);
-		free(ptrInfo);
+		HeapFree(GetProcessHeap(), 0, ptrInfo);
 		TlsSetValue(g_pointerTlsInfo, NULL);
 	}
 }

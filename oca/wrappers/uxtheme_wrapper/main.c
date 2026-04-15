@@ -499,6 +499,7 @@ BOOL WINAPI EndPanningFeedback(
 }
 
 HRESULT 
+WINAPI
 DrawThemeParentBackgroundEx(
   _In_       HWND  hwnd,
   _In_       HDC   hdc,

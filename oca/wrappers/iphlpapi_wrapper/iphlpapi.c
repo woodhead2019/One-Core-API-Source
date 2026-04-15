@@ -25,8 +25,15 @@ WINE_DEFAULT_DEBUG_CHANNEL(iphlpapi);
 
 #define CHARS_IN_GUID 39
 
-#define NdisMediumTunnel       15
-#define NdisMediumNative802_11 16
+/*Native 802.11. This media type is used by miniport drivers that conform to
+ the Native 802.11 interface. For more information about this interface, see
+ Native 802.11 Wireless LAN Miniport Drivers.
+ Note: Native 802.11 interface is supported in NDIS 6.0 and later versions*/
+#define NdisMediumNative802_11              (0x00000009)
+/*Tunnel network.*/
+#define NdisMediumTunnel                    (0x00000010)
+/*  NDIS loopback network. */
+#define NdisMediumLoopback                  (0x00000011)
 
 #define IFENT_SOFTWARE_LOOPBACK 24 /* This is an SNMP constant from rfc1213 */
 
@@ -35,6 +42,23 @@ const NPI_MODULEID NPI_MS_IPV6_MODULEID = {0x01};
 const NPI_MODULEID NPI_MS_TCP_MODULEID = {0x03};
 const NPI_MODULEID NPI_MS_NDIS_MODULEID = {0x11};
   
+typedef struct _MIB_IPPATH_ROW {
+  SOCKADDR_INET Source;
+  SOCKADDR_INET Destination;
+  NET_LUID      InterfaceLuid;
+  NET_IFINDEX   InterfaceIndex;
+  SOCKADDR_INET CurrentNextHop;
+  ULONG         PathMtu;
+  ULONG         RttMean;
+  ULONG         RttDeviation;
+  union {
+    ULONG LastReachable;
+    ULONG LastUnreachable;
+  };
+  BOOLEAN       IsReachable;
+  ULONG64       LinkTransmitSpeed;
+  ULONG64       LinkReceiveSpeed;
+} MIB_IPPATH_ROW, *PMIB_IPPATH_ROW;  
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -141,15 +165,15 @@ DWORD WINAPI ConvertInterfaceGuidToLuid(const GUID *guid, NET_LUID *luid)
  */
 DWORD WINAPI ConvertInterfaceLuidToIndex(const NET_LUID *luid, NET_IFINDEX *index)
 {
-    DWORD ret;
-    MIB_IFROW row;
+    //DWORD ret;
+    //MIB_IFROW row;
 
     TRACE("(%p %p)\n", luid, index);
 
     if (!luid || !index) return ERROR_INVALID_PARAMETER;
 
-    row.dwIndex = luid->Info.NetLuidIndex;
-    if ((ret = GetIfEntry( &row ))) return ret;
+    // row.dwIndex = luid->Info.NetLuidIndex;
+    // if ((ret = GetIfEntry( &row ))) return ret;
 
     *index = luid->Info.NetLuidIndex;
     return NO_ERROR;
@@ -213,14 +237,81 @@ ResolveIpNetEntry2(
 	return ERROR_NOT_SUPPORTED;
 }
 
-DWORD 
-WINAPI 
-GetIpNetEntry2(
-  _Inout_  PMIB_IPNET_ROW2 Row
+DWORD WINAPI GetIpNetEntry2(
+    PMIB_IPNET_ROW2 Row2
 )
 {
-	UNIMPLEMENTED;
-	return ERROR_NOT_SUPPORTED;
+    PMIB_IPNETTABLE table = NULL;
+    ULONG size = 0;
+    DWORD ret;
+    DWORD i;
+
+    if (!Row2)
+        return ERROR_INVALID_PARAMETER;
+
+    if (Row2->Address.si_family != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    /* Primeiro call para obter tamanho */
+    ret = GetIpNetTable(NULL, &size, FALSE);
+    if (ret != ERROR_INSUFFICIENT_BUFFER)
+        return ret;
+
+    table = (PMIB_IPNETTABLE)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!table)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    ret = GetIpNetTable(table, &size, FALSE);
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, table);
+        return ret;
+    }
+
+    for (i = 0; i < table->dwNumEntries; i++)
+    {
+        MIB_IPNETROW *row = &table->table[i];
+
+        if (row->dwAddr == Row2->Address.Ipv4.sin_addr.S_un.S_addr &&
+            row->dwIndex == Row2->InterfaceIndex)
+        {
+            /* Preenche saída */
+
+            Row2->InterfaceIndex = row->dwIndex;
+
+            /* Endereço IPv4 */
+            Row2->Address.si_family = AF_INET;
+            Row2->Address.Ipv4.sin_addr.S_un.S_addr = row->dwAddr;
+
+            /* MAC */
+            Row2->PhysicalAddressLength = row->dwPhysAddrLen;
+            memcpy(Row2->PhysicalAddress,
+                   row->bPhysAddr,
+                   row->dwPhysAddrLen);
+
+            /* Estado (aproximação) */
+            switch (row->dwType)
+            {
+            case MIB_IPNET_TYPE_DYNAMIC:
+                Row2->State =  NlnsReachable;
+                break;
+
+            case MIB_IPNET_TYPE_STATIC:
+                Row2->State = NlnsPermanent;
+                break;
+
+            default:
+                Row2->State = NlnsStale;
+                break;
+            }
+
+            HeapFree(GetProcessHeap(), 0, table);
+            return NO_ERROR;
+        }
+    }
+
+    HeapFree(GetProcessHeap(), 0, table);
+    return ERROR_NOT_FOUND;
 }
 
 /******************************************************************
@@ -247,7 +338,7 @@ ConvertInterfaceLuidToGuid(
     return NO_ERROR;
 }
 
-#define NTDDI_VERSION 0x06000000 
+// Converts a NDIS5 ifType to NDIS6 media types.
 void ConvertIfTypeToNdisTypes(DWORD ifType, NDIS_MEDIUM *mediaType, NDIS_PHYSICAL_MEDIUM *physicalMediumType, NET_IF_CONNECTION_TYPE *connectType) {
 	NDIS_MEDIUM mType = -1;
 	NDIS_PHYSICAL_MEDIUM pmType = NdisPhysicalMediumUnspecified;
@@ -279,6 +370,7 @@ void ConvertIfTypeToNdisTypes(DWORD ifType, NDIS_MEDIUM *mediaType, NDIS_PHYSICA
 			break;
 		case IF_TYPE_TUNNEL:
 			mType = NdisMediumTunnel;
+			netconnectType = NET_IF_CONNECTION_PASSIVE;
 			break;
 		case IF_TYPE_IEEE1394:
 			mType = NdisMedium1394;
@@ -287,8 +379,14 @@ void ConvertIfTypeToNdisTypes(DWORD ifType, NDIS_MEDIUM *mediaType, NDIS_PHYSICA
 			break;
 		case IF_TYPE_ARCNET:
 			mType = NdisMediumArcnetRaw;
+			break;
 		case IF_TYPE_ARCNET_PLUS:
 			mType = NdisMediumArcnet878_2;
+			break;
+		case IF_TYPE_SOFTWARE_LOOPBACK:
+			mType = NdisMediumLoopback;
+			pmType = NdisPhysicalMediumOther;
+			netconnectType = NET_IF_CONNECTION_PASSIVE;
 			break;
 		default:
 			TRACE("unsupported ifType type %i detected, report so your network adapter is supported properly for this wrapper\n", ifType);
@@ -322,15 +420,22 @@ DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversio
     row2->OutNUcastPkts   = row->dwOutNUcastPkts;
     row2->OutDiscards     = row->dwOutDiscards;
     row2->OutErrors       = row->dwOutErrors;
+	row2->OutQLen         = row->dwOutQLen;
+	
+	// We assume all octets are broadcasted octets
+	row2->InMulticastOctets = 0;
+	row2->InBroadcastOctets = row->dwInOctets;
+	row2->OutMulticastOctets = 0;
+	row2->OutBroadcastOctets = row->dwOutOctets;
 	
 	row2->InterfaceIndex = row->dwIndex;
 	row2->Type = row->dwType;
 	row2->Mtu = row->dwMtu;
 	row2->TransmitLinkSpeed = row->dwSpeed;
 	row2->ReceiveLinkSpeed = row->dwSpeed;
-	row2->AccessType = (row2->Type == MIB_IF_TYPE_LOOPBACK) ? NET_IF_ACCESS_LOOPBACK : NET_IF_ACCESS_BROADCAST;
-    row2->InterfaceAndOperStatusFlags.ConnectorPresent = row2->Type != MIB_IF_TYPE_LOOPBACK;
-    row2->InterfaceAndOperStatusFlags.HardwareInterface = row2->Type != MIB_IF_TYPE_LOOPBACK;
+	row2->AccessType = (row->dwType == IF_TYPE_SOFTWARE_LOOPBACK) ? NET_IF_ACCESS_LOOPBACK : NET_IF_ACCESS_BROADCAST;
+    row2->InterfaceAndOperStatusFlags.ConnectorPresent = row->dwType != IF_TYPE_SOFTWARE_LOOPBACK;
+    row2->InterfaceAndOperStatusFlags.HardwareInterface = row->dwType != IF_TYPE_SOFTWARE_LOOPBACK;
 	row2->AdminStatus = row->dwAdminStatus == TRUE ? NET_IF_ADMIN_STATUS_UP : NET_IF_ADMIN_STATUS_DOWN; // will be filled in later
 	
 	// interface LUID will map to dwIndex
@@ -420,24 +525,29 @@ DWORD WINAPI GetIfEntry2(MIB_IF_ROW2 *row2)
 }
 
 DWORD WINAPI GetIfEntry2Ex(MIB_IF_ENTRY_LEVEL level, PMIB_IF_ROW2 row2) {
-	DWORD ret;
-	
-	TRACE("GetIfEntry2Ex called: %p\n", row2);
+    DWORD ret;
+    
+    TRACE("GetIfEntry2Ex called: %p\n", row2);
 
-	if ((ret = GetIfEntry2(row2)) == NO_ERROR && level == MibIfEntryNormalWithoutStatistics) {
-		row2->InOctets        = 0;
-		row2->InUcastPkts     = 0;
-		row2->InNUcastPkts    = 0;
-		row2->InDiscards      = 0;
-		row2->InErrors        = 0;
-		row2->InUnknownProtos = 0;
-		row2->OutOctets       = 0;
-		row2->OutUcastPkts    = 0;
-		row2->OutNUcastPkts   = 0;
-		row2->OutDiscards     = 0;
-		row2->OutErrors       = 0;
-	}
-	return ret;
+    if ((ret = GetIfEntry2(row2)) == NO_ERROR && level == MibIfEntryNormalWithoutStatistics) {
+        row2->InOctets           = 0;
+        row2->InUcastPkts        = 0;
+        row2->InNUcastPkts       = 0;
+        row2->InDiscards         = 0;
+        row2->InErrors           = 0;
+        row2->InUnknownProtos    = 0;
+        row2->OutOctets          = 0;
+        row2->OutUcastPkts       = 0;
+        row2->OutNUcastPkts      = 0;
+        row2->OutDiscards        = 0;
+        row2->OutErrors          = 0;
+        row2->InMulticastOctets  = 0;
+        row2->InBroadcastOctets  = 0;
+        row2->OutMulticastOctets = 0;
+        row2->OutBroadcastOctets = 0;
+        
+    }
+    return ret;
 }
 
 /***********************************************************************
@@ -1875,11 +1985,9 @@ DWORD WINAPI GetUdp6Table(PMIB_UDP6TABLE pUdpTable, PDWORD pdwSize, BOOL bOrder)
 
 DWORD WINAPI GetUnicastIpAddressEntry(MIB_UNICASTIPADDRESS_ROW *row)
 {
-    IP_ADAPTER_ADDRESSES_LH *aa, *ptr;
+    IP_ADAPTER_ADDRESSES_XP *aa, *ptr;
     ULONG size = 0;
     DWORD ret;
-
-    TRACE("%p\n", row);
 
     if (!row)
         return ERROR_INVALID_PARAMETER;
@@ -1887,87 +1995,112 @@ DWORD WINAPI GetUnicastIpAddressEntry(MIB_UNICASTIPADDRESS_ROW *row)
     ret = GetAdaptersAddresses(row->Address.si_family, 0, NULL, NULL, &size);
     if (ret != ERROR_BUFFER_OVERFLOW)
         return ret;
-    if (!(ptr = HeapAlloc(GetProcessHeap(), 0, size)))
+
+    ptr = (IP_ADAPTER_ADDRESSES_XP*)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!ptr)
         return ERROR_OUTOFMEMORY;
-    if ((ret = GetAdaptersAddresses(row->Address.si_family, 0, NULL, (PIP_ADAPTER_ADDRESSES)ptr, &size)))
+
+    ret = GetAdaptersAddresses(row->Address.si_family, 0, NULL,
+                               (IP_ADAPTER_ADDRESSES*)ptr, &size);
+    if (ret)
     {
         HeapFree(GetProcessHeap(), 0, ptr);
         return ret;
     }
 
     ret = ERROR_FILE_NOT_FOUND;
+
     for (aa = ptr; aa; aa = aa->Next)
     {
         IP_ADAPTER_UNICAST_ADDRESS *ua;
 
-        if (aa->IfIndex != row->InterfaceIndex &&
-            memcmp(&aa->Luid, &row->InterfaceLuid, sizeof(row->InterfaceLuid)))
+        /* XP: só temos IfIndex */
+        if (aa->IfIndex != row->InterfaceIndex)
             continue;
+
         ret = ERROR_NOT_FOUND;
 
         ua = aa->FirstUnicastAddress;
         while (ua)
         {
-            SOCKADDR_INET *uaaddr = (SOCKADDR_INET *)ua->Address.lpSockaddr;
+            SOCKADDR_INET *uaaddr = (SOCKADDR_INET*)ua->Address.lpSockaddr;
 
-            if ((row->Address.si_family == WS_AF_INET6 &&
-                 !memcmp(&row->Address.Ipv6.sin6_addr, &uaaddr->Ipv6.sin6_addr, sizeof(uaaddr->Ipv6.sin6_addr))) ||
-                (row->Address.si_family == WS_AF_INET &&
-                 row->Address.Ipv4.sin_addr.S_un.S_addr == uaaddr->Ipv4.sin_addr.S_un.S_addr))
+            if ((row->Address.si_family == AF_INET &&
+                 row->Address.Ipv4.sin_addr.S_un.S_addr ==
+                 uaaddr->Ipv4.sin_addr.S_un.S_addr)
+#ifdef AF_INET6
+                ||
+                (row->Address.si_family == AF_INET6 &&
+                 !memcmp(&row->Address.Ipv6.sin6_addr,
+                         &uaaddr->Ipv6.sin6_addr,
+                         sizeof(uaaddr->Ipv6.sin6_addr)))
+#endif
+               )
             {
-                memcpy(&row->InterfaceLuid, &aa->Luid, sizeof(aa->Luid));
-                row->InterfaceIndex     = aa->IfIndex;
-                row->PrefixOrigin       = ua->PrefixOrigin;
-                row->SuffixOrigin       = ua->SuffixOrigin;
-                row->ValidLifetime      = ua->ValidLifetime;
-                row->PreferredLifetime  = ua->PreferredLifetime;
-                row->OnLinkPrefixLength = ua->OnLinkPrefixLength;
+                /* Preenche apenas o que XP suporta */
+
+                row->InterfaceIndex = aa->IfIndex;
+
+                /* Campos não suportados no XP */
+                row->PrefixOrigin       = IpPrefixOriginOther;
+                row->SuffixOrigin       = IpSuffixOriginOther;
+                row->ValidLifetime      = 0xFFFFFFFF;
+                row->PreferredLifetime  = 0xFFFFFFFF;
+                row->OnLinkPrefixLength = 0;
                 row->SkipAsSource       = 0;
-                row->DadState           = ua->DadState;
-                if (row->Address.si_family == WS_AF_INET6)
-                    row->ScopeId.Value  = row->Address.Ipv6.sin6_scope_id;
+                row->DadState           = IpDadStatePreferred;
+
+                if (row->Address.si_family == AF_INET6)
+                    row->ScopeId.Value = row->Address.Ipv6.sin6_scope_id;
                 else
-                    row->ScopeId.Value  = 0;
+                    row->ScopeId.Value = 0;
+
                 NtQuerySystemTime(&row->CreationTimeStamp);
+
                 HeapFree(GetProcessHeap(), 0, ptr);
                 return NO_ERROR;
             }
+
             ua = ua->Next;
         }
     }
-    HeapFree(GetProcessHeap(), 0, ptr);
 
+    HeapFree(GetProcessHeap(), 0, ptr);
     return ret;
 }
 
-DWORD WINAPI GetUnicastIpAddressTable(ADDRESS_FAMILY family, MIB_UNICASTIPADDRESS_TABLE **table)
+DWORD WINAPI GetUnicastIpAddressTable(
+    ADDRESS_FAMILY family,
+    MIB_UNICASTIPADDRESS_TABLE **table)
 {
-    IP_ADAPTER_ADDRESSES_LH *aa, *ptr;
+    IP_ADAPTER_ADDRESSES_XP *aa, *ptr;
     MIB_UNICASTIPADDRESS_TABLE *data;
     DWORD ret, count = 0;
-    ULONG size, flags;
+    ULONG size = 0;
 
-    TRACE("%u, %p\n", family, table);
-
-    if (!table || (family != WS_AF_INET && family != WS_AF_INET6 && family != WS_AF_UNSPEC))
+    if (!table ||
+        (family != AF_INET &&
+         family != AF_INET6 &&
+         family != AF_UNSPEC))
         return ERROR_INVALID_PARAMETER;
 
-    flags = GAA_FLAG_SKIP_ANYCAST |
-            GAA_FLAG_SKIP_MULTICAST |
-            GAA_FLAG_SKIP_DNS_SERVER |
-            GAA_FLAG_SKIP_FRIENDLY_NAME;
-
-    ret = GetAdaptersAddresses(family, flags, NULL, NULL, &size);
+    ret = GetAdaptersAddresses(family, 0, NULL, NULL, &size);
     if (ret != ERROR_BUFFER_OVERFLOW)
         return ret;
-    if (!(ptr = HeapAlloc(GetProcessHeap(), 0, size)))
+
+    ptr = (IP_ADAPTER_ADDRESSES_XP*)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!ptr)
         return ERROR_OUTOFMEMORY;
-    if ((ret = GetAdaptersAddresses(family, flags, NULL, (IP_ADAPTER_ADDRESSES*)ptr, &size)))
+
+    ret = GetAdaptersAddresses(family, 0, NULL,
+                               (IP_ADAPTER_ADDRESSES*)ptr, &size);
+    if (ret)
     {
         HeapFree(GetProcessHeap(), 0, ptr);
         return ret;
     }
 
+    /* Conta entradas */
     for (aa = ptr; aa; aa = aa->Next)
     {
         IP_ADAPTER_UNICAST_ADDRESS *ua = aa->FirstUnicastAddress;
@@ -1978,33 +2111,58 @@ DWORD WINAPI GetUnicastIpAddressTable(ADDRESS_FAMILY family, MIB_UNICASTIPADDRES
         }
     }
 
-    if (!(data = HeapAlloc(GetProcessHeap(), 0, sizeof(*data) + (count - 1) * sizeof(data->Table[0]))))
+    if (count == 0)
+    {
+        HeapFree(GetProcessHeap(), 0, ptr);
+        return ERROR_NO_DATA;
+    }
+
+    data = (MIB_UNICASTIPADDRESS_TABLE*)
+        HeapAlloc(GetProcessHeap(), 0,
+            sizeof(*data) + (count - 1) * sizeof(data->Table[0]));
+
+    if (!data)
     {
         HeapFree(GetProcessHeap(), 0, ptr);
         return ERROR_OUTOFMEMORY;
     }
 
     data->NumEntries = 0;
+
     for (aa = ptr; aa; aa = aa->Next)
     {
         IP_ADAPTER_UNICAST_ADDRESS *ua = aa->FirstUnicastAddress;
+
         while (ua)
         {
-            MIB_UNICASTIPADDRESS_ROW *row = &data->Table[data->NumEntries];
-            memcpy(&row->Address, ua->Address.lpSockaddr, ua->Address.iSockaddrLength);
-            memcpy(&row->InterfaceLuid, &aa->Luid, sizeof(aa->Luid));
-            row->InterfaceIndex     = aa->IfIndex;
-            row->PrefixOrigin       = ua->PrefixOrigin;
-            row->SuffixOrigin       = ua->SuffixOrigin;
-            row->ValidLifetime      = ua->ValidLifetime;
-            row->PreferredLifetime  = ua->PreferredLifetime;
-            row->OnLinkPrefixLength = ua->OnLinkPrefixLength;
+            MIB_UNICASTIPADDRESS_ROW *row =
+                &data->Table[data->NumEntries];
+
+            /* Copia endereço */
+            memcpy(&row->Address,
+                   ua->Address.lpSockaddr,
+                   ua->Address.iSockaddrLength);
+
+            /* XP: sem LUID */
+            row->InterfaceIndex = aa->IfIndex;
+
+            /* Campos não suportados no XP */
+            row->PrefixOrigin       = IpPrefixOriginOther;
+            row->SuffixOrigin       = IpSuffixOriginOther;
+            row->ValidLifetime      = 0xFFFFFFFF;
+            row->PreferredLifetime  = 0xFFFFFFFF;
+            row->OnLinkPrefixLength = 0;
             row->SkipAsSource       = 0;
-            row->DadState           = ua->DadState;
-            if (row->Address.si_family == WS_AF_INET6)
-                row->ScopeId.Value  = row->Address.Ipv6.sin6_scope_id;
+            row->DadState           = IpDadStatePreferred;
+
+#ifdef AF_INET6
+            if (row->Address.si_family == AF_INET6)
+                row->ScopeId.Value =
+                    row->Address.Ipv6.sin6_scope_id;
             else
-                row->ScopeId.Value  = 0;
+#endif
+                row->ScopeId.Value = 0;
+
             NtQuerySystemTime(&row->CreationTimeStamp);
 
             data->NumEntries++;
@@ -2015,7 +2173,7 @@ DWORD WINAPI GetUnicastIpAddressTable(ADDRESS_FAMILY family, MIB_UNICASTIPADDRES
     HeapFree(GetProcessHeap(), 0, ptr);
 
     *table = data;
-    return ret;
+    return NO_ERROR;
 }
 
 /******************************************************************
@@ -2209,4 +2367,289 @@ DWORD WINAPI SetCurrentThreadCompartmentId( NET_IF_COMPARTMENT_ID id )
 {
     FIXME( "(%x): stub\n", id );
     return ERROR_SUCCESS;
+}
+
+DWORD WINAPI ConvertIpv4MaskToLength(
+    ULONG Mask,
+    PUINT MaskLength
+)
+{
+    UINT count = 0;
+    ULONG bit;
+
+    if (!MaskLength)
+        return ERROR_INVALID_PARAMETER;
+
+    /* Máscara deve ser contígua (ex: 11111111.11111111.00000000.00000000) */
+    bit = 0x80000000;
+
+    while (bit)
+    {
+        if (Mask & bit)
+            count++;
+        else
+            break;
+
+        bit >>= 1;
+    }
+
+    /* Verifica se o restante são apenas zeros */
+    while (bit)
+    {
+        if (Mask & bit)
+            return ERROR_INVALID_PARAMETER;
+
+        bit >>= 1;
+    }
+
+    *MaskLength = count;
+    return NO_ERROR;
+}
+
+DWORD WINAPI DeleteIpForwardEntry2(
+    PMIB_IPFORWARD_ROW2 Row2
+)
+{
+    MIB_IPFORWARDROW row;
+
+    if (!Row2)
+        return ERROR_INVALID_PARAMETER;
+
+    /* Apenas IPv4 suportado no XP */
+    if (Row2->DestinationPrefix.Prefix.si_family != AF_INET ||
+        Row2->NextHop.si_family != AF_INET)
+    {
+        return ERROR_NOT_SUPPORTED;
+    }
+
+    ZeroMemory(&row, sizeof(row));
+
+    /* Interface */
+    row.dwForwardIfIndex = Row2->InterfaceIndex;
+
+    /* Destino */
+    row.dwForwardDest =
+        Row2->DestinationPrefix.Prefix.Ipv4.sin_addr.S_un.S_addr;
+
+    /* Máscara (prefixo → máscara) */
+    if (Row2->SitePrefixLength > 32)
+        return ERROR_INVALID_PARAMETER;
+
+    if (Row2->SitePrefixLength == 0)
+        row.dwForwardMask = 0;
+    else
+        row.dwForwardMask = htonl(0xFFFFFFFF << (32 - Row2->SitePrefixLength));
+
+    /* Gateway */
+    row.dwForwardNextHop =
+        Row2->NextHop.Ipv4.sin_addr.S_un.S_addr;
+
+    /* Esses campos são usados internamente pelo XP */
+    row.dwForwardProto = Row2->Protocol;
+    row.dwForwardMetric1 = Row2->Metric;
+
+    /* Tipo padrão (não é crítico para delete, mas ajuda) */
+    row.dwForwardType = 4; /* MIB_IPROUTE_TYPE_INDIRECT */
+
+    return DeleteIpForwardEntry(&row);
+}
+
+VOID WINAPI InitializeIpForwardEntry(
+    PMIB_IPFORWARD_ROW2 Row
+)
+{
+    if (!Row)
+        return;
+
+    ZeroMemory(Row, sizeof(*Row));
+
+    /* Valores padrão semelhantes ao Windows moderno */
+    Row->InterfaceIndex = 0;
+    Row->SitePrefixLength = 0;
+    Row->Metric = 0;
+    Row->Protocol = MIB_IPPROTO_NETMGMT;
+
+    Row->ValidLifetime = 0xFFFFFFFF;
+    Row->PreferredLifetime = 0xFFFFFFFF;
+
+    Row->Loopback = FALSE;
+    Row->AutoconfigureAddress = TRUE;
+    Row->Publish = FALSE;
+    Row->Immortal = FALSE;
+
+    Row->DestinationPrefix.Prefix.si_family = AF_INET;
+    Row->NextHop.si_family = AF_INET;
+}
+
+DWORD WINAPI CreateIpForwardEntry2(
+    PMIB_IPFORWARD_ROW2 Row2
+)
+{
+    MIB_IPFORWARDROW row;
+
+    if (!Row2)
+        return ERROR_INVALID_PARAMETER;
+
+    /* XP não suporta IPv6 */
+    if (Row2->DestinationPrefix.Prefix.si_family != AF_INET ||
+        Row2->NextHop.si_family != AF_INET)
+    {
+        return ERROR_NOT_SUPPORTED;
+    }
+
+    if (Row2->SitePrefixLength > 32)
+        return ERROR_INVALID_PARAMETER;
+
+    ZeroMemory(&row, sizeof(row));
+
+    /* Interface */
+    row.dwForwardIfIndex = Row2->InterfaceIndex;
+
+    /* Destino */
+    row.dwForwardDest =
+        Row2->DestinationPrefix.Prefix.Ipv4.sin_addr.S_un.S_addr;
+
+    /* Prefixo → máscara */
+    if (Row2->SitePrefixLength == 0)
+        row.dwForwardMask = 0;
+    else
+        row.dwForwardMask =
+            htonl(0xFFFFFFFF << (32 - Row2->SitePrefixLength));
+
+    /* Gateway */
+    row.dwForwardNextHop =
+        Row2->NextHop.Ipv4.sin_addr.S_un.S_addr;
+
+    /* Métrica */
+    row.dwForwardMetric1 = Row2->Metric;
+
+    /* Protocolo */
+    row.dwForwardProto = Row2->Protocol;
+
+    /* Tipo */
+    if (row.dwForwardNextHop == 0)
+        row.dwForwardType = 3; /* DIRECT */
+    else
+        row.dwForwardType = 4; /* INDIRECT */
+
+    /* Idade e métricas adicionais */
+    row.dwForwardAge = 0;
+    row.dwForwardMetric2 = (DWORD)-1;
+    row.dwForwardMetric3 = (DWORD)-1;
+    row.dwForwardMetric4 = (DWORD)-1;
+    row.dwForwardMetric5 = (DWORD)-1;
+
+    return CreateIpForwardEntry(&row);
+}
+
+DWORD WINAPI GetIpPathEntry(
+    PMIB_IPPATH_ROW Row
+)
+{
+    MIB_IPFORWARDROW route;
+    MIB_IFROW ifRow;
+    DWORD ret;
+
+    if (!Row)
+        return ERROR_INVALID_PARAMETER;
+
+    if (Row->Destination.si_family != AF_INET)
+        return ERROR_NOT_SUPPORTED;
+
+    /* Resolve rota */
+    ret = GetBestRoute(
+        Row->Destination.Ipv4.sin_addr.S_un.S_addr,
+        (Row->Source.si_family == AF_INET) ?
+            Row->Source.Ipv4.sin_addr.S_un.S_addr : 0,
+        &route
+    );
+
+    if (ret != NO_ERROR)
+        return ret;
+
+    /* Interface index */
+    Row->InterfaceIndex = route.dwForwardIfIndex;
+
+    /* Next hop */
+    Row->CurrentNextHop.si_family = AF_INET;
+    Row->CurrentNextHop.Ipv4.sin_addr.S_un.S_addr =
+        route.dwForwardNextHop;
+
+    /* MTU real da interface */
+    ZeroMemory(&ifRow, sizeof(ifRow));
+    ifRow.dwIndex = route.dwForwardIfIndex;
+
+    if (GetIfEntry(&ifRow) == NO_ERROR)
+        Row->PathMtu = ifRow.dwMtu;
+    else
+        Row->PathMtu = 0;
+
+    /* RTT não disponível no XP */
+    Row->RttMean = 0;
+    Row->RttDeviation = 0;
+
+    /* Reachability (XP não fornece isso) */
+    Row->IsReachable = TRUE;
+    Row->LastReachable = 0;
+
+    /* Velocidade do link */
+    Row->LinkTransmitSpeed = ifRow.dwSpeed;
+    Row->LinkReceiveSpeed  = ifRow.dwSpeed;
+
+    /* Interface LUID (fallback baseado no index) */
+    Row->InterfaceLuid.Value = 0;
+    Row->InterfaceLuid.Info.IfType = (USHORT)ifRow.dwType;
+    Row->InterfaceLuid.Info.NetLuidIndex =
+        route.dwForwardIfIndex & 0xFFFFFF;
+
+    return NO_ERROR;
+}
+
+DWORD WINAPI ConvertInterfacePhysicalAddressToLuid(
+    const UCHAR *PhysicalAddress,
+    ULONG PhysicalAddressLength,
+    NET_LUID *Luid
+)
+{
+    PMIB_IFTABLE ifTable;
+    DWORD ret, size;
+    ULONG i;
+
+    if (!PhysicalAddress || !Luid || PhysicalAddressLength == 0)
+        return ERROR_INVALID_PARAMETER;
+
+    size = 0;
+    if (GetIfTable(NULL, &size, FALSE) != ERROR_INSUFFICIENT_BUFFER)
+        return ERROR_NOT_SUPPORTED;
+
+    ifTable = (PMIB_IFTABLE)HeapAlloc(GetProcessHeap(), 0, size);
+    if (!ifTable)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    ret = GetIfTable(ifTable, &size, FALSE);
+    if (ret != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, ifTable);
+        return ret;
+    }
+
+    for (i = 0; i < ifTable->dwNumEntries; i++)
+    {
+        MIB_IFROW *row = &ifTable->table[i];
+
+        if (row->dwPhysAddrLen == PhysicalAddressLength &&
+            memcmp(row->bPhysAddr, PhysicalAddress, PhysicalAddressLength) == 0)
+        {
+            /* Monta o LUID corretamente */
+            Luid->Value = 0;
+            Luid->Info.IfType = (USHORT)row->dwType;
+            Luid->Info.NetLuidIndex = row->dwIndex & 0xFFFFFF;
+
+            HeapFree(GetProcessHeap(), 0, ifTable);
+            return NO_ERROR;
+        }
+    }
+
+    HeapFree(GetProcessHeap(), 0, ifTable);
+    return ERROR_NOT_FOUND;
 }
