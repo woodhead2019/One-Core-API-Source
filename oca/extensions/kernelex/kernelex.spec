@@ -1910,4 +1910,7 @@
 @ stdcall UrlUnescapeA(str ptr ptr long) ;shlwapi.UrlUnescapeA
 @ stdcall UrlUnescapeW(wstr ptr ptr long) ;shlwapi.UrlUnescapeW
 
+#Winmm functions
+@ stdcall timeGetTime()
+
 ; ; @ stdcall GetVersionExL(ptr) ;Special implementation for fix spuninstall on NT6/NT10

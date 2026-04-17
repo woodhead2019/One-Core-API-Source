@@ -37,7 +37,7 @@ list(APPEND SOURCE
 add_library(shellex SHARED ${SOURCE})
 
 set_module_type(shellex win32dll ENTRYPOINT DllMain)
-target_link_libraries(shellex wine uuid)
+target_link_libraries(shellex wine shell_shared uuid)
 #add_pch(shellex precomp.h SOURCE)
 add_delay_importlibs(shellex propsys secur32 psapi)
 add_importlibs(shellex kernel32 kernelex advapi32 user32 msvcrt ntdll shell32 shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)

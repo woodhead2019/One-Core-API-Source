@@ -22,6 +22,8 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(kernelex);
 
+static    LARGE_INTEGER         TIME_qpcFreq;
+
 /******************************************************************************
  *           QueryInterruptTime  (kernelex.@)
  */

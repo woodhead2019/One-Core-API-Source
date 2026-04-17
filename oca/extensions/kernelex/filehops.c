@@ -605,27 +605,73 @@ HANDLE WINAPI OpenFileById(
 	return result;
 }
 
-BOOL
-WINAPI
-DECLSPEC_HOTPATCH
-CancelIoEx(
-    HANDLE hFile,
-	LPOVERLAPPED lpOverlapped	
-)
-{
+// BOOL
+// WINAPI
+// DECLSPEC_HOTPATCH
+// CancelIoEx(
+    // HANDLE hFile,
+	// LPOVERLAPPED lpOverlapped	
+// )
+// {
+    // NTSTATUS Status;
+    // IO_STATUS_BLOCK IoStatusBlock;
+
+    // Status = NtCancelIoFile(hFile, &IoStatusBlock);
+
+    // if ( NT_SUCCESS(Status) ) {
+        // return TRUE;
+        // }
+    // else {
+        // BaseSetLastNTError(Status);
+        // return FALSE;
+        // }
+
+// }
+
+VOID WINAPI CancelIoExInternal(HANDLE dwParam) {
+    HANDLE hFile = (HANDLE)dwParam;
+    CancelIo(hFile);
+}
+
+BOOL WINAPI DECLSPEC_HOTPATCH CancelIoEx(HANDLE hFile, LPOVERLAPPED lpOverlapped) {
+    // CancelIoEx can be partially implemented using ntdll APIs to enumerate every thread, plus APCs to
+    // call CancelIo on behalf of every thread for this file. However, the lpOverlapped parameter can
+    // only be NULL, because there is no known way to iterate all I/O requests without the driver.
+    // (This works better on Windows Server 2003 than XP.)
     NTSTATUS Status;
-    IO_STATUS_BLOCK IoStatusBlock;
-
-    Status = NtCancelIoFile(hFile, &IoStatusBlock);
-
-    if ( NT_SUCCESS(Status) ) {
-        return TRUE;
-        }
-    else {
-        BaseSetLastNTError(Status);
+    HANDLE Thread = NULL;
+    DWORD Cancelled = 0;
+    
+    if (lpOverlapped != NULL) {
+        SetLastError(STATUS_NOT_IMPLEMENTED);
         return FALSE;
+    }
+    
+    while (1) {
+        Status = NtGetNextThread(NtCurrentProcess(),
+            Thread,
+            THREAD_SET_CONTEXT,
+            0,
+            0,
+            &Thread);
+        if (Status == STATUS_NO_MORE_ENTRIES || Status == STATUS_ACCESS_DENIED) {
+            break;
+        } else if (!NT_SUCCESS(Status)) {
+            return set_ntstatus(Status);
         }
-
+        // queue an APC to call NtCancelIo(hFile) on behalf of thread
+        // failures should be fatal only if absolutely no APCs are able to be logged
+        if (QueueUserAPC((PAPCFUNC)&CancelIoExInternal, Thread, (ULONG_PTR)hFile))
+            Cancelled += 1;
+        NtClose(Thread);
+    }
+    
+    if (Cancelled == 0) {
+        SetLastError(ERROR_OPERATION_ABORTED);
+        return FALSE;
+    }
+    
+    return TRUE;
 }
 
 BOOL WINAPI CancelSynchronousIo(HANDLE hThread)

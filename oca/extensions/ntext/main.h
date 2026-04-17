@@ -36,6 +36,7 @@ Revision History:
 #include <wmistr.h>
 #include <lpcfuncs.h>
 #include <baseapi.h>
+#include <tlhelp32.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 

@@ -32,7 +32,7 @@ list(APPEND SOURCE
 	ntapi/worker.c
 	ldr/ldrapi.c
 	ldr/loader.c
-	#ldr/toolhelp.c
+	ldr/toolhelp.c
 	rtl/acl.c
 	rtl/actctx.c
 	rtl/appcompat.c

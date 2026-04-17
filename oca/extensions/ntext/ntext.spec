@@ -1558,6 +1558,8 @@
 @ stdcall NtCreateIoCompletionEx(ptr long ptr long)
 @ stdcall NtCreateWorkerFactory(ptr long ptr ptr ptr ptr ptr long long long)
 @ stdcall NtGetNlsSectionPtr(long long long ptr ptr)
+@ stdcall NtGetNextThread(ptr ptr long long long ptr)
+@ stdcall NtGetNextProcess(ptr long long long ptr)
 @ stdcall NtOpenKeyTransacted(ptr long ptr ptr)
 @ stdcall NtQueryInformationWorkerFactory(ptr long ptr long ptr)
 @ stdcall NtQueryLicenseValue(ptr ptr ptr long ptr)
