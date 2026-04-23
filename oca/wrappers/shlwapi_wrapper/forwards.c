@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2024 Shorthorn Project
+Copyright (c) 2026 Shorthorn Project
 
 Module Name:
 
@@ -8,11 +8,11 @@ Module Name:
 
 Abstract:
 
-    This module implements Fowards of Native Windows Sockets 2 APIs
+    This module implements Fowards of Native Shlwapi APIs
 
 Author:
 
-    Skulltrail 23-October-2024
+    Skulltrail 23-February-2026
 
 Revision History:
 
@@ -23,12 +23,21 @@ Revision History:
 // shlwapibase_exports.c
 // Gerado automaticamente: exporta funções -noname usando shlwapibase
 
+#pragma comment(linker, "/EXPORT:__OrdinalFunction1=shlwapibase.#1,@1,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction2=shlwapibase.#2,@2,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction3=shlwapibase.#3,@3,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction4=shlwapibase.#4,@4,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction5=shlwapibase.#5,@5,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction6=shlwapibase.#6,@6,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction7=shlwapibase.#7,@7,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction8=shlwapibase.#8,@8,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction9=shlwapibase.#9,@9,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction10=shlwapibase.#10,@10,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction11=shlwapibase.#11,@11,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction12=shlwapibase.#12,@12,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction13=shlwapibase.#13,@13,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction14=shlwapibase.#14,@14,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction15=shlwapibase.#15,@15,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction17=shlwapibase.#17,@17,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction18=shlwapibase.#18,@18,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction19=shlwapibase.#19,@19,NONAME")
@@ -41,6 +50,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction26=shlwapibase.#26,@26,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction27=shlwapibase.#27,@27,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction28=shlwapibase.#28,@28,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction29=shlwapibase.#29,@29,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction30=shlwapibase.#30,@30,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction31=shlwapibase.#31,@31,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction32=shlwapibase.#32,@32,NONAME")
@@ -162,6 +172,14 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction148=shlwapibase.#148,@148,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction149=shlwapibase.#149,@149,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction150=shlwapibase.#150,@150,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction151=shlwapibase.#151,@151,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction152=shlwapibase.#152,@152,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction153=shlwapibase.#153,@153,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction154=shlwapibase.#154,@154,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction155=shlwapibase.#155,@155,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction156=shlwapibase.#156,@156,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction157=shlwapibase.#157,@157,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction158=shlwapibase.#158,@158,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction159=shlwapibase.#159,@159,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction160=shlwapibase.#160,@160,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction161=shlwapibase.#161,@161,NONAME")
@@ -220,6 +238,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction216=shlwapibase.#216,@216,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction217=shlwapibase.#217,@217,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction218=shlwapibase.#218,@218,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction219=shlwapibase.#219,@219,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction220=shlwapibase.#220,@220,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction221=shlwapibase.#221,@221,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction222=shlwapibase.#222,@222,NONAME")
@@ -276,6 +295,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction273=shlwapibase.#273,@273,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction274=shlwapibase.#274,@274,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction275=shlwapibase.#275,@275,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction276=shlwapibase.#276,@276,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction277=shlwapibase.#277,@277,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction278=shlwapibase.#278,@278,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction279=shlwapibase.#279,@279,NONAME")
@@ -355,6 +375,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction353=shlwapibase.#353,@353,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction354=shlwapibase.#354,@354,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction355=shlwapibase.#355,@355,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction356=shlwapibase.#356,@356,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction357=shlwapibase.#357,@357,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction358=shlwapibase.#358,@358,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction359=shlwapibase.#359,@359,NONAME")
@@ -435,6 +456,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction434=shlwapibase.#434,@434,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction435=shlwapibase.#435,@435,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction436=shlwapibase.#436,@436,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction437=shlwapibase.#437,@437,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction438=shlwapibase.#438,@438,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction439=shlwapibase.#439,@439,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction440=shlwapibase.#440,@440,NONAME")
@@ -459,6 +481,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction459=shlwapibase.#459,@459,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction460=shlwapibase.#460,@460,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction461=shlwapibase.#461,@461,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction462=shlwapibase.#462,@462,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction463=shlwapibase.#463,@463,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction464=shlwapibase.#464,@464,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction488=shlwapibase.#488,@488,NONAME")
@@ -503,6 +526,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction484=shlwapibase.#484,@484,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction485=shlwapibase.#485,@485,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction486=shlwapibase.#486,@486,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction487=shlwapibase.#487,@487,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction488=shlwapibase.#488,@488,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction489=shlwapibase.#489,@489,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction490=shlwapibase.#490,@490,NONAME")
@@ -515,6 +539,11 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction497=shlwapibase.#497,@497,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction498=shlwapibase.#498,@498,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction499=shlwapibase.#499,@499,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction500=shlwapibase.#500,@500,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction501=shlwapibase.#501,@501,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction502=shlwapibase.#502,@502,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction503=shlwapibase.#503,@503,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction504=shlwapibase.#504,@504,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction505=shlwapibase.#505,@505,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction506=shlwapibase.#506,@506,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction507=shlwapibase.#507,@507,NONAME")
@@ -523,6 +552,7 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction510=shlwapibase.#510,@510,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction511=shlwapibase.#511,@511,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction514=shlwapibase.#514,@514,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction515=shlwapibase.#515,@515,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction516=shlwapibase.#516,@516,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction517=shlwapibase.#517,@517,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction518=shlwapibase.#518,@518,NONAME")
@@ -554,23 +584,13 @@ Revision History:
 #pragma comment(linker, "/EXPORT:__OrdinalFunction544=shlwapibase.#544,@544,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction545=shlwapibase.#545,@545,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction546=shlwapibase.#546,@546,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction547=shlwapibase.#547,@547,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction548=shlwapibase.#548,@548,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction549=shlwapibase.#549,@549,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction554=shlwapibase.#554,@554,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction556=shlwapibase.#556,@556,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction557=shlwapibase.#557,@557,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction558=shlwapibase.#558,@558,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction559=shlwapibase.#559,@559,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction560=shlwapibase.#560,@560,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction561=shlwapibase.#561,@561,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction562=shlwapibase.#562,@562,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction563=shlwapibase.#563,@563,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction564=shlwapibase.#564,@564,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction565=shlwapibase.#565,@565,NONAME")
-#pragma comment(linker, "/EXPORT:__OrdinalFunction566=shlwapibase.#566,@566,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction550=shlwapibase.#550,@550,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction551=shlwapibase.#551,@551,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction552=shlwapibase.#552,@552,NONAME")
+#pragma comment(linker, "/EXPORT:__OrdinalFunction553=shlwapibase.#553,@553,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction554=shlwapibase.#554,@554,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction556=shlwapibase.#556,@556,NONAME")
 #pragma comment(linker, "/EXPORT:__OrdinalFunction557=shlwapibase.#557,@557,NONAME")
