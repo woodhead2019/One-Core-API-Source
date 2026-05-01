@@ -280,3 +280,91 @@ HRESULT WINAPI AssocGetPerceivedType(LPCWSTR lpszExt, PERCEIVED *lpType,
     }
     return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
+
+typedef BOOL (WINAPI *PFN_AssocIsDangerous)(LPCWSTR);
+typedef BOOL (WINAPI *PFN_SaferiIsExecutableFileType)(LPCWSTR, BOOLEAN);
+
+/* GUIDs (evita dependência de headers mais novos) */
+// DEFINE_GUID(CLSID_QueryAssociations,
+// 0xa07034fd,0x6caa,0x4954,0xac,0x3f,0x97,0xa2,0x72,0x16,0xf9,0x8a);
+
+DEFINE_GUID(IID_IQueryAssociations,
+0xc46ca590,0x3c3f,0x11d2,0xbe,0xe6,0x00,0x00,0xf8,0x05,0xca,0x57);
+
+BOOL WINAPI AssocIsDangerous(LPCWSTR ext)
+{
+    HMODULE hShlwapi, hAdvapi;
+    PFN_SaferiIsExecutableFileType pSafer;
+    IQueryAssociations *pAssoc;
+    HRESULT hr;
+    PFN_AssocIsDangerous pFunc;
+
+    /* --- Tentativa 1: AssocIsDangerous --- */
+
+    hShlwapi = GetModuleHandleW(L"shlwapibase.dll");
+    if (!hShlwapi)
+        hShlwapi = LoadLibraryW(L"shlwapibase.dll");
+
+    if (hShlwapi)
+    {
+        pFunc = (PFN_AssocIsDangerous)GetProcAddress(hShlwapi, "AssocIsDangerous");
+        if (pFunc)
+            return pFunc(ext);	
+	}		
+		
+    hr = AssocCreate(CLSID_QueryAssociations, &IID_IQueryAssociations, (void**)&pAssoc);
+    if (SUCCEEDED(hr))
+    {
+        hr = pAssoc->lpVtbl->Init(pAssoc, ASSOCF_NONE, ext, NULL, NULL);
+        if (SUCCEEDED(hr))
+        {
+            WCHAR buf[MAX_PATH];
+            DWORD len = sizeof(buf)/sizeof(WCHAR);
+
+            hr = pAssoc->lpVtbl->GetString(
+                        pAssoc,
+                        ASSOCF_NONE,
+                        ASSOCSTR_EXECUTABLE,
+                        NULL,
+                        buf,
+                        &len
+            );
+
+            if (SUCCEEDED(hr))
+            {
+                /* Temos o executável associado → perigoso */
+                pAssoc->lpVtbl->Release(pAssoc);
+                return TRUE;
+            }
+        }
+        pAssoc->lpVtbl->Release(pAssoc);
+    }
+
+    /* --- Tentativa 2: Safer API --- */
+
+    hAdvapi = GetModuleHandleW(L"advapi32.dll");
+    if (!hAdvapi)
+        hAdvapi = LoadLibraryW(L"advapi32.dll");
+
+    if (hAdvapi)
+    {
+        pSafer = (PFN_SaferiIsExecutableFileType)
+            GetProcAddress(hAdvapi, "SaferiIsExecutableFileType");
+
+        if (pSafer)
+        {
+            if (pSafer(ext, TRUE))
+                return TRUE;
+        }
+    }
+
+    /* --- Fallback --- */
+
+    if (lstrcmpiW(ext, L".exe") == 0) return TRUE;
+    if (lstrcmpiW(ext, L".bat") == 0) return TRUE;
+    if (lstrcmpiW(ext, L".cmd") == 0) return TRUE;
+    if (lstrcmpiW(ext, L".com") == 0) return TRUE;
+    if (lstrcmpiW(ext, L".scr") == 0) return TRUE;
+
+    return FALSE;
+}

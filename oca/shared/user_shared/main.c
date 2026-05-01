@@ -44,24 +44,24 @@ BOOL WINAPI DllMain(
                 }                
             }
             
-            g_pointerTlsInfo = TlsAlloc();
-            if (g_pointerTlsInfo == TLS_OUT_OF_INDEXES)
-                return FALSE;
-            TlsSetValue(g_pointerTlsInfo, NULL);
-            // DLL_THREAD_ATTACH Won't be called for every thread... So we have to do our "best effort" case.
-            PointerApiThreadStartup(hinstDLL);
+            // g_pointerTlsInfo = TlsAlloc();
+            // if (g_pointerTlsInfo == TLS_OUT_OF_INDEXES)
+                // return FALSE;
+            // TlsSetValue(g_pointerTlsInfo, NULL);
+            // // DLL_THREAD_ATTACH Won't be called for every thread... So we have to do our "best effort" case.
+            // PointerApiThreadStartup(hinstDLL);
             break;
         
         case DLL_THREAD_ATTACH:
-            PointerApiThreadStartup(hinstDLL);
+            //PointerApiThreadStartup(hinstDLL);
             break;
 
         case DLL_THREAD_DETACH:
-            PointerApiThreadShutdown(hinstDLL);
+            //PointerApiThreadShutdown(hinstDLL);
             break;
 
         case DLL_PROCESS_DETACH:
-            TlsFree(g_pointerTlsInfo);
+            //TlsFree(g_pointerTlsInfo);
             break;
     }
     return TRUE;

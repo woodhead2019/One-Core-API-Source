@@ -155,7 +155,7 @@
 @ stdcall PdhVbUpdateLog(ptr str)
 @ stdcall PdhVerifySQLDBA(str)
 @ stdcall PdhVerifySQLDBW(wstr)
-@ stdcall PdhiPla2003SP1Installed(wstr ptr)
+@ stdcall PdhiPla2003SP1Installed(wstr ptr) pdhbase.PdhiPla2003SP1Installed
 @ stdcall PdhiPlaFormatBlanksA(str ptr)
 @ stdcall PdhiPlaFormatBlanksW(str ptr)
 @ stdcall PdhiPlaGetVersion(wstr ptr)

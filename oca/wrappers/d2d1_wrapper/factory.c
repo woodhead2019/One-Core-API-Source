@@ -73,3 +73,14 @@ float WINAPI D2D1ComputeMaximumScaleFactor(const D2D1_MATRIX_3X2_F *matrix)
      * e1 * e2 = det(transpose(M) * M) = a1 * a2 - c ^ 2. */
     return sqrtf(0.5f * (a1 + a2 + sqrtf((a1 - a2) * (a1 - a2) + 4 * c * c)));
 }
+
+BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
+{
+    switch(fdwReason)
+    {
+        case DLL_PROCESS_ATTACH:	
+           break;
+    }
+
+    return TRUE;
+}

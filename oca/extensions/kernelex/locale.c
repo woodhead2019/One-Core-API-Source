@@ -3169,42 +3169,38 @@ GeptLocaleInfoA(
 INT 
 WINAPI 
 GetLocaleInfoEx(
-	LPCWSTR locale, 
-	LCTYPE info, 
-	LPWSTR buffer, 
-	INT len
+    LPCWSTR locale, 
+    LCTYPE info, 
+    LPWSTR buffer, 
+    INT len
 )
 {
     LCID lcid = LocaleNameToLCID(locale, 0);
-
+    DWORD localelen;
+    
     TRACE("%s, lcid=0x%x, 0x%x\n", debugstr_w(locale), lcid, info);
 
-    if (!lcid) return 0;
-	
-	if (info == 0x20000071){ // Hack to fix .NET Core
-		*buffer = 1;
-		return TRUE;
-	}
-
-    /* special handling for neutral locale names */
-    if (locale && strlenW(locale) == 2)
-    {
-        switch (info)
-        {
-        case LOCALE_SNAME:
-            if (len && len < 3)
+    if (!lcid) return 0;    
+    
+    if (info == LOCALE_INEUTRAL || info == (LOCALE_INEUTRAL | LOCALE_RETURN_NUMBER)) { // Hack to fix .NET Core startup sequence
+        if (buffer) *buffer = locale && strlenW(locale) == 2;
+        return 4;
+    } else if (info == LOCALE_SNAME || info == (LOCALE_SNAME | LOCALE_RETURN_NUMBER)) { // Needed for ICU.dll
+        if (locale) {
+            localelen = strlenW(locale);
+            if (len && len < localelen + 1)
             {
                 SetLastError(ERROR_INSUFFICIENT_BUFFER);
                 return 0;
             }
             if (len) strcpyW(buffer, locale);
-            return 3;
-        case LOCALE_SPARENT:
-            if (len) buffer[0] = 0;
-            return 1;
+            return localelen + 1;
         }
+    } else if (info == LOCALE_SPARENT || info == (LOCALE_SPARENT | LOCALE_RETURN_NUMBER)) { // Needed for .NET Core ParentName
+        if (len) buffer[0] = 0;
+        return 1;
     }
-
+    
     return GetpLocaleInfoW(lcid, info, buffer, len);
 }
 

@@ -24,4 +24,4 @@
 //#include "res\MessageTable1.rc"
 //#include "res/MOFRESOURCENAME.res"
 //#include "res/RCData102.res"
-#include "res/StringTable3126.rc"
+//#include "res/StringTable3126.rc"

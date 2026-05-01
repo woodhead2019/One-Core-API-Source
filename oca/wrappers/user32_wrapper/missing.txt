@@ -1,0 +1,11 @@
+InitializeTouchInjection
+InjectTouchInput
+GetPointerCursorId
+GetPointerFramePenInfo
+GetPointerFramePenInfoHistory
+RegisterPointerInputTarget
+EvaluateProximityToPolygon
+GetWindowFeedbackSetting
+SetWindowFeedbackSetting
+GetPointerDeviceCursors
+GetRawPointerDeviceData

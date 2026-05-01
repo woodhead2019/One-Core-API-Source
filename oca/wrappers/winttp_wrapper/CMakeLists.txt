@@ -12,7 +12,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/winhttp_wrapper.def)
 
 add_library(winhttp_wrapper SHARED ${SOURCE})
-set_module_type(winhttp_wrapper win32dll)
+set_module_type(winhttp_wrapper win32dll ENTRYPOINT DllMain)
 target_link_libraries(winhttp_wrapper wine)
 add_importlibs(winhttp_wrapper winhttpbase msvcrt kernel32 ntdll)
 add_cd_file(TARGET winhttp_wrapper DESTINATION reactos/system32 FOR all)

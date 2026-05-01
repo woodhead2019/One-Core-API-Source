@@ -503,6 +503,191 @@ DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversio
 	return err;
 }
 
+// DWORD ConvertIfRowToIfRow2(MIB_IFROW *row, MIB_IF_ROW2 *row2, BOOL fastConversion)
+// {
+    // PIP_ADAPTER_ADDRESSES adapterAddrs = NULL;
+    // PIP_ADAPTER_ADDRESSES cur;
+    // ULONG size = 0;
+    // //DWORD err = NO_ERROR;
+    // BOOL accurate = FALSE;
+
+    // if (!row || !row2)
+        // return ERROR_INVALID_PARAMETER;
+
+    // memset(row2, 0, sizeof(MIB_IF_ROW2));
+
+    // /* Estatísticas */
+    // row2->InOctets        = row->dwInOctets;
+    // row2->InUcastPkts     = row->dwInUcastPkts;
+    // row2->InNUcastPkts    = row->dwInNUcastPkts;
+    // row2->InDiscards      = row->dwInDiscards;
+    // row2->InErrors        = row->dwInErrors;
+    // row2->InUnknownProtos = row->dwInUnknownProtos;
+
+    // row2->OutOctets       = row->dwOutOctets;
+    // row2->OutUcastPkts    = row->dwOutUcastPkts;
+    // row2->OutNUcastPkts   = row->dwOutNUcastPkts;
+    // row2->OutDiscards     = row->dwOutDiscards;
+    // row2->OutErrors       = row->dwOutErrors;
+    // row2->OutQLen         = row->dwOutQLen;
+
+    // /* XP não separa multicast/broadcast */
+    // row2->InBroadcastOctets  = row->dwInOctets;
+    // row2->OutBroadcastOctets = row->dwOutOctets;
+
+    // /* Básico */
+    // row2->InterfaceIndex = row->dwIndex;
+    // row2->Type           = row->dwType;
+    // row2->Mtu            = row->dwMtu;
+
+    // row2->TransmitLinkSpeed = (ULONGLONG)row->dwSpeed;
+    // row2->ReceiveLinkSpeed  = (ULONGLONG)row->dwSpeed;
+
+    // row2->AccessType = (row->dwType == IF_TYPE_SOFTWARE_LOOPBACK) ?
+        // NET_IF_ACCESS_LOOPBACK : NET_IF_ACCESS_BROADCAST;
+
+    // row2->InterfaceAndOperStatusFlags.HardwareInterface =
+        // (row->dwType != IF_TYPE_SOFTWARE_LOOPBACK);
+
+    // row2->InterfaceAndOperStatusFlags.ConnectorPresent =
+        // (row->dwType != IF_TYPE_SOFTWARE_LOOPBACK);
+
+    // row2->InterfaceAndOperStatusFlags.EndPointInterface = 1;
+
+    // /* AdminStatus correto */
+    // switch (row->dwAdminStatus)
+    // {
+    // case 1:
+        // row2->AdminStatus = NET_IF_ADMIN_STATUS_UP;
+        // break;
+    // case 2:
+        // row2->AdminStatus = NET_IF_ADMIN_STATUS_DOWN;
+        // break;
+    // default:
+        // row2->AdminStatus = NET_IF_ADMIN_STATUS_TESTING;
+        // break;
+    // }
+
+    // /* LUID fake consistente */
+    // row2->InterfaceLuid.Info.Reserved = 0;
+    // row2->InterfaceLuid.Info.NetLuidIndex = row->dwIndex;
+    // row2->InterfaceLuid.Info.IfType = (USHORT)row->dwType;
+
+    // /* GUID fake consistente */
+    // memset(&row2->InterfaceGuid, 0, sizeof(GUID));
+    // row2->InterfaceGuid.Data1 = row->dwIndex;
+    // row2->InterfaceGuid.Data2 = (USHORT)row->dwType;
+
+    // /* Tipo → NDIS */
+    // ConvertIfTypeToNdisTypes(
+        // row->dwType,
+        // &row2->MediaType,
+        // &row2->PhysicalMediumType,
+        // &row2->ConnectionType
+    // );
+
+    // /* MAC */
+    // if (row->dwPhysAddrLen > IF_MAX_PHYS_ADDRESS_LENGTH)
+        // row2->PhysicalAddressLength = IF_MAX_PHYS_ADDRESS_LENGTH;
+    // else
+        // row2->PhysicalAddressLength = row->dwPhysAddrLen;
+
+    // memcpy(row2->PhysicalAddress, row->bPhysAddr, row2->PhysicalAddressLength);
+    // memcpy(row2->PermanentPhysicalAddress, row->bPhysAddr, row2->PhysicalAddressLength);
+
+    // /* Alias vazio por padrão */
+    // row2->Alias[0] = L'\0';
+
+    // /* Description */
+    // {
+        // int len = MultiByteToWideChar(
+            // CP_ACP, 0,
+            // (LPCSTR)row->bDescr,
+            // row->dwDescrLen,
+            // row2->Description,
+            // IF_MAX_STRING_SIZE
+        // );
+
+        // if (len > 0 && len < IF_MAX_STRING_SIZE)
+            // row2->Description[len] = L'\0';
+        // else
+            // row2->Description[IF_MAX_STRING_SIZE] = L'\0';
+    // }
+
+    // if (!fastConversion)
+    // {
+        // if (GetAdaptersAddresses(AF_UNSPEC,
+                // GAA_FLAG_SKIP_UNICAST |
+                // GAA_FLAG_SKIP_ANYCAST |
+                // GAA_FLAG_SKIP_MULTICAST |
+                // GAA_FLAG_SKIP_DNS_SERVER,
+                // NULL, NULL, &size) == ERROR_BUFFER_OVERFLOW)
+        // {
+            // adapterAddrs = (PIP_ADAPTER_ADDRESSES)
+                // HeapAlloc(GetProcessHeap(), 0, size);
+
+            // if (adapterAddrs)
+            // {
+                // if (GetAdaptersAddresses(AF_UNSPEC,
+                        // GAA_FLAG_SKIP_UNICAST |
+                        // GAA_FLAG_SKIP_ANYCAST |
+                        // GAA_FLAG_SKIP_MULTICAST |
+                        // GAA_FLAG_SKIP_DNS_SERVER,
+                        // NULL, adapterAddrs, &size) == NO_ERROR)
+                // {
+                    // cur = adapterAddrs;
+
+                    // while (cur)
+                    // {
+                        // if (cur->IfIndex == row->dwIndex)
+                        // {
+                            // row2->OperStatus = cur->OperStatus;
+
+                            // row2->DirectionType =
+                                // (cur->Flags & IP_ADAPTER_RECEIVE_ONLY) ?
+                                // NET_IF_DIRECTION_RECEIVEONLY :
+                                // NET_IF_DIRECTION_SENDRECEIVE;
+
+                            // if (cur->FriendlyName)
+                                // lstrcpynW(row2->Alias, cur->FriendlyName, IF_MAX_STRING_SIZE);
+
+                            // accurate = TRUE;
+                            // break;
+                        // }
+                        // cur = cur->Next;
+                    // }
+                // }
+
+                // HeapFree(GetProcessHeap(), 0, adapterAddrs);
+            // }
+        // }
+    // }
+
+    // if (!accurate)
+    // {
+        // switch (row->dwOperStatus)
+        // {
+        // case IF_OPER_STATUS_NON_OPERATIONAL:
+        // case IF_OPER_STATUS_UNREACHABLE:
+        // case IF_OPER_STATUS_DISCONNECTED:
+            // row2->OperStatus = IfOperStatusDown;
+            // break;
+
+        // case IF_OPER_STATUS_CONNECTING:
+            // row2->OperStatus = IfOperStatusTesting;
+            // break;
+
+        // default:
+            // row2->OperStatus = IfOperStatusUp;
+            // break;
+        // }
+
+        // row2->DirectionType = NET_IF_DIRECTION_SENDRECEIVE;
+    // }
+
+    // return NO_ERROR;
+// }
+
 DWORD WINAPI GetIfEntry2(MIB_IF_ROW2 *row2)
 {
     DWORD ret;
@@ -601,9 +786,62 @@ DWORD get_interface_indices( BOOL skip_loopback, InterfaceIndexTable **table )
 /******************************************************************
  *    GetIfTable2Ex (IPHLPAPI.@)
  */
+ // DWORD WINAPI GetIfTable2Ex(ULONG Level, MIB_IF_TABLE2 **Table)
+// {
+    // PMIB_IFTABLE ifTable = NULL;
+    // MIB_IF_TABLE2 *out;
+    // DWORD size = 0, ret, i;
+    // SIZE_T allocSize;
+
+    // if (!Table)
+        // return ERROR_INVALID_PARAMETER;
+
+    // *Table = NULL;
+
+    // ret = GetIfTable(NULL, &size, FALSE);
+    // if (ret != ERROR_INSUFFICIENT_BUFFER)
+        // return ret;
+
+    // ifTable = (PMIB_IFTABLE)HeapAlloc(GetProcessHeap(), 0, size);
+    // if (!ifTable)
+        // return ERROR_NOT_ENOUGH_MEMORY;
+
+    // ret = GetIfTable(ifTable, &size, FALSE);
+    // if (ret != NO_ERROR)
+    // {
+        // HeapFree(GetProcessHeap(), 0, ifTable);
+        // return ret;
+    // }
+
+    // allocSize = sizeof(MIB_IF_TABLE2) +
+        // (ifTable->dwNumEntries - 1) * sizeof(MIB_IF_ROW2);
+
+    // out = (MIB_IF_TABLE2*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, allocSize);
+    // if (!out)
+    // {
+        // HeapFree(GetProcessHeap(), 0, ifTable);
+        // return ERROR_NOT_ENOUGH_MEMORY;
+    // }
+
+    // out->NumEntries = ifTable->dwNumEntries;
+
+    // for (i = 0; i < ifTable->dwNumEntries; i++)
+    // {
+        // ConvertIfRowToIfRow2(
+            // &ifTable->table[i],
+            // &out->Table[i],
+            // (Level == 1) /* FAST */
+        // );
+    // }
+
+    // HeapFree(GetProcessHeap(), 0, ifTable);
+
+    // *Table = out;
+    // return NO_ERROR;
+// }
 DWORD WINAPI GetIfTable2Ex(MIB_IF_TABLE_LEVEL Level, PMIB_IF_TABLE2 *Table) {
 	DWORD res;
-	DWORD size;
+	DWORD size = 0;
 	DWORD newSize;
 	PMIB_IFTABLE ifTable = NULL;
 	PMIB_IF_TABLE2 ifTable2;
@@ -651,7 +889,7 @@ DWORD WINAPI GetIfTable2Ex(MIB_IF_TABLE_LEVEL Level, PMIB_IF_TABLE2 *Table) {
 		}
 		adapterAddrCur = adapterAddrCur->Next;
 	}
-	
+	*Table = ifTable2;
 	free(adapterAddrs);
 	goto cleanup;
 cleanup_adapters:
@@ -1594,11 +1832,6 @@ DWORD getInterfaceStatsByName(const char *name, PMIB_IFROW entry)
     return ERROR_INVALID_PARAMETER;
 
   return NO_ERROR;
-}
-
-DWORD getInterfaceStatsByIndex(DWORD index, PMIB_IFROW entry)
-{
-    return ERROR_INVALID_PARAMETER;
 }
 
 NTSTATUS getIPAddrEntryForIf(HANDLE tcpFile,

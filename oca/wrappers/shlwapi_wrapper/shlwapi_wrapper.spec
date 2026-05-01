@@ -557,7 +557,6 @@
 
 #This ordinal is for x86
 @ stdcall -i386 AssocGetPerceivedType(wstr ptr ptr ptr) ;shlwapibase.AssocGetPerceivedType
-@ stdcall -i386 AssocIsDangerous(wstr)
 @ stdcall -i386 AssocQueryKeyA(long long str str ptr)
 @ stdcall -i386 AssocQueryKeyW(long long wstr wstr ptr)
 @ stdcall -i386 AssocQueryStringA(long long str str ptr ptr)
@@ -1151,6 +1150,9 @@
 863 stdcall -arch=x86_64 wvnsprintfW(ptr long wstr ptr)
 
 @ stdcall -private DllGetVersion(ptr)
+
+#Missing WinXP RTM
+@ stdcall -i386 AssocIsDangerous(wstr)
 
 #Missing WinXP SP1
 742 stdcall -i386 SHRegGetValueA(long str str long ptr ptr ptr) advapi32.RegGetValueA

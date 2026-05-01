@@ -440,7 +440,6 @@ RegisterTouchHitTestingWindow(
 	return TRUE;
 }
 
-__declspec(dllexport)
 BOOL WINAPI GetPointerInfo(UINT32 id, POINTER_INFO *info) {
 	POINTER_INFO *frame = TlsGetValue(g_pointerTlsInfo);
 	
@@ -462,7 +461,7 @@ BOOL WINAPI GetPointerTouchInfoHistory(UINT32 pointerId, UINT32 *entriesCount, P
 	SetLastError(ERROR_DATATYPE_MISMATCH);
 	return FALSE;
 }
-__declspec(dllexport)
+
 BOOL WINAPI GetPointerInfoHistory(UINT32 pointerId, UINT32 *entriesCount, POINTER_INFO* pointerInfo) {
 	if (!entriesCount) {
 		SetLastError(ERROR_INVALID_PARAMETER);
@@ -546,7 +545,6 @@ HRESULT WINAPI PackTouchHitTestingProximityEvaluation(const TOUCH_HIT_TESTING_IN
   return result;
 }
 
-__declspec(dllexport)
 BOOL WINAPI IsMouseInPointerEnabled() {
 	return g_MouseInPointerState == 1;
 }

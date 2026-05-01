@@ -22,7 +22,7 @@ include_directories(${REACTOS_SOURCE_DIR}/oca/dependencies/shellbase)
 set_cpp(WITH_RUNTIME)
 spec2def(shell32_wrapper.dll shell32_wrapper.spec)
 
-set(baseaddress_shell32_wrapper    0x6b630000)
+set(baseaddress_shell32_wrapper    0x7b6E0000)
 
 add_definitions(
     -D_SHELL32_
@@ -41,5 +41,5 @@ set_module_type(shell32_wrapper win32dll ENTRYPOINT DllMain)
 target_link_libraries(shell32_wrapper wine shell_shared uuid)
 #add_pch(shell32_wrapper precomp.h SOURCE)
 add_delay_importlibs(shell32_wrapper propsys secur32 psapi)
-add_importlibs(shell32_wrapper kernel32 kernelex advapi32 user32 msvcrt ntdll shellbase shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)
+add_importlibs(shell32_wrapper kernel32 advapi32 user32 msvcrt ntdll shellbase shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)
 add_cd_file(TARGET shell32_wrapper DESTINATION reactos/system32 FOR all)

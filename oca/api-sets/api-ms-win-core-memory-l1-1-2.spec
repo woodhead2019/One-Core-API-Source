@@ -3,6 +3,7 @@
 @ stdcall CreateFileMappingW(long ptr long long long wstr) kernel32.CreateFileMappingW
 @ stdcall FreeUserPhysicalPages(long ptr ptr) kernel32.FreeUserPhysicalPages
 @ stub GetMemoryErrorHandlingCapabilities ;(ptr) kernel32.GetMemoryErrorHandlingCapabilities
+@ stdcall MapViewOfFile(long long long long long) kernel32.MapViewOfFile
 @ stdcall MapViewOfFileEx(long long long long long ptr)
 @ stdcall MapUserPhysicalPages(ptr long ptr) kernel32.MapUserPhysicalPages
 @ stub RegisterBadMemoryNotification

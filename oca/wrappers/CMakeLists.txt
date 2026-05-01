@@ -1,5 +1,6 @@
 add_subdirectory(advapi32_wrapper)
 add_subdirectory(comdlg32_wrapper)
+add_subdirectory(d2d1_wrapper)
 add_subdirectory(d3d9ex_wrapper)
 add_subdirectory(dwrite_wrapper)
 add_subdirectory(gdi32_wrapper)

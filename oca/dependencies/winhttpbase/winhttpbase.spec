@@ -2,6 +2,7 @@
 @ stdcall DllGetClassObject(ptr ptr ptr)
 @ stdcall DllRegisterServer()
 @ stdcall DllUnregisterServer()
+@ stdcall -stub SvchostPushServiceGlobals()
 @ stdcall WinHttpAddRequestHeaders(ptr wstr long long)
 @ stdcall WinHttpAutoProxySvcMain(long wstr)
 @ stdcall WinHttpCheckPlatform()
