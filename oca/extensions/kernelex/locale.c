@@ -1977,6 +1977,7 @@ IsValidLocaleName(
 )
 {
 	int i;
+	
     if (!locale)
         return FALSE;
 

@@ -41,7 +41,7 @@ HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQuali
   APTTYPEQUALIFIER AptQualifierTemp; 
   TEB *CurrentThreadInfo;
   
-  DbgPrint("CoGetApartmentType called\n");
+  //DbgPrint("CoGetApartmentType called\n");
   
   Status = S_OK;
   if ( !pAptType || !pAptQualifier )

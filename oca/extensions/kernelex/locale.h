@@ -18,7 +18,7 @@ Revision History:
 
 --*/
 #define GEO_TABLE_SIZE 249
-#define LOCALE_TABLE_SIZE 460
+#define LOCALE_TABLE_SIZE 462
 
 LOCALE_LCID LocaleTable[LOCALE_TABLE_SIZE] =
 {
@@ -481,7 +481,9 @@ LOCALE_LCID LocaleTable[LOCALE_TABLE_SIZE] =
 	{L"zh-TW_radstr",0x00040404},
 	{L"ja-JP_radstr",0x00040411},
 	{L"zh-HK_radstr",0x00040c04},
-	{L"zh-MO_radstr",0x00041404}	
+	{L"zh-MO_radstr",0x00041404},
+	{L"", 0x007F},
+	{L"!x-sys-default-locale", 0x0800}
 };
 
 // LOCALE_LCID GeoTable[LOCALE_TABLE_SIZE] =
