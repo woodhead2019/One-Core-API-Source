@@ -37,7 +37,7 @@ list(APPEND SOURCE
 
 add_library(shell32_wrapper SHARED ${SOURCE})
 
-set_module_type(shell32_wrapper win32dll ENTRYPOINT 0)
+set_module_type(shell32_wrapper win32dll ENTRYPOINT DllMain)
 target_link_libraries(shell32_wrapper shell_shared wine uuid)
 #add_pch(shell32_wrapper precomp.h SOURCE)
 add_delay_importlibs(shell32_wrapper propsys secur32 psapi)
