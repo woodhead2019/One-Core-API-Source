@@ -9,6 +9,7 @@ add_subdirectory(cryptbasex)
 add_subdirectory(d2d1base)
 add_subdirectory(d3d9core)
 add_subdirectory(d3dkmt)
+add_subdirectory(dnsapibase)
 add_subdirectory(fileextd)
 add_subdirectory(gdibase)
 #on future reactos releases, maybe it need be disabled
