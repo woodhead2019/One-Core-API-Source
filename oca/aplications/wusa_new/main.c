@@ -507,6 +507,7 @@ static WCHAR *lookup_expression(struct assembly_entry *assembly, const WCHAR *ke
         else csidl = CSIDL_PROGRAM_FILES_COMMON;
     }
 #ifdef __x86_64__
+    else if (!wcsicmp(key, L"runtime.syswow64")) csidl = CSIDL_SYSTEMX86;
     else if (!wcsicmp(key, L"runtime.programfilesx86")) csidl = CSIDL_PROGRAM_FILESX86;
     else if (!wcsicmp(key, L"runtime.commonfilesx86")) csidl = CSIDL_PROGRAM_FILES_COMMONX86;
 #endif
@@ -1069,60 +1070,48 @@ static void restart_as_x86_64(void)
     ExitProcess(exit_code);
 }
 
-// int __cdecl wmain(int argc, WCHAR *argv[])
-// {
-    // struct installer_state state;
-    // const WCHAR *filename = NULL;
-    // BOOL is_wow64;
-    // int i;
-
-    // if (IsWow64Process( GetCurrentProcess(), &is_wow64 ) && is_wow64) restart_as_x86_64();
-
-    // state.norestart = FALSE;
-    // state.quiet = FALSE;
-
-    // if (TRACE_ON(wusa))
-    // {
-        // TRACE("Command line:");
-        // for (i = 0; i < argc; i++)
-            // TRACE(" %s", wine_dbgstr_w(argv[i]));
-        // TRACE("\n");
-    // }
-
-    // for (i = 1; i < argc; i++)
-    // {
-        // if (argv[i][0] == '/')
-        // {
-            // if (!wcscmp(argv[i], L"/norestart"))
-                // state.norestart = TRUE;
-            // else if (!wcscmp(argv[i], L"/quiet"))
-                // state.quiet = TRUE;
-            // else
-                // FIXME("Unknown option: %s\n", wine_dbgstr_w(argv[i]));
-        // }
-        // else if (!filename)
-            // filename = argv[i];
-        // else
-            // FIXME("Unknown option: %s\n", wine_dbgstr_w(argv[i]));
-    // }
-
-    // if (!filename)
-    // {
-        // FIXME("Missing filename argument\n");
-        // return 1;
-    // }
-
-    // return !install_msu(filename, &state);
-// }
-
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
-	int i;
-    TRACE("wusa: Command line:");
-	
-    for (i = 0; i < argc; i++)
-        TRACE(" %s", wine_dbgstr_w(argv[i]));
-    TRACE("\n");
+    struct installer_state state;
+    const WCHAR *filename = NULL;
+    BOOL is_wow64;
+    int i;
 
-   return 0;
+    if (IsWow64Process( GetCurrentProcess(), &is_wow64 ) && is_wow64) restart_as_x86_64();
+
+    state.norestart = FALSE;
+    state.quiet = FALSE;
+
+    if (TRACE_ON(wusa))
+    {
+        TRACE("Command line:");
+        for (i = 0; i < argc; i++)
+            TRACE(" %s", wine_dbgstr_w(argv[i]));
+        TRACE("\n");
+    }
+
+    for (i = 1; i < argc; i++)
+    {
+        if (argv[i][0] == '/')
+        {
+            if (!wcscmp(argv[i], L"/norestart"))
+                state.norestart = TRUE;
+            else if (!wcscmp(argv[i], L"/quiet"))
+                state.quiet = TRUE;
+            else
+                FIXME("Unknown option: %s\n", wine_dbgstr_w(argv[i]));
+        }
+        else if (!filename)
+            filename = argv[i];
+        else
+            FIXME("Unknown option: %s\n", wine_dbgstr_w(argv[i]));
+    }
+
+    if (!filename)
+    {
+        FIXME("Missing filename argument\n");
+        return 1;
+    }
+
+    return !install_msu(filename, &state);
 }

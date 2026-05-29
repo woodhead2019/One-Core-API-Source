@@ -524,16 +524,16 @@
 @ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectHook
 @ stdcall ShellExecuteA(long str str str str long) ;ShellExecuteAInternal
 @ stdcall ShellExecuteEx(ptr)
-@ stdcall ShellExecuteExA(ptr) ShellExecuteExAHook
-@ stdcall ShellExecuteExW(ptr) ShellExecuteExWHook
+@ stdcall ShellExecuteExA(ptr) ;ShellExecuteExAHook
+@ stdcall ShellExecuteExW(ptr) ;ShellExecuteExWHook
 @ stdcall ShellExecuteW(long wstr wstr wstr wstr long) ;ShellExecuteWInternal
 @ stdcall Shell_NotifyIcon(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconA(long ptr) ;Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) ;Shell_NotifyIconWInternal ;Redirected to Longhorn shell
-@ stdcall SHGetFolderPathA(long long long long ptr) SHGetFolderPathAHook
-@ stdcall SHGetFolderPathW(long long long long ptr) SHGetFolderPathWHook
-@ stdcall SHGetSpecialFolderPathA(long ptr long long) SHGetSpecialFolderPathAHook
-@ stdcall SHGetSpecialFolderPathW(long ptr long long) SHGetSpecialFolderPathWHook
+@ stdcall SHGetFolderPathA(long long long long ptr) ;SHGetFolderPathAHook
+@ stdcall SHGetFolderPathW(long long long long ptr) ;SHGetFolderPathWHook
+@ stdcall SHGetSpecialFolderPathA(long ptr long long) ;SHGetSpecialFolderPathAHook
+@ stdcall SHGetSpecialFolderPathW(long ptr long long) ;SHGetSpecialFolderPathWHook
 
 #Win7
 @ stdcall GetCurrentProcessExplicitAppUserModelID(ptr)

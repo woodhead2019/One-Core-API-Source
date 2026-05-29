@@ -2515,49 +2515,49 @@ ShellLink_ExtInit_Initialize( IShellExtInit* iface, LPCITEMIDLIST pidlFolder,
 	IShellLinkImpl *This = impl_from_IShellExtInit(iface);
 	HRESULT hr = S_OK;
 	
-	hr = IShellExtInit_Initialize(This->pRealShellExtInit, pidlFolder, pdtobj, hkeyProgID);	
+	// hr = IShellExtInit_Initialize(This->pRealShellExtInit, pidlFolder, pdtobj, hkeyProgID);	
 	
 	return hr;	
-    // IShellLinkImpl *This = impl_from_IShellExtInit(iface);
-    // FORMATETC format;
-    // STGMEDIUM stgm;
-    // UINT count;
-    // HRESULT r = E_FAIL;
+    IShellLinkImpl *This = impl_from_IShellExtInit(iface);
+    FORMATETC format;
+    STGMEDIUM stgm;
+    UINT count;
+    HRESULT r = E_FAIL;
 
-    // TRACE("%p %p %p %p\n", This, pidlFolder, pdtobj, hkeyProgID );
+    TRACE("%p %p %p %p\n", This, pidlFolder, pdtobj, hkeyProgID );
 
-    // if( !pdtobj )
-        // return r;
+    if( !pdtobj )
+        return r;
 
-    // format.cfFormat = CF_HDROP;
-    // format.ptd = NULL;
-    // format.dwAspect = DVASPECT_CONTENT;
-    // format.lindex = -1;
-    // format.tymed = TYMED_HGLOBAL;
+    format.cfFormat = CF_HDROP;
+    format.ptd = NULL;
+    format.dwAspect = DVASPECT_CONTENT;
+    format.lindex = -1;
+    format.tymed = TYMED_HGLOBAL;
 
-    // if( FAILED( IDataObject_GetData( pdtobj, &format, &stgm ) ) )
-        // return r;
+    if( FAILED( IDataObject_GetData( pdtobj, &format, &stgm ) ) )
+        return r;
 
-    // count = DragQueryFileW( stgm.u.hGlobal, -1, NULL, 0 );
-    // if( count == 1 )
-    // {
-        // LPWSTR path;
+    count = DragQueryFileW( stgm.u.hGlobal, -1, NULL, 0 );
+    if( count == 1 )
+    {
+        LPWSTR path;
 
-        // count = DragQueryFileW( stgm.u.hGlobal, 0, NULL, 0 );
-        // count++;
-        // path = malloc( count * sizeof(WCHAR) );
-        // if( path )
-        // {
-            // IPersistFile *pf = &This->IPersistFile_iface;
+        count = DragQueryFileW( stgm.u.hGlobal, 0, NULL, 0 );
+        count++;
+        path = malloc( count * sizeof(WCHAR) );
+        if( path )
+        {
+            IPersistFile *pf = &This->IPersistFile_iface;
 
-            // count = DragQueryFileW( stgm.u.hGlobal, 0, path, count );
-            // r = IPersistFile_Load( pf, path, 0 );
-            // free( path );
-        // }
-    // }
-    // ReleaseStgMedium( &stgm );
+            count = DragQueryFileW( stgm.u.hGlobal, 0, path, count );
+            r = IPersistFile_Load( pf, path, 0 );
+            free( path );
+        }
+    }
+    ReleaseStgMedium( &stgm );
 
-    // return r;
+    return r;
 }
 
 static const IShellExtInitVtbl eivt =
@@ -2636,81 +2636,81 @@ ShellLink_InvokeCommand( IContextMenu* iface, LPCMINVOKECOMMANDINFO lpici )
 	IShellLinkImpl *This = impl_from_IContextMenu(iface);
 	HRESULT hr = S_OK;
 	
-	hr = IContextMenu_InvokeCommand(This->pRealContextMenu, lpici);	
+	//hr = IContextMenu_InvokeCommand(This->pRealContextMenu, lpici);	
 	
-	return hr;		
-    // IShellLinkImpl *This = impl_from_IContextMenu(iface);
-    // SHELLEXECUTEINFOW sei;
-    // HWND hwnd = NULL; /* FIXME: get using interface set from IObjectWithSite */
-    // LPWSTR args = NULL;
-    // LPWSTR path = NULL;
-    // HRESULT r;
+	//return hr;		
+    IShellLinkImpl *This = impl_from_IContextMenu(iface);
+    SHELLEXECUTEINFOW sei;
+    HWND hwnd = NULL; /* FIXME: get using interface set from IObjectWithSite */
+    LPWSTR args = NULL;
+    LPWSTR path = NULL;
+    HRESULT r;
 
-    // TRACE("%p %p\n", This, lpici );
+    TRACE("%p %p\n", This, lpici );
 
-    // if ( lpici->cbSize < sizeof (CMINVOKECOMMANDINFO) )
-        // return E_INVALIDARG;
+    if ( lpici->cbSize < sizeof (CMINVOKECOMMANDINFO) )
+        return E_INVALIDARG;
 
-    // if ( lpici->lpVerb != MAKEINTRESOURCEA(This->iIdOpen) )
-    // {
-        // ERR("Unknown id %p != %d\n", lpici->lpVerb, This->iIdOpen );
-        // return E_INVALIDARG;
-    // }
+    if ( lpici->lpVerb != MAKEINTRESOURCEA(This->iIdOpen) )
+    {
+        ERR("Unknown id %p != %d\n", lpici->lpVerb, This->iIdOpen );
+        return E_INVALIDARG;
+    }
 
-    // r = IShellLinkW_Resolve(&This->IShellLinkW_iface, hwnd, 0);
-    // if ( FAILED( r ) )
-        // return r;
+    r = IShellLinkW_Resolve(&This->IShellLinkW_iface, hwnd, 0);
+    if ( FAILED( r ) )
+        return r;
 
-    // if ( This->sComponent )
-    // {
-        // path = shelllink_get_msi_component_path( This->sComponent );
-        // if (!path)
-            // return E_FAIL;
-    // }
-    // else
-        // path = _wcsdup( This->sPath );
+    if ( This->sComponent )
+    {
+        path = shelllink_get_msi_component_path( This->sComponent );
+        if (!path)
+            return E_FAIL;
+    }
+    else
+        path = _wcsdup( This->sPath );
 
-    // if ( lpici->cbSize == sizeof (CMINVOKECOMMANDINFOEX) &&
-         // ( lpici->fMask & CMIC_MASK_UNICODE ) )
-    // {
-        // LPCMINVOKECOMMANDINFOEX iciex = (LPCMINVOKECOMMANDINFOEX) lpici;
-        // DWORD len = 2;
+    if ( lpici->cbSize == sizeof (CMINVOKECOMMANDINFOEX) &&
+         ( lpici->fMask & CMIC_MASK_UNICODE ) )
+    {
+        LPCMINVOKECOMMANDINFOEX iciex = (LPCMINVOKECOMMANDINFOEX) lpici;
+        DWORD len = 2;
 
-        // if ( This->sArgs )
-            // len += lstrlenW( This->sArgs );
-        // if ( iciex->lpParametersW )
-            // len += lstrlenW( iciex->lpParametersW );
+        if ( This->sArgs )
+            len += lstrlenW( This->sArgs );
+        if ( iciex->lpParametersW )
+            len += lstrlenW( iciex->lpParametersW );
 
-        // args = malloc( len * sizeof(WCHAR) );
-        // args[0] = 0;
-        // if ( This->sArgs )
-            // lstrcatW( args, This->sArgs );
-        // if ( iciex->lpParametersW && iciex->lpParametersW[0] )
-        // {
-            // lstrcatW( args, L" " );
-            // lstrcatW( args, iciex->lpParametersW );
-        // }
-    // }
+        args = malloc( len * sizeof(WCHAR) );
+        args[0] = 0;
+        if ( This->sArgs )
+            lstrcatW( args, This->sArgs );
+        if ( iciex->lpParametersW && iciex->lpParametersW[0] )
+        {
+            lstrcatW( args, L" " );
+            lstrcatW( args, iciex->lpParametersW );
+        }
+    }
 
-    // memset( &sei, 0, sizeof sei );
-    // sei.cbSize = sizeof sei;
-    // sei.fMask = SEE_MASK_UNICODE | (lpici->fMask & (SEE_MASK_NOASYNC|SEE_MASK_NO_CONSOLE|SEE_MASK_ASYNCOK|SEE_MASK_FLAG_NO_UI));
-    // sei.lpFile = path;
-    // sei.nShow = This->iShowCmd;
-    // sei.lpIDList = This->pPidl;
-    // sei.lpDirectory = This->sWorkDir;
-    // sei.lpParameters = args;
-    // sei.lpVerb = L"Open";
+    memset( &sei, 0, sizeof sei );
+    sei.cbSize = sizeof sei;
+    sei.fMask = SEE_MASK_UNICODE | (lpici->fMask & (SEE_MASK_NOASYNC|SEE_MASK_NO_CONSOLE|SEE_MASK_ASYNCOK|SEE_MASK_FLAG_NO_UI));
+    sei.lpFile = path;
+    sei.nShow = This->iShowCmd;
+    sei.lpIDList = This->pPidl;
+    sei.lpDirectory = This->sWorkDir;
+    sei.lpParameters = args;
+    sei.lpVerb = L"Open";
 
-    // if( ShellExecuteExW( &sei ) )
-        // r = S_OK;
-    // else
-        // r = E_FAIL;
+    if( ShellExecuteExW( &sei ) )
+        r = S_OK;
+    else
+        r = E_FAIL;
 
-    // free( args );
-    // free( path );
+    free( args );
+    free( path );
 
-    // return r;
+    return r;
 }
 
 static HRESULT WINAPI
