@@ -51,9 +51,9 @@ void* WINAPI LdrResolveDelayLoadedAPI( void* base, const IMAGE_DELAYLOAD_DESCRIP
     HMODULE *phmod;
     NTSTATUS nts;
     FARPROC fp;
-    DWORD id;
+    INT_PTR id;
 
-    DbgPrint( "LdrResolveDelayLoadedAPI::(%p, %p, %p, %p, %p, 0x%08x)\n", base, desc, dllhook, syshook, addr, flags );
+    DbgPrint( "LdrResolveDelayLoadedAPI: (%p, %p, %p, %p, %p, 0x%08lx)\n", base, desc, dllhook, syshook, addr, flags );
 
     phmod = get_rva(base, desc->ModuleHandleRVA);
     pIAT = get_rva(base, desc->ImportAddressTableRVA);
@@ -70,19 +70,27 @@ void* WINAPI LdrResolveDelayLoadedAPI( void* base, const IMAGE_DELAYLOAD_DESCRIP
         }
         nts = LdrLoadDll(NULL, 0, &mod, phmod);
         RtlFreeUnicodeString(&mod);
-        if (nts) goto fail;
+        if (nts) {
+			DbgPrint( "LdrLoadDll(%s) failed with result %08x\n", name, nts );
+			goto fail;
+		}
     }
 
     if (IMAGE_SNAP_BY_ORDINAL(pINT[id].u1.Ordinal))
         nts = LdrGetProcedureAddress(*phmod, NULL, LOWORD(pINT[id].u1.Ordinal), (void**)&fp);
+		if (nts || !fp)	
+			DbgPrint( "LdrGetProcedureAddress(#%i) not found with result %08x\n", LOWORD(pINT[id].u1.Ordinal), nts);
     else
     {
         const IMAGE_IMPORT_BY_NAME* iibn = get_rva(base, pINT[id].u1.AddressOfData);
         ANSI_STRING fnc;
-
+		
         RtlInitAnsiString(&fnc, (char*)iibn->Name);
         nts = LdrGetProcedureAddress(*phmod, &fnc, 0, (void**)&fp);
+		if (nts || !fp)	
+			DbgPrint( "LdrGetProcedureAddress(%s) not found with result %08x\n", (char*)iibn->Name, nts);
     }
+	
     if (!nts)
     {
         pIAT[id].u1.Function = (ULONG_PTR)fp;

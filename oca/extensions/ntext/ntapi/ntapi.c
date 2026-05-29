@@ -249,11 +249,52 @@ NtTraceControl(
 	return STATUS_UNSUCCESSFUL;
 }
 
-VOID 
-NTAPI 
-NtFlushProcessWriteBuffers()	
+VOID
+NTAPI
+NtFlushProcessWriteBuffers(VOID)
 {
-	;
+    SYSTEM_BASIC_INFORMATION sbi;
+    NTSTATUS status;
+    LONG current;
+    ULONG i;
+
+    status = ZwQuerySystemInformation(SystemBasicInformation,
+                                      &sbi,
+                                      sizeof(sbi),
+                                      NULL);
+
+    if (!NT_SUCCESS(status) || sbi.NumberOfProcessors <= 1)
+    {
+#if defined(_M_IX86)
+        asm { lock add dword ptr [esp], 0 }
+#elif defined(_M_AMD64)
+        _mm_mfence();
+#else
+        MemoryBarrier();
+#endif
+        return;
+    }
+
+    current = InterlockedIncrement(&g_FlushCounter);
+
+    for (i = 0; i < sbi.NumberOfProcessors; i++)
+    {
+#if defined(_M_IX86)
+        asm { lock add dword ptr [esp], 0 }
+#elif defined(_M_AMD64)
+        _mm_mfence();
+#else
+        MemoryBarrier();
+#endif
+    }
+
+#if defined(_M_IX86)
+    __asm { lock add dword ptr [esp], 0 }
+#elif defined(_M_AMD64)
+    _mm_mfence();
+#else
+    MemoryBarrier();
+#endif
 }
 
 NTAPI 
