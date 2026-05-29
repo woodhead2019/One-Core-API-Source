@@ -208,3 +208,13 @@
 @ stdcall ResolveIpNetEntry2(ptr ptr)
 @ stdcall SetCurrentThreadCompartmentId( long )
 @ stdcall SetPerTcpConnectionEStats( ptr long ptr long long long )
+
+#For WinXP RTM/SP1
+@ stdcall RtlIpv4AddressToStringExA(ptr long ptr ptr)
+@ stdcall RtlIpv4AddressToStringExW(ptr long ptr ptr)
+@ stdcall RtlIpv4StringToAddressExA(str long ptr ptr)
+@ stdcall RtlIpv4StringToAddressExW(wstr long ptr ptr)
+@ stdcall RtlIpv6AddressToStringExA(ptr long long ptr ptr)
+@ stdcall RtlIpv6AddressToStringExW(ptr long long ptr ptr)
+@ stdcall RtlIpv6StringToAddressExA(str ptr ptr ptr)
+@ stdcall RtlIpv6StringToAddressExW(wstr ptr ptr ptr)
