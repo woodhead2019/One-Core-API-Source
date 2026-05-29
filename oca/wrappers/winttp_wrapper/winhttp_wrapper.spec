@@ -2,7 +2,7 @@
 2 stdcall DllGetClassObject(ptr ptr ptr)
 3 stdcall DllRegisterServer()
 4 stdcall DllUnregisterServer()
-5 stdcall SvchostPushServiceGlobals(ptr)
+5 stdcall SvchostPushServiceGlobals(ptr) winhttpbase.SvchostPushServiceGlobals
 6 stdcall WinHttpAddRequestHeaders(ptr wstr long long)
 7 stdcall WinHttpAutoProxySvcMain(long wstr)
 8 stdcall WinHttpCheckPlatform()
@@ -39,6 +39,7 @@
 @ stdcall WinHttpGetProxyResult(ptr ptr)
 @ stdcall WinHttpWebSocketCompleteUpgrade(ptr ptr)
 @ stdcall WinHttpWebSocketClose(ptr long ptr long)
+@ stdcall WinHttpWebSocketQueryCloseStatus(ptr ptr ptr long ptr)
 @ stdcall WinHttpWebSocketReceive(ptr ptr long ptr ptr)
 @ stdcall WinHttpWebSocketSend(ptr long ptr long)
 @ stdcall WinHttpWebSocketShutdown(ptr long ptr long)
