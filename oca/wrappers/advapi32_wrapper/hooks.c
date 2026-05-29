@@ -313,7 +313,7 @@ GetTokenInformationInternal (
     DWORD dwReturnLength = *ReturnLength;
     int i, index=0;
 	char* ptr;
-    // 
+	
     if(TokenInformationClass == TokenLogonSid){
 		if (TokenInformationLength == 0) { // Chrome 98+ sandbox needs this.
 			*ReturnLength = sizeof(TOKEN_GROUPS) + sizeof(PVOID) + sizeof(DWORD) + SECURITY_MAX_SID_SIZE;
@@ -366,16 +366,17 @@ GetTokenInformationInternal (
         return TRUE;
     }
 	
-	if(TokenInformationClass == TokenAppContainerSid ){
-        *ReturnLength = sizeof(PSID);
-        if(TokenInformationLength < sizeof(PSID))
+    if(TokenInformationClass == TokenAppContainerSid){
+        //Firefox 153 and higher needs this.
+        *ReturnLength = sizeof(TOKEN_APPCONTAINER_INFORMATION);
+        if(TokenInformationLength < sizeof(TOKEN_APPCONTAINER_INFORMATION))
            return FALSE;
-        TokenInformation = NULL;
+        ((PTOKEN_APPCONTAINER_INFORMATION)TokenInformation)->TokenAppContainer = NULL;
         return TRUE;
-	}
+    }
 	
 	if(TokenInformationClass == TokenElevationType ){
-		TokenInformation = (PVOID)2;
+		(PULONG)TokenInformation = (PVOID)2;
 		TokenInformationLength = sizeof(ULONG);
 		return TRUE;
 	}	
@@ -1123,4 +1124,51 @@ LSTATUS WINAPI RegQueryValueAInternal(
     *lpcbData = need;
 
     return ERROR_SUCCESS;
+}
+
+BOOL WINAPI AddAccessAllowedAceInternal(PACL pAcl, DWORD dwAceRevision, DWORD AccessMask, PSID pSid) {
+    BOOL result = AddAccessAllowedAce(pAcl, dwAceRevision, AccessMask, pSid);
+    
+	if (!result && GetLastError() == ERROR_INVALID_SID) {
+        TRACE("AddAccessAllowedAceInternal:: error is ERROR_INVALID_SID, returning true for firefox 153 compatibility.\n");
+        return TRUE;
+    }
+
+    return result;
+}
+
+BOOL WINAPI ChangeServiceConfig2WInternal(SC_HANDLE hService, DWORD dwInfoLevel, LPVOID lpInfo) {
+    BOOL result;
+    
+    // First try the regular API and see if it has unsupported flags.
+    if ((result = ChangeServiceConfig2W(hService, dwInfoLevel, lpInfo)) || GetLastError() != ERROR_NOT_SUPPORTED)
+        return result;
+    
+    // Then it is a flag that is not supported on XP. We'll just stub all of them for now.
+    switch (dwInfoLevel) {
+        case SERVICE_CONFIG_FAILURE_ACTIONS_FLAG:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_FAILURE_ACTIONS_FLAG\n");
+            return TRUE;
+        case SERVICE_CONFIG_DELAYED_AUTO_START_INFO:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_DELAYED_AUTO_START_INFO\n");
+            return TRUE;
+        case SERVICE_CONFIG_SERVICE_SID_INFO:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_SERVICE_SID_INFO\n");
+            return TRUE;
+        case SERVICE_CONFIG_REQUIRED_PRIVILEGES_INFO:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_REQUIRED_PRIVILEGES_INFO\n");
+            return TRUE;
+        case SERVICE_CONFIG_PRESHUTDOWN_INFO:
+            TRACE("ChangeServiceConfig2W SERVICE_PRESHUTDOWN_INFO\n");
+            return TRUE;
+        case SERVICE_CONFIG_PREFERRED_NODE:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_PREFERRED_NODE\n");
+            return TRUE;
+        case SERVICE_CONFIG_LAUNCH_PROTECTED:
+            TRACE("ChangeServiceConfig2W SERVICE_CONFIG_LAUNCH_PROTECTED\n");
+            return TRUE;
+    }
+
+    TRACE("ChangeServiceConfig2W UNSUPPORTED %i\n", dwInfoLevel);
+    return FALSE;
 }

@@ -61,6 +61,8 @@
 #define RRF_NOEXPAND            (1 << 28)
 #define RRF_ZEROONFAILURE       (1 << 29)
 
+#define SERVICE_CONFIG_LAUNCH_PROTECTED  12
+
 /* FUNCTIONS ****************************************************************/
 FORCEINLINE
 BOOL
@@ -326,6 +328,10 @@ typedef enum _TRACE_QUERY_INFO_CLASS
     TraceMaxLoggersQuery,
     MaxTraceSetInfoClass
 } TRACE_QUERY_INFO_CLASS, TRACE_INFO_CLASS;
+
+typedef struct _TOKEN_APPCONTAINER_INFORMATION {
+  PSID TokenAppContainer;
+} TOKEN_APPCONTAINER_INFORMATION, * PTOKEN_APPCONTAINER_INFORMATION;
 
 /* memory allocation functions */
 

@@ -15,7 +15,6 @@
 15 stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleA(str ptr ptr str str ptr long long long long ptr long ptr long ptr ptr ptr)
 16 stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr)
 17 stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr)
-18 stdcall AddAccessAllowedAce(ptr long long ptr)
 19 stdcall AddAccessAllowedAceEx(ptr long long long ptr)
 20 stdcall AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr)
 21 stdcall AddAccessDeniedAce(ptr long long ptr)
@@ -52,7 +51,6 @@
 52 stdcall BuildTrusteeWithSidW(ptr ptr)
 53 stdcall CancelOverlappedAccess(ptr)
 54 stdcall ChangeServiceConfig2A(long long ptr)
-55 stdcall ChangeServiceConfig2W(long long ptr)
 56 stdcall ChangeServiceConfigA(long long long long wstr str ptr str str str str)
 57 stdcall ChangeServiceConfigW(long long long long wstr wstr ptr wstr wstr wstr wstr)
 58 stdcall CheckTokenMembership(long ptr ptr)
@@ -857,6 +855,8 @@
 ; @ stdcall V_SHAUpdate(ptr ptr long)
 
 #Hooks
+18 stdcall AddAccessAllowedAce(ptr long long ptr) AddAccessAllowedAceInternal
+55 stdcall ChangeServiceConfig2W(long long ptr) ChangeServiceConfig2WInternal
 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorAInternal
 88 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(wstr long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorWInternal
 89 stdcall ConvertStringSidToSidA(ptr ptr) ConvertStringSidToSidAInternal
