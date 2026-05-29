@@ -21,6 +21,7 @@ list(APPEND SOURCE
     stubs.c
     precomp.h
     ${CMAKE_CURRENT_BINARY_DIR}/dnsrslvr_c.c)
+	
 
 add_library(dnsapibase MODULE
     ${SOURCE}

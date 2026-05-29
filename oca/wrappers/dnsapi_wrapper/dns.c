@@ -99,3 +99,54 @@ DNS_STATUS WINAPI DnsServiceBrowseCancel(
 BOOL WINAPI DnsIsZtEnabled() {
     return FALSE;
 }
+
+// needed for Windows 7 winhttp.dll, mainly a stub.
+DWORD WINAPI DnsGetProxyInformation(
+	PCWSTR hostName, 
+	DNS_PROXY_INFORMATION *proxyInformation, 
+	DNS_PROXY_INFORMATION *defaultProxyInformation, 
+	DNS_PROXY_COMPLETION_ROUTINE completionRoutine, 
+	void *completionContext) {
+    if (!hostName || !proxyInformation || proxyInformation->version != 1 || (defaultProxyInformation && defaultProxyInformation->version != 1))
+        return ERROR_INVALID_PARAMETER;
+
+    proxyInformation->proxyInformationType = DNS_PROXY_INFORMATION_DEFAULT_SETTINGS;
+    proxyInformation->proxyName = NULL;
+
+    if (defaultProxyInformation) {
+        defaultProxyInformation->proxyInformationType = DNS_PROXY_INFORMATION_DEFAULT_SETTINGS;
+        defaultProxyInformation->proxyName = NULL;
+    }
+
+    if (completionRoutine)
+        completionRoutine(NULL, ERROR_SUCCESS);
+    
+    return ERROR_SUCCESS;
+}
+
+VOID WINAPI DnsFreeProxyName(PWSTR proxyName) {
+    HeapFree(GetProcessHeap(), 0, proxyName);
+}
+
+BOOL
+WINAPI
+DllMain(HINSTANCE hinstDLL,
+        DWORD dwReason,
+        LPVOID lpvReserved)
+{
+    switch (dwReason)
+    {
+        case DLL_PROCESS_ATTACH:
+        {			
+            break;
+        }
+        case DLL_PROCESS_DETACH:
+        {
+            break;
+        }
+        default:
+            break;
+    }
+
+    return TRUE;
+}

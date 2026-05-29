@@ -9,8 +9,8 @@ add_definitions(-DADNS_JGAA_WIN32 -D_CRT_NO_POSIX_ERROR_CODES)
 spec2def(dnsapi_wrapper.dll dnsapi_wrapper.spec ADD_IMPORTLIB)
 
 list(APPEND SOURCE
-    main.c
-    precomp.h)
+    forwards.c
+    dns.c)
 
 add_library(dnsapi_wrapper MODULE
     ${SOURCE}
@@ -18,8 +18,8 @@ add_library(dnsapi_wrapper MODULE
     ${CMAKE_CURRENT_BINARY_DIR}/dnsapi_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/dnsapi_wrapper.def)
 
-set_module_type(dnsapi_wrapper win32dll)
-target_link_libraries(dnsapi_wrapper adns ${PSEH_LIB})
-add_importlibs(dnsapi_wrapper dnsapibase)
-add_pch(dnsapi_wrapper precomp.h SOURCE)
+set_module_type(dnsapi_wrapper win32dll ENTRYPOINT DllMain 12)
+target_link_libraries(dnsapi_wrapper wine)
+add_importlibs(dnsapi_wrapper dnsapibase ntdll kernel32)
+#add_pch(dnsapi_wrapper precomp.h SOURCE)
 add_cd_file(TARGET dnsapi_wrapper DESTINATION reactos/system32 FOR all)
